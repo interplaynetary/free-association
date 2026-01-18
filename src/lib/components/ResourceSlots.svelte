@@ -2,7 +2,7 @@
 	import type { NeedSlot, AvailabilitySlot, AvailabilityWindow, SlotAllocationRecord } from '$lib/protocol/schemas';
 	import { TimePatternEditor, LocationEditor, DivisibilityEditor, type LocationData } from './slots';
 	import SlotPriorityDistributionEditor from './slots/form/SlotPriorityDistributionEditor.svelte';
-	import { types, type NeedType } from '$lib/protocol/needTypes-local';
+	import { types, type ResourceType } from '$lib/protocol/resource-types';
 	import { myAllocationsAsProvider } from '$lib/protocol/stores/allocation.svelte';
 	import { networkAllocations } from '$lib/protocol/stores/stores.svelte';
 	import { holsterUserPub } from '$lib/network/holster.svelte';
@@ -44,14 +44,14 @@
 			needSlotsCount: needSlots.length, 
 			capacitySlotsCount: capacitySlots.length,
 			activeTab: globalState.inventoryTab,
-			selectedNeedType,
+			selectedResourceType,
 			currentSlotsCount: (globalState.inventoryTab === 'needs' ? needSlots : capacitySlots)
-				.filter(slot => slot.type_id === selectedNeedType).length
+				.filter(slot => slot.type_id === selectedResourceType).length
 		});
 	});
 	
 	// Selected need type
-	let selectedNeedType = $state<string>('general'); // Default to general (matching demo data)
+	let selectedResourceType = $state<string>('general'); // Default to general (matching demo data)
 	
 	// Single unified state for tab switching - elegant solution!
 	type EditorType = 'time' | 'priority' | 'allocations' | 'chat' | 'location' | 'divisibility';
@@ -61,12 +61,12 @@
 	let deletePending = $state<string | null>(null);
 	
 	// Get current need type info
-	const currentNeedType = $derived(types.find(t => t.id === selectedNeedType) || types[0]);
+	const currentResourceType = $derived(types.find(t => t.id === selectedResourceType) || types[0]);
 	
 	// Get current slots based on active tab AND selected need type AND search query
 	const currentSlots = $derived(
 		(globalState.inventoryTab === 'needs' ? needSlots : capacitySlots)
-			.filter(slot => slot.type_id === selectedNeedType)
+			.filter(slot => slot.type_id === selectedResourceType)
             .filter(slot => {
                 const query = globalState.inventorySearchQuery.trim().toLowerCase();
                 if (!query) return true;
@@ -323,10 +323,10 @@
 		<!-- Compact single-row layout -->
 		<div class="slot-main">
 			<!-- Name input -->
-			{#if selectedNeedType === 'money'}
+			{#if selectedResourceType === 'money'}
 				<span class="currency-symbol">$</span>
 			{:else}
-				<span class="type-emoji">{slot.emoji || currentNeedType.emoji}</span>
+				<span class="type-emoji">{slot.emoji || currentResourceType.emoji}</span>
 			{/if}
 			<input
 				type="text"
@@ -551,7 +551,7 @@
 					{/if}
 					{#if totalAllocated > 0}
 						<span class="total-allocated">
-							({selectedNeedType === 'money' ? '$' : currentNeedType.emoji}{totalAllocated.toFixed(2)} total)
+							({selectedResourceType === 'money' ? '$' : currentResourceType.emoji}{totalAllocated.toFixed(2)} total)
 						</span>
 					{/if}
 				</h4>
@@ -591,7 +591,7 @@
 										{/await}
 									</span>
 									<span class="allocation-amount">
-										{selectedNeedType === 'money' ? '$' : currentNeedType.emoji}{allocation.quantity.toFixed(2)}
+										{selectedResourceType === 'money' ? '$' : currentResourceType.emoji}{allocation.quantity.toFixed(2)}
 									</span>
 								</div>
 								<div class="allocation-meta">
@@ -644,7 +644,7 @@
     }
 	
 	/* Need Type Selector */
-	.need-type-selector {
+	.resource-type-selector {
 		background: white;
 		padding: 0.75rem;
 		border-radius: 6px;
@@ -656,7 +656,7 @@
 		flex-wrap: wrap;
 	}
 	
-	.need-type-selector label {
+	.resource-type-selector label {
 		font-size: 0.875rem;
 		font-weight: 600;
 		color: #374151;

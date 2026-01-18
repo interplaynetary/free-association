@@ -21,7 +21,7 @@ import type {
 	OrganizationsCollection
 } from '@playnet/free-association/schemas';
 import { OrganizationSchema, OrganizationsCollectionSchema } from '@playnet/free-association/schemas';
-import { DEMO_ORGANIZATIONS } from '$lib/config/org-trees';
+import { DEMO_ORGANIZATIONS } from '$lib/demo/orgs';
 
 console.log('[TRACE] src/lib/network/organizations.svelte.ts: <module scope>');
 

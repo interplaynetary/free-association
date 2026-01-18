@@ -68,11 +68,11 @@ export async function bootstrapApplication() {
         }
     };
 
-    unsub = stores.myCommitmentStore.loading.subscribe(checkLoading);
+    unsub = stores.myResourcesStore.loading.subscribe(checkLoading);
 
     // Guard: If subscription ran synchronously and completed, unsub was undefined inside the callback.
     // We must ensure we unsubscribe now that unsub is defined.
-    if (!get(stores.myCommitmentStore.loading) && unsub) {
+    if (!get(stores.myResourcesStore.loading) && unsub) {
         unsub();
     }
 

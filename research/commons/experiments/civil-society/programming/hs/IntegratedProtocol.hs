@@ -146,7 +146,7 @@ lookupPath path ctx = Radix.lookup path (pathIndex ctx)
 toResourceSlot :: PC.Commitment -> EM.ResourceSlot
 toResourceSlot comm = EM.ResourceSlot
   { EM.slotId = PC.entityId comm
-  , EM.needTypeId = PC.resourceType comm
+  , EM.resourceTypeId = PC.resourceType comm
   , EM.quantity = PC.totalCapacity comm
   , EM.startDate = Nothing  -- Would extract from commitment
   , EM.endDate = Nothing

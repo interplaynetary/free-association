@@ -55,7 +55,7 @@ export const LocationSchema = z.object({
 // NEED TYPE & DIVISIBILITY
 // ═══════════════════════════════════════════════════════════════════
 
-export const NeedTypeSchema = z.object({
+export const ResourceTypeSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   unit: z.string().default('units'),
@@ -146,7 +146,7 @@ export type DayOfWeek = z.infer<typeof DayOfWeekSchema>;
 export type DaySchedule = z.infer<typeof DayScheduleSchema>;
 export type AvailabilityWindow = z.infer<typeof AvailabilityWindowSchema>;
 export type Location = z.infer<typeof LocationSchema>;
-export type NeedType = z.infer<typeof NeedTypeSchema>;
+export type ResourceType = z.infer<typeof ResourceTypeSchema>;
 export type Divisibility = z.infer<typeof DivisibilitySchema>;
 export type NeedSlot = z.infer<typeof NeedSlotSchema>;
 export type AvailabilitySlot = z.infer<typeof AvailabilitySlotSchema>;

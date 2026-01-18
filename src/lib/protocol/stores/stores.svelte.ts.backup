@@ -350,7 +350,7 @@ export const myCapacitySlotsStore: Readable<AvailabilitySlot[] | null> = derived
  * - Filtering/grouping needs
  * - Quick type existence checks
  */
-export const myNeedTypesStore: Readable<string[]> = derived(
+export const myResourceTypesStore: Readable<string[]> = derived(
 	[myNeedSlotsStore],
 	([$needSlots]) => {
 		if (!$needSlots || $needSlots.length === 0) {
@@ -715,7 +715,7 @@ export const networkAllocations = networkCommitments.deriveLiveField<SlotAllocat
  * - Filtering/grouping network needs
  * - Discovering what types are needed in the network
  */
-export const networkNeedTypesStore: Readable<string[]> = derived(
+export const networkResourceTypesStore: Readable<string[]> = derived(
 	[networkNeedSlots],
 	([$networkNeedSlots]) => {
 		const typeIds = new Set<string>();

@@ -186,7 +186,7 @@ const LocationSchema = z.object({
 // ---- Slot Schemas ----
 
 /** Need Type - categorizes different types of needs/capacity */
-const NeedTypeSchema = z.object({
+const ResourceTypeSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   unit: z.string().default('units'),
@@ -314,7 +314,7 @@ type DayOfWeek = z.infer<typeof DayOfWeekSchema>;
 type DaySchedule = z.infer<typeof DayScheduleSchema>;
 type AvailabilityWindow = z.infer<typeof AvailabilityWindowSchema>;
 type Location = z.infer<typeof LocationSchema>;
-type NeedType = z.infer<typeof NeedTypeSchema>;
+type ResourceType = z.infer<typeof ResourceTypeSchema>;
 type Divisibility = z.infer<typeof DivisibilitySchema>;
 type NeedSlot = z.infer<typeof NeedSlotSchema>;
 type AvailabilitySlot = z.infer<typeof AvailabilitySlotSchema>;
@@ -3464,7 +3464,7 @@ export {
   DayScheduleSchema,
   AvailabilityWindowSchema,
   LocationSchema,
-  NeedTypeSchema,
+  ResourceTypeSchema,
   DivisibilitySchema,
   NeedSlotSchema,
   AvailabilitySlotSchema,

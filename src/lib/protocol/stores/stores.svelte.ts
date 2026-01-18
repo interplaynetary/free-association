@@ -29,22 +29,25 @@ import { browser } from '$app/environment';
 import { get, derived, readable, writable } from 'svelte/store';
 import type { Readable, Writable } from 'svelte/store';
 import { createStore } from '$lib/utils/primitives/store.svelte';
-// NOTE: Converters removed! We now use JSON.stringify/parse for simplicity and reliability.
-// This eliminates 400+ lines of complex conversion logic and entire classes of bugs.
 import {
 	CommitmentSchema,
 	RootNodeSchema,
 	AvailabilitySlotSchema,
 	NeedSlotSchema,
+	MyResourcesSchema,
+	MyAllocationStateSchema,
+	GlobalRecognitionWeightsSchema,
 	normalizeGlobalRecognitionWeights,
 	type Commitment,
 	type RootNode,
 	type AvailabilitySlot,
 	type NeedSlot,
 	type GlobalRecognitionWeights,
-	type SlotAllocationRecord
+	type SlotAllocationRecord,
+	type MyResources,
+	type MyAllocationState
 } from '../schemas';
-import type { DistributedIPFState } from '../allocation-ipf-distributed';
+import type { DistributedIPFState } from '../solver';
 import { holsterUserPub, holsterUser, holsterUserAlias } from '$lib/network/holster.svelte';
 import { applyTemplate } from '$lib/templates';
 import { createRootNode } from '@playnet/free-association/tree';
@@ -123,6 +126,26 @@ export interface CommitmentWithCache extends Commitment {
  * 
  * V5: Tree structure encodes type preferences (not separate per-type MR values)
  */
+/**
+ * My Recognition Tree Store (V5) - SOURCE
+ * 
+ * The tree structure that generates my recognition weights!
+ * 
+ * How it works:
+ * 1. I build a tree with nodes representing what I value
+ * 2. Tree nodes have contributors (people who contribute to each goal)
+ * 3. The tree structure determines recognition shares via sharesOfGeneralFulfillmentMap()
+ * 4. Recognition weights are auto-computed in derived store below
+ * 
+ * Example Tree:
+ *   My Values (Root)
+ *   ├─ Healthcare (70 points)
+ *   │  └─ Dr. Smith contributes → gets 56% recognition
+ *   └─ Food (30 points)
+ *      └─ Alice contributes → gets 24% recognition
+ * 
+ * V5: Tree structure encodes type preferences (not separate per-type MR values)
+ */
 export const myRecognitionTreeStore = createStore({
 	holsterPath: 'trees/recognition_tree',
 	schema: RootNodeSchema,
@@ -156,9 +179,6 @@ export const myRecognitionWeights: Readable<GlobalRecognitionWeights> = derived(
 		try {
 			// Run protocol calculation: tree → recognition shares
 			const weights = sharesOfGeneralFulfillmentMap($tree as any, {});
-			// Optional: Log stats (can reduce this later)
-			// const contributorCount = Object.keys(weights).length;
-			// console.log(`[🌳 RECOGNITION-WEIGHTS] Computed ${contributorCount} contributors`);
 			return weights;
 		} catch (error) {
 			console.error('[🌳 RECOGNITION-WEIGHTS] ❌ Error computing from tree:', error);
@@ -168,46 +188,200 @@ export const myRecognitionWeights: Readable<GlobalRecognitionWeights> = derived(
 );
 
 /**
- * My Commitment Store (V5) - PRIMARY SOURCE OF TRUTH
+ * My Resources Store - "The Physics"
  * 
- * ✅ ARCHITECTURAL SIMPLIFICATION: This is THE ONLY persistent store for my data!
- * 
- * This is what gets published to the network AND what all derived stores read from!
- * 
- * Contains EVERYTHING:
- * - Capacity slots (derived stores read from here!)
- * - Need slots (derived stores read from here!)
- * - Global recognition weights (from myRecognitionWeights - computed from tree!)
- * - Global MR values (mutual recognition)
- * - Adaptive damping state (time-based history)
- * - ITC stamp (causality tracking)
- * 
- * To update slots: Use setMyNeedSlots() or setMyCapacitySlots() helpers
+ * Contains Need Slots and Capacity Slots.
+ * Path: allocation/resources
  */
-export const myCommitmentStore = createStore({
+export const myResourcesStore = createStore({
+	holsterPath: 'allocation/resources',
+	schema: MyResourcesSchema,
+	persistDebounce: 100,
+	localStorageKey: 'free-association-demo-resources'
+});
+
+/**
+ * My Allocation State Store - "The Economics"
+ * 
+ * Contains constraint factors, total seeds, allocations, etc.
+ * Path: allocation/state
+ */
+export const myAllocationStateStore = createStore({
+	holsterPath: 'allocation/state',
+	schema: MyAllocationStateSchema,
+	persistDebounce: 100,
+	localStorageKey: 'free-association-demo-allocation-state'
+});
+
+/**
+ * My Network Cache Store - "The Social Cache"
+ * 
+ * Caches others' recognition of me and other network data needed offline.
+ * Separated to avoid bloating the main commitment/resource stores.
+ */
+import * as z from 'zod';
+const MyNetworkCacheSchema = z.object({
+	others_recognition_of_me: z.record(z.string(), GlobalRecognitionWeightsSchema).default({}),
+	others_slots_cache: z.record(z.string(), z.any()).default({}) // Schema for SlotsCacheEntry
+});
+
+export const myNetworkCacheStore = createStore({
+	holsterPath: 'allocation/network_cache',
+	schema: MyNetworkCacheSchema,
+	persistDebounce: 500, // Less urgent
+	localStorageKey: 'free-association-demo-network-cache'
+});
+
+
+/**
+ * My Commitment Store (V5) - AGGREGATED VIEW
+ * 
+ * ✅ V5 REFACTOR: Now a DERIVED store!
+ * 
+ * Aggregates:
+ * - Resources (from myResourcesStore)
+ * - Recognition (from myRecognitionWeights)
+ * - Allocation State (from myAllocationStateStore)
+ * - Network Cache (from myNetworkCacheStore)
+ * 
+ * This is the object that is sent to the network.
+ */
+export const myCommitmentStore: Readable<Commitment | null> = derived(
+	[
+		myResourcesStore,
+		myRecognitionWeights,
+		myAllocationStateStore,
+		myNetworkCacheStore,
+		holsterUserPub // Need pubkey for self-checking or just context
+	],
+	([$resources, $recognition, $allocation, $cache, $pubkey]) => {
+		if (!$resources) return null; // Resources essential
+
+		const now = Date.now();
+
+		// Construct the monolithic commitment object
+		const commitment: Commitment = {
+			// Physics
+			need_slots: $resources.need_slots,
+			capacity_slots: $resources.capacity_slots,
+
+			// Social
+			global_recognition_weights: $recognition,
+			others_recognition_of_me: $cache?.others_recognition_of_me || {},
+
+			// Economics / Allocation Logic
+			slot_allocations: $allocation?.slot_allocations,
+			total_allocated: $allocation?.total_allocated,
+			distance_from_need: $allocation?.distance_from_need,
+			constraint_scaling_factors: $allocation?.constraint_scaling_factors,
+			total_seed_by_need: $allocation?.total_seed_by_need,
+			multi_dimensional_damping: $allocation?.multi_dimensional_damping,
+
+			// Metadata / Causality
+			timestamp: now,
+			// TODO: Maintain a persistent ITC stamp? 
+			// For now, we generate a basic stamp or placeholder.
+			itcStamp: itcSeed() // Placeholder - should be real ITC
+		};
+
+		return commitment;
+	}
+);
+
+/**
+ * Commitment Publisher - NETWORK PERSISTENCE
+ * 
+ * Since myCommitmentStore is now derived (read-only), we need a specific store
+ * to handle writing the aggregated commitment to the network (Holster).
+ * 
+ * Also used for `subscribeToUser` functionality for remote commitments.
+ */
+export const commitmentPublisher = createStore({
 	holsterPath: 'allocation/commitment',
 	schema: CommitmentSchema,
-	persistDebounce: 100, // Debounce rapid updates
-	// DUAL MODE: Use LocalStorage for 'Guest Mode' when not authenticated!
+	persistDebounce: 100,
 	localStorageKey: 'free-association-demo-commitment'
 });
 
 /**
- * My Need Slots Store (V5) - DERIVED FROM COMMITMENT
+ * Helper to update legacy "myCommitmentStore" style calls
+ * Since it's now derived, we can't write to it.
+ * We must route writes to the correct sub-store.
+ */
+
+// ═══════════════════════════════════════════════════════════════════
+// MIGRATION UTILS
+// ═══════════════════════════════════════════════════════════════════
+
+async function migrateLegacyCommitment() {
+	if (!browser) return;
+
+	console.log('[MIGRATION] Checking for legacy commitment data...');
+
+	// Check if we have data in new stores
+	const hasResources = get(myResourcesStore)?.need_slots?.length || get(myResourcesStore)?.capacity_slots?.length;
+	if (hasResources) {
+		console.log('[MIGRATION] allocations/resources already populated. Skipping migration.');
+		return;
+	}
+
+	// Try to read legacy data from LocalStorage or Holster
+	const legacyStore = createStore({
+		holsterPath: 'allocation/commitment',
+		schema: CommitmentSchema,
+		localStorageKey: 'free-association-demo-commitment'
+	});
+
+	// Initialize to load data
+	legacyStore.initialize();
+
+	const unsub = legacyStore.subscribe(legacyData => {
+		if (legacyData) {
+			console.log('[MIGRATION] Found legacy data! Migrating...');
+
+			// 1. Resources
+			myResourcesStore.set({
+				need_slots: (legacyData.need_slots || []) as NeedSlot[],
+				capacity_slots: (legacyData.capacity_slots || []) as AvailabilitySlot[]
+			});
+
+			// 2. Allocation State
+			myAllocationStateStore.set({
+				slot_allocations: (legacyData.slot_allocations || []) as SlotAllocationRecord[],
+				total_allocated: legacyData.total_allocated || {},
+				distance_from_need: legacyData.distance_from_need || {},
+				constraint_scaling_factors: legacyData.constraint_scaling_factors || {},
+				total_seed_by_need: legacyData.total_seed_by_need || {},
+				multi_dimensional_damping: legacyData.multi_dimensional_damping || {}
+			});
+
+			// 3. Network Cache
+			myNetworkCacheStore.set({
+				others_recognition_of_me: legacyData.others_recognition_of_me || {},
+				others_slots_cache: {} // Initialize empty
+			});
+
+			console.log('[MIGRATION] Migration complete. Unsubscribing from legacy.');
+			unsub();
+		}
+	});
+
+	// Timeout to kill subscription if no data found
+	setTimeout(() => {
+		unsub();
+		console.log('[MIGRATION] Legacy migration check ended.');
+	}, 2000);
+}
+
+
+/**
+ * My Need Slots Store (V5) - DERIVED FROM RESOURCES
  * 
- * ✅ ARCHITECTURAL SIMPLIFICATION: Derived from commitment (single source of truth!)
- * 
- * Before: Persisted separately → composed into commitment (data duplication, sync issues)
- * After: Derived from commitment (single source of truth, always consistent)
- * 
- * What I need from the commons (e.g., food, housing, healthcare)
- * Each slot specifies quantity, type, time, location constraints
- * 
- * To update: Use setMyNeedSlots() helper function
+ * ✅ ARCHITECTURAL SIMPLIFICATION: Derived from resources store (single source of truth!)
  */
 export const myNeedSlotsStore: Readable<NeedSlot[] | null> = derived(
-	[myCommitmentStore],
-	([$commitment]) => $commitment?.need_slots || null
+	[myResourcesStore],
+	([$resources]) => $resources?.need_slots || null
 );
 
 /**
@@ -227,21 +401,13 @@ export const myCurrentNeeds = derived(myNeedSlotsStore, ($slots) => {
 });
 
 /**
- * My Capacity Slots Store (V5) - DERIVED FROM COMMITMENT
+ * My Capacity Slots Store (V5) - DERIVED FROM RESOURCES
  * 
- * ✅ ARCHITECTURAL SIMPLIFICATION: Derived from commitment (single source of truth!)
- * 
- * Before: Persisted separately → composed into commitment (data duplication, sync issues)
- * After: Derived from commitment (single source of truth, always consistent)
- * 
- * What I can provide to the commons (e.g., meals, tutoring, rides)
- * Each slot specifies quantity, type, time, location constraints
- * 
- * To update: Use setMyCapacitySlots() helper function
+ * ✅ ARCHITECTURAL SIMPLIFICATION: Derived from resources store (single source of truth!)
  */
 export const myCapacitySlotsStore: Readable<AvailabilitySlot[] | null> = derived(
-	[myCommitmentStore],
-	([$commitment]) => $commitment?.capacity_slots || null
+	[myResourcesStore],
+	([$resources]) => $resources?.capacity_slots || null
 );
 
 /**
@@ -255,7 +421,7 @@ export const myCapacitySlotsStore: Readable<AvailabilitySlot[] | null> = derived
  * - Filtering/grouping needs
  * - Quick type existence checks
  */
-export const myNeedTypesStore: Readable<string[]> = derived(
+export const myResourceTypesStore: Readable<string[]> = derived(
 	[myNeedSlotsStore],
 	([$needSlots]) => {
 		if (!$needSlots || $needSlots.length === 0) {
@@ -555,7 +721,7 @@ export const networkAllocations = networkCommitments.deriveField<SlotAllocationR
  * - Filtering/grouping network needs
  * - Discovering what types are needed in the network
  */
-export const networkNeedTypesStore: Readable<string[]> = derived(
+export const networkResourceTypesStore: Readable<string[]> = derived(
 	[networkNeedSlots],
 	([$networkNeedSlots]) => {
 		const typeIds = new Set<string>();
@@ -744,66 +910,77 @@ export function startStoreService(): () => void {
 	// 1. Initialize Persistent Stores
 	// Triggers loading from Holster/LocalStorage
 	myRecognitionTreeStore.initialize();
-	myCommitmentStore.initialize();
+	// myCommitmentStore.initialize(); // Now derived, but sub-stores need init!
+	myResourcesStore.initialize();
+	myAllocationStateStore.initialize();
+	myNetworkCacheStore.initialize();
+
+	// Run migration check
+	migrateLegacyCommitment();
 
 	console.log('[STORES] 🔄 Initializing global store synchronization...');
 
 	// 1. BROADCAST CONSTRAINT FACTORS
 	const unsubConstraints = myDistributedIPFState.subscribe(state => {
-		// console.log('[TRACE] [CALLBACK] src/lib/protocol/stores/stores.svelte.ts: myDistributedIPFState subscription');
-		const currentCommitment = get(myCommitmentStore);
-		if (!currentCommitment) return;
+		const currentFactors = get(myAllocationStateStore)?.constraint_scaling_factors || {};
 
-		// Only update if changed prevents infinite loops and churn
-		const currentFactors = currentCommitment.constraint_scaling_factors || {};
+		// Only update if changed
 		if (JSON.stringify(currentFactors) !== JSON.stringify(state.colScalings)) {
 			console.log('[IPF-Sync] Broadcasting new constraint factors (y_r)', state.colScalings);
 
-			myCommitmentStore.update(c => ({
-				...c,
-				constraint_scaling_factors: { ...state.colScalings },
-				timestamp: Date.now()
-			}));
+			myAllocationStateStore.update(s => {
+				const current = s || {
+					slot_allocations: [],
+					total_allocated: {},
+					distance_from_need: {},
+					constraint_scaling_factors: {},
+					total_seed_by_need: {},
+					multi_dimensional_damping: {}
+				};
+				return {
+					...current,
+					constraint_scaling_factors: { ...state.colScalings }
+				};
+			});
 		}
 	});
 
 	// 2. CACHE RECOGNITION (Others -> Me)
 	const unsubRecCache = networkCommitments.subscribe(($networkCommitsVersioned) => {
-		// console.log('[TRACE] [CALLBACK] src/lib/protocol/stores/stores.svelte.ts: networkCommitments subscription (rec cache updater)');
 		const myPub = get(holsterUserPub);
-		const myCommitment = get(myCommitmentStore);
+		if (!myPub) return;
 
-		if (!myPub || !myCommitment) return;
-
-		const cache = myCommitment.others_recognition_of_me || {};
+		const currentCache = get(myNetworkCacheStore);
+		const cache = currentCache?.others_recognition_of_me || {};
 		const updates: Record<string, GlobalRecognitionWeights> = {};
 
 		// Check each network commitment for changes
 		for (const [theirPub, versionedEntity] of $networkCommitsVersioned.entries()) {
-			// Skip own commitment (prevents infinite loop when our data syncs back)
 			if (theirPub === myPub) continue;
 
 			const theirWeights = versionedEntity.data.global_recognition_weights;
 			if (!theirWeights) continue;
 
-			// Normalize and extract their recognition of me
 			const normalized = normalizeGlobalRecognitionWeights(theirWeights);
 			const networkRecOfMe = normalized[myPub] || 0;
 			const cachedRecOfMe = cache[theirPub]?.[myPub] || 0;
 
-			// Network proved otherwise? Update cache!
 			if (networkRecOfMe !== cachedRecOfMe) {
 				updates[theirPub] = normalized;
-				console.log(`[CACHE-UPDATE] ${theirPub.slice(0, 20)}...: ${cachedRecOfMe} → ${networkRecOfMe}`);
 			}
 		}
 
-		// Apply updates if any changes detected
 		if (Object.keys(updates).length > 0) {
-			console.log('[CACHE-UPDATE] Network proved changes - updating commitment cache');
-			myCommitmentStore.set({
-				...myCommitment,
-				others_recognition_of_me: { ...cache, ...updates }
+			console.log('[CACHE-UPDATE] Network proved changes - updating recognition cache');
+			myNetworkCacheStore.update(c => {
+				const current = c || {
+					others_recognition_of_me: {},
+					others_slots_cache: {}
+				};
+				return {
+					...current,
+					others_recognition_of_me: { ...cache, ...updates }
+				};
 			});
 		}
 	});
@@ -811,24 +988,18 @@ export function startStoreService(): () => void {
 	// 3. CACHE SLOTS (Others -> Me)
 	const unsubSlotsCache = networkCommitments.subscribe(($networkCommitsVersioned) => {
 		const myPub = get(holsterUserPub);
-		const myCommitment = get(myCommitmentStore);
+		if (!myPub) return;
 
-		if (!myPub || !myCommitment) return;
-
-		const slotsCache = (myCommitment as any).others_slots_cache || {};
+		const currentCache = get(myNetworkCacheStore);
+		const slotsCache = currentCache?.others_slots_cache || {};
 		const slotsUpdates: Record<string, SlotsCacheEntry> = {};
 
-		// Check each network commitment for slot changes
 		for (const [theirPub, versionedEntity] of $networkCommitsVersioned.entries()) {
-			// Skip own commitment
 			if (theirPub === myPub) continue;
 
 			const theirCommitment = versionedEntity.data;
 			const cached = slotsCache[theirPub];
 
-			// Update cache if:
-			// 1. No cache exists, OR
-			// 2. Network data is newer (ITC comparison)
 			const shouldUpdate = !cached ||
 				(theirCommitment.itcStamp && cached.itcStamp &&
 					!itcLeq(theirCommitment.itcStamp, cached.itcStamp));
@@ -841,18 +1012,21 @@ export function startStoreService(): () => void {
 					timestamp: theirCommitment.timestamp || Date.now(),
 					cached_at: Date.now()
 				};
-
-				console.log(`[SLOTS-CACHE] Updating ${theirPub.slice(0, 20)}... (${theirCommitment.need_slots?.length || 0} needs, ${theirCommitment.capacity_slots?.length || 0} capacity)`);
 			}
 		}
 
-		// Apply updates if any changes detected
 		if (Object.keys(slotsUpdates).length > 0) {
-			console.log(`[SLOTS-CACHE] Caching slots from ${Object.keys(slotsUpdates).length} users for offline allocation`);
-			myCommitmentStore.set({
-				...myCommitment,
-				others_slots_cache: { ...slotsCache, ...slotsUpdates }
-			} as any);
+			console.log(`[SLOTS-CACHE] Caching slots from ${Object.keys(slotsUpdates).length} users`);
+			myNetworkCacheStore.update(c => {
+				const current = c || {
+					others_recognition_of_me: {},
+					others_slots_cache: {}
+				};
+				return {
+					...current,
+					others_slots_cache: { ...slotsCache, ...slotsUpdates }
+				};
+			});
 		}
 	});
 
@@ -862,9 +1036,14 @@ export function startStoreService(): () => void {
 		unsubRecCache();
 		unsubSlotsCache();
 
+
 		// Clean up persistent stores
 		myRecognitionTreeStore.cleanup();
-		myCommitmentStore.cleanup();
+		// myCommitmentStore is derived, no cleanup needed
+		myResourcesStore.cleanup();
+		myAllocationStateStore.cleanup();
+		myNetworkCacheStore.cleanup();
+		commitmentPublisher.cleanup();
 	};
 }
 
@@ -872,11 +1051,11 @@ export function startStoreService(): () => void {
  * Stop Store Service (Helper)
  */
 export async function stopStoreService() {
-	// Re-uses the cleanup function pattern if needed, but since startStoreService returns cleanup,
-	// usage in startup.ts is cleaner via the returned callback. 
-	// However, providing a named export for explicit manual cleanup can be useful.
 	await myRecognitionTreeStore.cleanup();
-	await myCommitmentStore.cleanup();
+	await myResourcesStore.cleanup();
+	await myAllocationStateStore.cleanup();
+	await myNetworkCacheStore.cleanup();
+	await commitmentPublisher.cleanup();
 }
 
 
@@ -891,23 +1070,13 @@ export async function stopStoreService() {
  * ✅ This is how you update slots now (commitment is the source of truth!)
  */
 export function setMyNeedSlots(needSlots: NeedSlot[]) {
-	const current = get(myCommitmentStore);
-	const recognitionWeights = get(myRecognitionWeights);
-
-	// Merge ITC with network
-	const mergedITC = getMergedITCStamp(current?.itcStamp);
-
-	const updated: Commitment = {
-		need_slots: needSlots,
-		capacity_slots: current?.capacity_slots || [],
-		global_recognition_weights: recognitionWeights,
-		others_recognition_of_me: current?.others_recognition_of_me,  // Preserve cache!
-		multi_dimensional_damping: current?.multi_dimensional_damping,
-		itcStamp: mergedITC,
-		timestamp: Date.now()
-	};
-
-	myCommitmentStore.set(updated);
+	myResourcesStore.update(res => {
+		const current = res || { need_slots: [], capacity_slots: [] };
+		return {
+			...current,
+			need_slots: needSlots
+		};
+	});
 	console.log('[SET-NEED-SLOTS] Updated:', needSlots.length, 'slots');
 }
 
@@ -918,24 +1087,31 @@ export function setMyNeedSlots(needSlots: NeedSlot[]) {
  * ✅ This is how you update slots now (commitment is the source of truth!)
  */
 export function setMyCapacitySlots(capacitySlots: AvailabilitySlot[]) {
-	const current = get(myCommitmentStore);
-	const recognitionWeights = get(myRecognitionWeights);
-
-	// Merge ITC with network
-	const mergedITC = getMergedITCStamp(current?.itcStamp);
-
-	const updated: Commitment = {
-		need_slots: current?.need_slots || [],
-		capacity_slots: capacitySlots,
-		global_recognition_weights: recognitionWeights,
-		others_recognition_of_me: current?.others_recognition_of_me,  // Preserve cache!
-		multi_dimensional_damping: current?.multi_dimensional_damping,
-		itcStamp: mergedITC,
-		timestamp: Date.now()
-	};
-
-	myCommitmentStore.set(updated);
+	myResourcesStore.update(res => {
+		const current = res || { need_slots: [], capacity_slots: [] };
+		return {
+			...current,
+			capacity_slots: capacitySlots
+		};
+	});
 	console.log('[SET-CAPACITY-SLOTS] Updated:', capacitySlots.length, 'slots');
+}
+
+export function setMyAllocationState(partialState: Partial<MyAllocationState>) {
+	myAllocationStateStore.update(state => {
+		const current = state || {
+			slot_allocations: [],
+			total_allocated: {},
+			distance_from_need: {},
+			constraint_scaling_factors: {},
+			total_seed_by_need: {},
+			multi_dimensional_damping: {}
+		};
+		return {
+			...current,
+			...partialState
+		};
+	});
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -981,7 +1157,8 @@ const activeSubscriptions = new Set<string>();
 export function subscribeToCommitment(pubKey: string) {
 	if (activeSubscriptions.has(`${pubKey}:commitment`)) return;
 
-	myCommitmentStore.subscribeToUser(pubKey, (commitment) => {
+	// Use commitmentPublisher to access subscribeToUser functionality
+	commitmentPublisher.subscribeToUser(pubKey, (commitment) => {
 		console.log(`[📡 NETWORK-SUB] Received commitment from ${pubKey.slice(0, 20)}...`);
 
 		// Handle deletion
@@ -2274,101 +2451,45 @@ export function composeCommitmentFromSources(totalReceivedMap?: Record<string, R
  * 
  * Returns unsubscribe function
  */
-export function enableAutoCommitmentComposition(): () => void {
-	console.log('[AUTO-COMPOSE] Enabling reactive commitment composition (recognition only)');
+/**
+ * Enable Reactive Commitment Publishing (V5)
+ * 
+ * Subscribes to the aggregated `myCommitmentStore` (derived) and
+ * publishes changes to the `commitmentPublisher` (persistent/network).
+ * 
+ * This ensures that local changes (resources, tree, etc.) are
+ * automatically composed and pushed to the network.
+ */
+export function enableCommitmentPublishing(): () => void {
+	console.log('[AUTO-PUBLISH] Enabling reactive commitment publishing');
 
 	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-	let isRecomposing = false; // Prevent cascading updates
+	let isPublishing = false;
 
-	/**
-	 * Recompose commitment with debouncing
-	 * Batches multiple rapid source changes into single update
-	 */
-	const debouncedRecompose = (reason: string) => {
-		if (isRecomposing) {
-			console.log(`[AUTO-COMPOSE] ⏭️  Skipped: already recomposing`);
-			return;
-		}
+	const unsubDerived = myCommitmentStore.subscribe((commitment) => {
+		if (!commitment) return;
+		if (isPublishing) return;
 
-		// Clear existing timer
-		if (debounceTimer) {
-			clearTimeout(debounceTimer);
-		}
+		// Debounce calling set() on publisher
+		if (debounceTimer) clearTimeout(debounceTimer);
 
-		// Schedule recomposition
 		debounceTimer = setTimeout(() => {
-			isRecomposing = true;
+			isPublishing = true;
 
-			const newCommitment = composeCommitmentFromSources(get(totalReceivedBySlot));
-			if (!newCommitment) {
-				console.log(`[AUTO-COMPOSE] ⏭️  Skipped: no source data (${reason})`);
-				isRecomposing = false;
-				return;
-			}
+			// Compare with current publisher state to avoid loops?
+			// createStore handles basic equality checks, but we can double check if needed.
+			// Ideally we just set it.
+			console.log('[AUTO-PUBLISH] 💾 Publishing aggregated commitment to network...');
+			commitmentPublisher.set(commitment);
 
-			// ✅ CRITICAL FIX: Check if commitment actually changed before calling set()
-			// This prevents infinite loop where loading triggers recompose triggers save triggers load...
-			const currentCommitment = get(myCommitmentStore);
-			if (currentCommitment) {
-				// Compare only the meaningful data fields, skip metadata (ITC, timestamp)
-				// Metadata always changes, but we only care if recognition/slots changed
-				try {
-					const currentData = {
-						need_slots: currentCommitment.need_slots,
-						capacity_slots: currentCommitment.capacity_slots,
-						global_recognition_weights: currentCommitment.global_recognition_weights,
-						others_recognition_of_me: currentCommitment.others_recognition_of_me,
-						multi_dimensional_damping: currentCommitment.multi_dimensional_damping
-					};
-					const newData = {
-						need_slots: newCommitment.need_slots,
-						capacity_slots: newCommitment.capacity_slots,
-						global_recognition_weights: newCommitment.global_recognition_weights,
-						others_recognition_of_me: newCommitment.others_recognition_of_me,
-						multi_dimensional_damping: newCommitment.multi_dimensional_damping
-					};
-
-					const currentJson = JSON.stringify(currentData);
-					const newJson = JSON.stringify(newData);
-
-					if (currentJson === newJson) {
-						console.log(`[AUTO-COMPOSE] ⏭️  Skipped: commitment data unchanged (${reason})`);
-						isRecomposing = false;
-						return;
-					}
-				} catch (error) {
-					console.warn(`[AUTO-COMPOSE] ⚠️  Equality check failed, proceeding with update:`, error);
-				}
-			}
-
-			// Apply the update
-			// NOTE: This preserves existing slots and only updates recognition data
-			console.log(`[💾 AUTO-COMPOSE] Publishing updated commitment to network (${reason})...`);
-			myCommitmentStore.set(newCommitment);
-			console.log(`[💾 AUTO-COMPOSE] ✅ Updated commitment recognition (${reason}) - now persisting to Holster`);
-
-			isRecomposing = false;
-		}, 100); // 100ms debounce (same-tick batching)
-	};
-
-	// Subscribe to recognition tree (generates weights)
-	const unsubTree = myRecognitionTreeStore.subscribe(() => {
-		debouncedRecompose('tree changed');
+			isPublishing = false;
+		}, 100);
 	});
 
-	// Subscribe to network recognition weights (from OTHERS only - not our own commitment!)
-	// This prevents infinite loop: myMutualRecognition includes myCommitmentStore,
-	// so subscribing to it would create circular dependency!
-	const unsubNetworkRec = networkRecognitionWeights.subscribe(() => {
-		debouncedRecompose('network recognition changed');
-	});
-
-	// Return cleanup function
 	return () => {
 		if (debounceTimer) clearTimeout(debounceTimer);
-		unsubTree();
-		unsubNetworkRec();
-		console.log('[AUTO-COMPOSE] Disabled reactive commitment composition');
+		unsubDerived();
+		console.log('[AUTO-PUBLISH] Disabled reactive commitment publishing');
 	};
 }
 

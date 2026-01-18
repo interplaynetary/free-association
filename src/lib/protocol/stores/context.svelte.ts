@@ -67,7 +67,7 @@ export function isViewingSelf(): boolean {
     return viewPub === myPub;
 }
 import { myCommitmentStore, networkCommitments, myRecognitionTreeStore } from './stores.svelte';
-import { demoTreeStore } from './demoTree.svelte';
+import { demoTreeStore } from '$lib/demo/tree.svelte';
 import type {
     Commitment,
     GlobalRecognitionWeights,
@@ -191,7 +191,7 @@ export const currentUserCapacitySlots: Readable<AvailabilitySlot[]> = derived(
  * 
  * Extracts unique need type IDs from current user's need slots.
  */
-export const currentUserNeedTypes: Readable<string[]> = derived(
+export const currentUserResourceTypes: Readable<string[]> = derived(
     [currentUserNeedSlots],
     ([$slots]) => {
         if (!$slots || $slots.length === 0) return [];

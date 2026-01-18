@@ -17,7 +17,7 @@ import {
     calculateSeedValue,
     findOwner,
     getSlotPriority
-} from './ipf-core.js';
+} from '../../ipf-core.js';
 
 // ═══════════════════════════════════════════════════════════════════
 // TYPES

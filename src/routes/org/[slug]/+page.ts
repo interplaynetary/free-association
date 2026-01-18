@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { getOrgTree, getOrgMetadata } from '$lib/config/org-trees';
+import { getOrgTree, getOrgMetadata } from '$lib/demo/orgs';
 import type { RootNode, Contributor } from '@playnet/free-association/schemas';
 import { get } from 'svelte/store';
 

@@ -21,15 +21,16 @@
 
 import type {
     AvailabilitySlot,
-    NeedSlot,
-    Commitment
+    NeedSlot
 } from './schemas.js';
 
 import {
     calculateSeedValue,
     calculateScalingFactor,
     calculateConstraintFactor,
-    findOwner
+    findOwner,
+    type ResourceOwner,
+    type RecognitionSource
 } from './ipf-core.js';
 
 // ═══════════════════════════════════════════════════════════════════
@@ -95,7 +96,7 @@ export interface FlowProposal {
 export function updateProviderState(
     capacitySlots: AvailabilitySlot[],
     knownNeeds: NeedSlot[], // All needs I am aware of (my "Local View")
-    allCommitments: Record<string, Commitment>,
+    context: Record<string, ResourceOwner & RecognitionSource>,
     state: DistributedIPFState,
     epsilon: number = 1e-6,
     gamma: number = 0.5
@@ -119,7 +120,7 @@ export function updateProviderState(
         for (const ns of knownNeeds) {
             if (!ns.id) continue;
 
-            const k_pr = calculateSeedValue(cs, ns, allCommitments, epsilon, gamma);
+            const k_pr = calculateSeedValue(cs, ns, context, epsilon, gamma);
             if (k_pr <= 0) continue;
 
             const y_r = state.cachedRemoteScalings[ns.id] ?? 1.0;
@@ -142,7 +143,7 @@ export function updateProviderState(
 export function generateFlowProposals(
     capacitySlots: AvailabilitySlot[],
     knownNeeds: NeedSlot[],
-    allCommitments: Record<string, Commitment>,
+    context: Record<string, ResourceOwner & RecognitionSource>,
     state: DistributedIPFState,
     epsilon: number = 1e-6,
     gamma: number = 0.5
@@ -156,14 +157,14 @@ export function generateFlowProposals(
         const x_p = state.rowScalings[cs.id] || 0;
         if (x_p === 0) continue;
 
-        const providerPubkey = findOwner(cs.id, allCommitments) || 'unknown';
+        const providerPubkey = findOwner(cs.id, context) || 'unknown';
 
         console.log(`[GENERATE-PROPOSALS] Processing capacity slot ${cs.id.slice(0, 10)}... (x_p=${x_p.toFixed(4)})`);
 
         for (const ns of knownNeeds) {
             if (!ns.id) continue;
 
-            const k_pr = calculateSeedValue(cs, ns, allCommitments, epsilon, gamma);
+            const k_pr = calculateSeedValue(cs, ns, context, epsilon, gamma);
             if (k_pr <= 0) {
                 console.log(`[GENERATE-PROPOSALS]   Need ${ns.id.slice(0, 10)}... - INCOMPATIBLE (k_pr=${k_pr})`);
                 continue;
@@ -180,7 +181,7 @@ export function generateFlowProposals(
             console.log(`[GENERATE-PROPOSALS]   Need ${ns.id.slice(0, 10)}... - k_pr=${k_pr.toFixed(4)}, y_r=${y_r.toFixed(4)}, raw=${rawQuantity.toFixed(2)}, final=${quantity.toFixed(2)}`);
 
             if (quantity > epsilon) {
-                const recipientPubkey = findOwner(ns.id, allCommitments) || 'unknown';
+                const recipientPubkey = findOwner(ns.id, context) || 'unknown';
                 proposals.push({
                     capacity_slot_id: cs.id,
                     need_slot_id: ns.id,

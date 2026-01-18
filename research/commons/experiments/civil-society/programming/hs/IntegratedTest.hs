@@ -68,7 +68,7 @@ testBilateralFilters = do
   -- Create slots with filters
   let providerSlot = EM.ResourceSlot
         { EM.slotId = "provider-slot"
-        , EM.needTypeId = "tutoring"
+        , EM.resourceTypeId = "tutoring"
         , EM.quantity = 10.0
         , EM.startDate = Nothing
         , EM.endDate = Nothing
@@ -85,7 +85,7 @@ testBilateralFilters = do
   
   let recipientSlot = EM.ResourceSlot
         { EM.slotId = "recipient-slot"
-        , EM.needTypeId = "tutoring"
+        , EM.resourceTypeId = "tutoring"
         , EM.quantity = 5.0
         , EM.startDate = Nothing
         , EM.endDate = Nothing
@@ -134,7 +134,7 @@ testAsymmetricRecurrence = do
   -- Recurring capacity slot
   let recurringCapacity = EM.ResourceSlot
         { EM.slotId = "recurring-capacity"
-        , EM.needTypeId = "tutoring"
+        , EM.resourceTypeId = "tutoring"
         , EM.quantity = 10.0
         , EM.startDate = Nothing
         , EM.endDate = Nothing
@@ -152,7 +152,7 @@ testAsymmetricRecurrence = do
   -- One-time need
   let onetimeNeed = EM.ResourceSlot
         { EM.slotId = "onetime-need"
-        , EM.needTypeId = "tutoring"
+        , EM.resourceTypeId = "tutoring"
         , EM.quantity = 3.0
         , EM.startDate = Nothing
         , EM.endDate = Nothing
@@ -170,7 +170,7 @@ testAsymmetricRecurrence = do
   -- Recurring need
   let recurringNeed = EM.ResourceSlot
         { EM.slotId = "recurring-need"
-        , EM.needTypeId = "tutoring"
+        , EM.resourceTypeId = "tutoring"
         , EM.quantity = 5.0
         , EM.startDate = Nothing
         , EM.endDate = Nothing

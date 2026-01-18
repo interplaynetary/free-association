@@ -279,7 +279,7 @@ My Well-Being (100 total points)
 
 **KONRAD**: So the system has three speeds: full (1.0), medium (0.8), and slow (0.5)?
 
-**RUZGAR**: Yes. And this damping is per need-type. Your food allocations might be smooth while your healthcare oscillates.
+**RUZGAR**: Yes. And this damping is per resource-type. Your food allocations might be smooth while your healthcare oscillates.
 
 **KONRAD**: Clever. The system self-corrects.
 

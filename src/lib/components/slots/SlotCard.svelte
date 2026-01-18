@@ -72,7 +72,7 @@
       <div class="title-group">
         <h3 class="title" data-testid="slot-name">{slot.name}</h3>
         {#if slot.type_id}
-          <span class="need-type-badge">{slot.type_id}</span>
+          <span class="resource-type-badge">{slot.type_id}</span>
         {/if}
       </div>
     </div>
@@ -236,7 +236,7 @@
     font-size: 1rem;
   }
   
-  .need-type-badge {
+  .resource-type-badge {
     display: inline-flex;
     padding: 0.125rem 0.5rem;
     background: #dbeafe;

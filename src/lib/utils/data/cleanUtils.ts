@@ -4,7 +4,7 @@ import { userContacts, resolveToPublicKey } from '$lib/network/users.svelte';
 // V5: Import from v5 stores
 import { myRecognitionTreeStore as userTree } from '$lib/protocol/stores/stores.svelte';
 import { createRootNode } from '@playnet/free-association/tree';
-import { populateWithExampleData } from '$lib/utils/example';
+import { populateWithExampleData } from '$lib/demo/capacities';
 import type { Node, NonRootNode } from '@playnet/free-association/schemas';
 
 /**

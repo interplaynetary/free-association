@@ -4,14 +4,14 @@
  * Maps type_id values to human-readable labels with emojis
  */
 
-export interface NeedType {
+export interface ResourceType {
 	id: string;
 	label: string;
 	emoji: string;
 	description?: string;
 }
 
-export const types: NeedType[] = [
+export const types: ResourceType[] = [
 	{
 		id: 'general',
 		label: 'General',
@@ -73,39 +73,39 @@ const type_MAP = new Map(types.map(type => [type.id, type]));
 
 /**
  * Get friendly label for a type_id
- * @param needTypeId - The type_id (e.g., 'type_food')
+ * @param resourceTypeId - The type_id (e.g., 'type_food')
  * @returns Friendly label (e.g., 'Food') or the original id if not found
  */
-export function getNeedTypeLabel(needTypeId: string): string {
-	return type_MAP.get(needTypeId)?.label || needTypeId;
+export function getResourceTypeLabel(resourceTypeId: string): string {
+	return type_MAP.get(resourceTypeId)?.label || resourceTypeId;
 }
 
 /**
  * Get emoji for a type_id
- * @param needTypeId - The type_id (e.g., 'type_food')
+ * @param resourceTypeId - The type_id (e.g., 'type_food')
  * @returns Emoji (e.g., '🍎') or empty string if not found
  */
-export function getNeedTypeEmoji(needTypeId: string): string {
-	return type_MAP.get(needTypeId)?.emoji || '';
+export function getResourceTypeEmoji(resourceTypeId: string): string {
+	return type_MAP.get(resourceTypeId)?.emoji || '';
 }
 
 /**
- * Get full NeedType object for a type_id
- * @param needTypeId - The type_id (e.g., 'type_food')
- * @returns NeedType object or undefined if not found
+ * Get full ResourceType object for a type_id
+ * @param resourceTypeId - The type_id (e.g., 'type_food')
+ * @returns ResourceType object or undefined if not found
  */
-export function getNeedType(needTypeId: string): NeedType | undefined {
-	return type_MAP.get(needTypeId);
+export function getResourceType(resourceTypeId: string): ResourceType | undefined {
+	return type_MAP.get(resourceTypeId);
 }
 
 /**
  * Get formatted display name
- * @param needTypeId - The type_id (e.g., 'food')
+ * @param resourceTypeId - The type_id (e.g., 'food')
  * @returns Label (e.g., 'Food') or the original id if not found
  */
-export function formatNeedType(needTypeId: string): string {
-	const type = type_MAP.get(needTypeId);
-	if (!type) return needTypeId;
+export function formatResourceType(resourceTypeId: string): string {
+	const type = type_MAP.get(resourceTypeId);
+	if (!type) return resourceTypeId;
 	return type.label;
 }
 

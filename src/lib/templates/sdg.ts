@@ -1,6 +1,6 @@
 import { addChild, findNodeById, addContributors, updateManualFulfillment } from '@playnet/free-association/tree';
 import type { RootNode } from '../protocol/schemas';
-import { DEMO_ORGANIZATIONS } from '$lib/config/org-trees';
+import { DEMO_ORGANIZATIONS } from '$lib/demo/orgs';
 
 /**
  * Official UN Sustainable Development Goals colors

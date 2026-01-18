@@ -1,24 +1,24 @@
 <!--
-  NeedTypeSelector.svelte
+  ResourceTypeSelector.svelte
   
   Component for selecting a need type (food, housing, healthcare, etc.)
   
   Usage:
-    <NeedTypeSelector 
-      selected={needTypeId}
-      onSelect={(id) => needTypeId = id}
+    <ResourceTypeSelector 
+      selected={resourceTypeId}
+      onSelect={(id) => resourceTypeId = id}
       required={true}
     />
 -->
 
 <script lang="ts">
-  import type { NeedType } from '@playnet/free-association/schemas';
+  import type { ResourceType } from '@playnet/free-association/schemas';
   
   interface Props {
     /** Currently selected need type ID */
     selected?: string;
     /** Callback when a need type is selected */
-    onSelect?: (needTypeId: string) => void;
+    onSelect?: (resourceTypeId: string) => void;
     /** Whether selection is required */
     required?: boolean;
     /** Show as inline buttons or dropdown */
@@ -29,7 +29,7 @@
   
   // Common need types (can be extended via a global registry)
   // In a real app, this would come from a store or configuration
-  const typeS: NeedType[] = [
+  const typeS: ResourceType[] = [
     {
       id: 'food',
       name: 'Food',
@@ -109,13 +109,13 @@
     }
   ];
   
-  function handleSelect(needTypeId: string) {
-    onSelect?.(needTypeId);
+  function handleSelect(resourceTypeId: string) {
+    onSelect?.(resourceTypeId);
   }
 </script>
 
 {#if variant === 'buttons'}
-  <div class="need-type-selector" data-testid="need-type-selector">
+  <div class="resource-type-selector" data-testid="resource-type-selector">
     <label class="label">
       Need Type {#if required}<span class="required">*</span>{/if}
     </label>
@@ -127,7 +127,7 @@
           class="type-button"
           class:selected={selected === type.id}
           onclick={() => handleSelect(type.id)}
-          data-testid="need-type-{type.id}"
+          data-testid="resource-type-{type.id}"
           title={type.description}
         >
           <span class="emoji">{type.emoji}</span>
@@ -148,18 +148,18 @@
   </div>
 {:else}
   <!-- Dropdown variant -->
-  <div class="need-type-selector dropdown" data-testid="need-type-selector-dropdown">
-    <label class="label" for="need-type-select">
+  <div class="resource-type-selector dropdown" data-testid="resource-type-selector-dropdown">
+    <label class="label" for="resource-type-select">
       Need Type {#if required}<span class="required">*</span>{/if}
     </label>
     
     <select
-      id="need-type-select"
+      id="resource-type-select"
       class="select"
       value={selected}
       onchange={(e) => handleSelect(e.currentTarget.value)}
       required={required}
-      data-testid="need-type-select"
+      data-testid="resource-type-select"
     >
       <option value="">Select a type...</option>
       {#each typeS as type (type.id)}
@@ -181,7 +181,7 @@
 {/if}
 
 <style>
-  .need-type-selector {
+  .resource-type-selector {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;

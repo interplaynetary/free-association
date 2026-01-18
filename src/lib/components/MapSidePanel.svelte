@@ -15,7 +15,7 @@
 		isSlotInPast,
 		hasAddressComponents
 	} from '$lib/utils/formatting';
-	import { getNeedTypeLabel, getNeedTypeEmoji } from '$lib/protocol/needTypes-local';
+	import { getResourceTypeLabel, getResourceTypeEmoji } from '$lib/protocol/resource-types';
 
 	interface Props {
 		markerData: GroupedSlotMarkerData | ClusterMarkerData | null;
@@ -353,7 +353,7 @@
 			// NeedSlot handling
 			return {
 				name: firstSlot.name, // Use the need slot's name (e.g., "Housing")
-				emoji: getNeedTypeEmoji(firstSlot.type_id) || '🚩', // Use type emoji or default flag
+				emoji: getResourceTypeEmoji(firstSlot.type_id) || '🚩', // Use type emoji or default flag
 				unit: firstSlot.unit,
 				description: firstSlot.description
 			};

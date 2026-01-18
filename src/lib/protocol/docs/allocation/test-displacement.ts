@@ -10,7 +10,7 @@
  * (proportional to priorities: 1.0/(1.0+0.3) ≈ 0.77, 0.3/(1.0+0.3) ≈ 0.23)
  */
 
-import { calculateIPFAllocation } from '../../allocation-ipf.js';
+import { calculateIPFAllocation } from '../experimental/allocation-ipf.js';
 import type { AvailabilitySlot, NeedSlot, Commitment } from '../../schemas.js';
 
 const csA: AvailabilitySlot = {

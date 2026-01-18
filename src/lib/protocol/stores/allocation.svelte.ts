@@ -18,7 +18,7 @@ import {
 	generateFlowProposals,
 	type DistributedIPFState,
 	type FlowProposal
-} from '../allocation-ipf-distributed';
+} from '../solver';
 import { getSlotPriority } from '../ipf-core';
 
 // Import v5 schemas and stores
@@ -34,9 +34,10 @@ import {
 	networkNeedSlots,
 	myCurrentNeeds,
 	myDistributedIPFState,
+	myAllocationStateStore,
 	networkAllocations,
 	myRecognitionTreeStore,
-	enableAutoCommitmentComposition
+	enableCommitmentPublishing
 } from './stores.svelte';
 
 
@@ -128,7 +129,8 @@ export function enableDistributedAllocation() {
 							need_slot_id: a.recipient_need_slot_id || 'unknown',
 							provider_pubkey: providerPubkey,
 							recipient_pubkey: a.recipient_pubkey,
-							proposed_quantity: a.quantity
+							proposed_quantity: a.quantity,
+							seed_value: a.seed_value || 0
 						});
 					}
 				});
@@ -147,7 +149,8 @@ export function enableDistributedAllocation() {
 							need_slot_id: a.recipient_need_slot_id || 'unknown',
 							provider_pubkey: myPub, // I am providing
 							recipient_pubkey: myPub, // I am receiving
-							proposed_quantity: a.quantity
+							proposed_quantity: a.quantity,
+							seed_value: a.seed_value || 0
 						});
 					}
 				});
@@ -193,29 +196,11 @@ export function enableDistributedAllocation() {
 		});
 	});
 
-	// 4. OUTPUT SYNC: ALLOCATIONS -> COMMITMENT
-	// We subscribe to `myAllocationsAsProvider` (defined below) and write to commitment
-	const unsubAllocSync = myAllocationsAsProvider.subscribe(result => {
-		const current = get(myCommitmentStore);
-		if (!current) return;
-
-		// Detect change to avoid loops
-		if (JSON.stringify(current.slot_allocations) !== JSON.stringify(result.allocations)) {
-			console.log('[IPF-Sync] Publishing new allocations:', result.allocations.length);
-			myCommitmentStore.update(c => ({
-				...c,
-				slot_allocations: result.allocations,
-				timestamp: Date.now()
-			}));
-		}
-	});
-
 	return () => {
 		console.log('[ALLOCATION] 🛑 Stopping Distributed IPF loops.');
 		unsubProvider();
 		unsubRecipient();
 		unsubCache();
-		unsubAllocSync();
 	};
 }
 
@@ -263,7 +248,7 @@ export const myAllocationsAsProvider = derived(
 			provider_pubkey: myPub || '', // I am the provider
 
 			// Metadata
-			need_type_id: 'unknown', // Need to lookup type from capacity slot
+			type_id: 'unknown', // Need to lookup type from capacity slot
 			time_compatible: true,
 			location_compatible: true,
 			withinPriorityLimit: (() => {
@@ -275,19 +260,20 @@ export const myAllocationsAsProvider = derived(
 			fromSurplus: false // Updated below
 		}));
 
-		// Fill in missing metadata (e.g. need_type_id) and surplus
+		// Fill in missing metadata (e.g. type_id) and surplus
 		allocations.forEach(a => {
 			const slot = $myCommitment.capacity_slots?.find(s => s.id === a.availability_slot_id);
-			if (slot) a.need_type_id = slot.need_type_id;
+			if (slot) a.type_id = slot.type_id || 'unknown';
 			a.fromSurplus = !a.withinPriorityLimit;
 		});
 
 		// Compute Aggregates for UI convenience
 		const totals: Record<string, Record<string, number>> = {};
 		allocations.forEach(a => {
-			if (!totals[a.need_type_id]) totals[a.need_type_id] = {};
-			const current = totals[a.need_type_id][a.recipient_pubkey] || 0;
-			totals[a.need_type_id][a.recipient_pubkey] = current + a.quantity;
+			const typeId = a.type_id || 'unknown';
+			if (!totals[typeId]) totals[typeId] = {};
+			const current = totals[typeId][a.recipient_pubkey] || 0;
+			totals[typeId][a.recipient_pubkey] = current + a.quantity;
 		});
 
 		return {
@@ -338,9 +324,9 @@ export function enableAutoAllocationPublishing(): () => void {
 
 			isPublishing = true;
 
-			const currentCommitment = get(myCommitmentStore);
-			if (!currentCommitment) {
-				console.log('[AUTO-PUBLISH-ALLOC] ⏭️  Skipped: no commitment available');
+			const currentState = get(myAllocationStateStore);
+			if (!currentState) {
+				console.log('[AUTO-PUBLISH-ALLOC] ⏭️  Skipped: no allocation state available');
 				isPublishing = false;
 				return;
 			}
@@ -356,13 +342,13 @@ export function enableAutoAllocationPublishing(): () => void {
 				return;
 			}
 
-			// Slower check: Same as what's in the commitment?
-			const currentAllocs = currentCommitment.slot_allocations || [];
+			// Slower check: Same as what's in the store?
+			const currentAllocs = currentState.slot_allocations || [];
 			try {
 				const currentJson = JSON.stringify(currentAllocs);
 
 				if (currentJson === newAllocsHash) {
-					console.log('[AUTO-PUBLISH-ALLOC] ⏭️  Skipped: allocations unchanged in commitment');
+					console.log('[AUTO-PUBLISH-ALLOC] ⏭️  Skipped: allocations unchanged in store');
 					// Update our hash to match current state
 					lastPublishedHash = newAllocsHash;
 					isPublishing = false;
@@ -373,11 +359,20 @@ export function enableAutoAllocationPublishing(): () => void {
 			}
 
 			// Update commitment with new allocations (Clean, no unnecessary casting)
-			myCommitmentStore.update(current => ({
-				...current,
-				slot_allocations: newAllocs,
-				timestamp: Date.now()
-			}));
+			myAllocationStateStore.update(state => {
+				const current = state || {
+					slot_allocations: [],
+					total_allocated: {},
+					distance_from_need: {},
+					constraint_scaling_factors: {},
+					total_seed_by_need: {},
+					multi_dimensional_damping: {}
+				};
+				return {
+					...current,
+					slot_allocations: newAllocs
+				};
+			});
 			lastPublishedHash = newAllocsHash; // Update hash after successful publish
 			isPublishing = false;
 		}, 100); // 100ms debounce
@@ -409,17 +404,17 @@ export function startAllocationService(): () => void {
 
 	// Helper to track cleanups
 	const undoLoops = enableDistributedAllocation();
-	const undoComposition = enableAutoCommitmentComposition();
 	const undoPublishing = enableAutoAllocationPublishing();
 
 	// Store globally for stopAllocationService if needed
-	stopAllocationLoops = undoLoops;
+	stopAllocationLoops = () => {
+		undoLoops();
+		undoPublishing();
+	};
 
 	return () => {
 		console.log('[ALLOCATION] 🛑 Stopping Allocation Service');
-		undoLoops();
-		undoComposition();
-		undoPublishing();
+		if (stopAllocationLoops) stopAllocationLoops();
 		stopAllocationLoops = null;
 	};
 }
@@ -429,12 +424,8 @@ export function startAllocationService(): () => void {
  */
 export function stopAllocationService() {
 	if (stopAllocationLoops) {
-		startAllocationService()(); // Wait, this calls start()... no.
-		// We can't easily call the closure returned by start() unless we saved it.
-		// But enableDistributedAllocation et al return cleanup functions.
-		// We should rely on the returned cleanup from startAllocationService().
-		// This export might be less useful if we don't save the full cleanup.
-		console.warn('[ALLOCATION] stopAllocationService() called but cleanup logic is best handled via the callback returned by startAllocationService().');
+		stopAllocationLoops();
+		stopAllocationLoops = null;
 	}
 }
 

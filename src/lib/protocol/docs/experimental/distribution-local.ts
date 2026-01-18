@@ -19,7 +19,7 @@
  * ```
  */
 
-import type { GlobalRecognitionWeights, Node } from './schemas.js';
+import type { GlobalRecognitionWeights, Node } from '../../schemas.js';
 import { createMemoCache, createMemoCacheWithKey, hashObject } from './utils/memoize.js';
 import { mutualFulfillment } from './tree.js';
 

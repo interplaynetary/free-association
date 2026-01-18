@@ -10,12 +10,12 @@
 import type { RootNode } from '@playnet/free-association/schemas';
 import { createRootNode, findNodeById } from '@playnet/free-association/tree';
 import { applyTemplate } from '$lib/templates';
-import { DEMO_ORGANIZATIONS } from '$lib/config/org-trees';
+import { DEMO_ORGANIZATIONS } from './orgs';
 import { writable, type Readable } from 'svelte/store';
 
 // const DEMO_TREE_KEY = 'free-association-demo-tree'; // DEPRECATED - Managed by myRecognitionTreeStore
 
-console.log('[TRACE] src/lib/protocol/stores/demoTree.svelte.ts: <module scope>');
+console.log('[TRACE] src/lib/demo/tree.svelte.ts: <module scope>');
 
 /**
  * Demo tree store - reactive $state for in-memory viewing
@@ -29,7 +29,7 @@ class DemoTreeStore {
 	private treeStore = writable<RootNode | null>(null);
 
 	constructor() {
-		console.log('[TRACE] src/lib/protocol/stores/demoTree.svelte.ts: constructor (In-Memory)');
+		console.log('[TRACE] src/lib/demo/tree.svelte.ts: constructor (In-Memory)');
 		// No loading from storage
 	}
 
@@ -44,18 +44,18 @@ class DemoTreeStore {
 	 * Set the tree (In-Memory Only)
 	 */
 	set(newTree: RootNode | null) {
-		console.log('[TRACE] [ENTER] src/lib/protocol/stores/demoTree.svelte.ts: set');
+		console.log('[TRACE] [ENTER] src/lib/demo/tree.svelte.ts: set');
 		this.tree = newTree;
 		// ✅ Update the writable store to trigger reactivity
 		this.treeStore.set(newTree);
-		console.log('[TRACE] [EXIT] src/lib/protocol/stores/demoTree.svelte.ts: set');
+		console.log('[TRACE] [EXIT] src/lib/demo/tree.svelte.ts: set');
 	}
 
 	/**
 	 * Initialize with SDG template (InMemory)
 	 */
 	initializeWithSDG() {
-		console.log('[TRACE] [ENTER] src/lib/protocol/stores/demoTree.svelte.ts: initializeWithSDG');
+		console.log('[TRACE] [ENTER] src/lib/demo/tree.svelte.ts: initializeWithSDG');
 		if (!this.tree) {
 			console.log('[DEMO TREE] Initializing with SDG template (In-Memory)');
 			// Create a demo root node without authentication
@@ -66,7 +66,7 @@ class DemoTreeStore {
 				this.set(populated);
 			}
 		}
-		console.log('[TRACE] [EXIT] src/lib/protocol/stores/demoTree.svelte.ts: initializeWithSDG');
+		console.log('[TRACE] [EXIT] src/lib/demo/tree.svelte.ts: initializeWithSDG');
 	}
 
 	/**
@@ -75,23 +75,23 @@ class DemoTreeStore {
 	 * @param force - If true, replace existing tree even if one exists
 	 */
 	initializeWithCustomTree(tree: RootNode, force: boolean = false) {
-		console.log('[TRACE] [ENTER] src/lib/protocol/stores/demoTree.svelte.ts: initializeWithCustomTree', { force });
+		console.log('[TRACE] [ENTER] src/lib/demo/tree.svelte.ts: initializeWithCustomTree', { force });
 		if (!this.tree || force) {
 			console.log('[DEMO TREE] Initializing with custom tree:', tree.name);
 			this.set(tree);
 		} else {
 			console.log('[DEMO TREE] Tree already exists, skipping custom initialization (use force=true to override)');
 		}
-		console.log('[TRACE] [EXIT] src/lib/protocol/stores/demoTree.svelte.ts: initializeWithCustomTree');
+		console.log('[TRACE] [EXIT] src/lib/demo/tree.svelte.ts: initializeWithCustomTree');
 	}
 
 	/**
 	 * Clear the demo tree
 	 */
 	clear() {
-		console.log('[TRACE] [ENTER] src/lib/protocol/stores/demoTree.svelte.ts: clear');
+		console.log('[TRACE] [ENTER] src/lib/demo/tree.svelte.ts: clear');
 		this.set(null);
-		console.log('[TRACE] [EXIT] src/lib/protocol/stores/demoTree.svelte.ts: clear');
+		console.log('[TRACE] [EXIT] src/lib/demo/tree.svelte.ts: clear');
 	}
 
 	/**

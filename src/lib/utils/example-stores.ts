@@ -8,7 +8,7 @@ import {
 	setMyNeedSlots
 } from '$lib/protocol/stores/stores.svelte';
 import { get } from 'svelte/store';
-import { populateWithExampleData, createExampleCapacitySlots, createExampleNeedSlots } from './example';
+import { populateWithExampleData, createExampleCapacitySlots, createExampleNeedSlots } from '$lib/demo/capacities';
 
 /**
  * V5: Populate recognition tree

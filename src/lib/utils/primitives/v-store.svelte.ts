@@ -595,7 +595,7 @@ export class VersionedStore<T, K extends string = string> {
    * @example
    * ```typescript
    * // Get all unique need type IDs from all peers
-   * const needTypes = commitmentStore.deriveUniqueValues<string>(
+   * const resourceTypes = commitmentStore.deriveUniqueValues<string>(
    *   'needs',
    *   (slot: NeedSlot) => slot.type_id
    * );

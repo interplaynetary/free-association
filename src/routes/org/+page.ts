@@ -1,4 +1,4 @@
-import { DEMO_ORGANIZATIONS, getOrgTreesMap } from '$lib/config/org-trees';
+import { DEMO_ORGANIZATIONS, getOrgTreesMap } from '$lib/demo/orgs';
 import type { PageLoad } from './$types';
 
 // Client-side only (consistent with app-wide config)
@@ -8,12 +8,12 @@ export const csr = true;
 
 export const load: PageLoad = async () => {
 	const orgTreesMap = getOrgTreesMap();
-	
+
 	// Combine organization metadata with config data
 	const organizations = Object.entries(DEMO_ORGANIZATIONS).map(([orgId, org]) => {
 		const slug = orgId.replace('org_demo_', '');
 		const config = orgTreesMap[slug];
-		
+
 		return {
 			slug,
 			orgId,
@@ -25,10 +25,10 @@ export const load: PageLoad = async () => {
 			priorities: config?.tree?.children?.length || 0
 		};
 	});
-	
+
 	// Sort by budget (largest first)
 	organizations.sort((a, b) => b.monthlyBudget - a.monthlyBudget);
-	
+
 	return {
 		organizations
 	};

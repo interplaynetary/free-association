@@ -41,7 +41,7 @@
   let sortDirection = $state<'asc' | 'desc'>('asc');
   
   // Get unique need types from slots
-  const needTypes = $derived(
+  const resourceTypes = $derived(
     Array.from(new Set(slots.map(s => s.type_id))).sort()
   );
   
@@ -106,7 +106,7 @@
         data-testid="filter-type-select"
       >
         <option value="all">All Types</option>
-        {#each needTypes as type}
+        {#each resourceTypes as type}
           <option value={type}>{type}</option>
         {/each}
       </select>

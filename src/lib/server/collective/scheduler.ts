@@ -8,7 +8,7 @@
  */
 
 import { MRDMembershipModule } from '@playnet/free-association/collective/collective-membership';
-import { calculateIPFAllocation, type SlotAllocationRecord } from '$lib/protocol/allocation-ipf';
+import { calculateIPFAllocation, type SlotAllocationRecord } from '$lib/protocol/docs/experimental/allocation-ipf';
 import type {
 	AvailabilitySlot,
 	NeedSlot,

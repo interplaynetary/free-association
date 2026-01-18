@@ -16,7 +16,7 @@ Successfully integrated **all production features** from `src/lib/protocol/` int
 **Schemas Added:**
 - `NeedSlot` - Multi-dimensional need specification
 - `AvailabilitySlot` - Multi-dimensional capacity specification
-- `NeedType` - Type categorization system
+- `ResourceType` - Type categorization system
 - `TimeRange`, `DaySchedule`, `AvailabilityWindow` - Hierarchical time specification
 - `Location` - Physical/online location specification
 

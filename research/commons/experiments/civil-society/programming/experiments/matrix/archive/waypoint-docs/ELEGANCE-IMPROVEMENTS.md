@@ -71,7 +71,7 @@ interface IAllocationEngineRpc {
 
 interface INetworkCoordinatorRpc {
   registerParticipant(commitment: RpcStub<ISlotManagerRpc>): Promise<void>;
-  discoverProviders(needTypeId: string): Promise<RpcStub<ISlotManagerRpc>[]>;
+  discoverProviders(resourceTypeId: string): Promise<RpcStub<ISlotManagerRpc>[]>;
   subscribeToNetwork(callback: (event: NetworkEvent) => void): Promise<void>;
 }
 ```
@@ -149,7 +149,7 @@ const mr = await alice.computeMutualWith(bob);
 ```typescript
 class NetworkCoordinator extends RpcTarget {
   private participants: Map<string, RpcStub<ISlotManagerRpc>> = new Map();
-  private byNeedType: Map<string, Set<string>> = new Map();
+  private byResourceType: Map<string, Set<string>> = new Map();
   
   /** Register yourself */
   async registerParticipant(
@@ -161,16 +161,16 @@ class NetworkCoordinator extends RpcTarget {
     // Index by need types
     const slots = await stub.getAvailabilitySlots();
     for (const slot of slots) {
-      if (!this.byNeedType.has(slot.type_id)) {
-        this.byNeedType.set(slot.type_id, new Set());
+      if (!this.byResourceType.has(slot.type_id)) {
+        this.byResourceType.set(slot.type_id, new Set());
       }
-      this.byNeedType.get(slot.type_id)!.add(pubKey);
+      this.byResourceType.get(slot.type_id)!.add(pubKey);
     }
   }
   
   /** Discover providers for a need type */
-  discoverProviders(needTypeId: string): RpcStub<ISlotManagerRpc>[] {
-    const pubKeys = this.byNeedType.get(needTypeId) || new Set();
+  discoverProviders(resourceTypeId: string): RpcStub<ISlotManagerRpc>[] {
+    const pubKeys = this.byResourceType.get(resourceTypeId) || new Set();
     return Array.from(pubKeys)
       .map(pk => this.participants.get(pk))
       .filter(Boolean) as RpcStub<ISlotManagerRpc>[];

@@ -16,10 +16,9 @@
 	import { holsterUserAlias as userAlias, holsterUserPub as userPub } from '$lib/network/holster.svelte';
 	import { getLocalTimeZone, today } from '@internationalized/date';
 	// Demo tree for unauthenticated users
-	import { demoTreeStore } from '$lib/protocol/stores/demoTree.svelte';
 	import type { Commitment, Node, NonRootNode, AvailabilitySlot, NeedSlot } from '@playnet/free-association/schemas';
 	import { collectiveForest } from '$lib/protocol/stores/collective-tree.svelte';
-    import { types } from '$lib/protocol/needTypes-local';
+    import { types } from '$lib/protocol/resource-types';
     import { myNeedSlotsStore, setMyNeedSlots } from '$lib/protocol/stores/stores.svelte';
 	import TimePatternEditor from '$lib/components/slots/TimePatternEditor.svelte';
 	import LocationEditor, { type LocationData } from '$lib/components/slots/LocationEditor.svelte';
@@ -677,8 +676,20 @@
         state_province: undefined as string | undefined,
         postal_code: undefined as string | undefined,
         country: undefined as string | undefined,
-        online_link: undefined as string | undefined
+        online_link: undefined as string | undefined,
+        unit: 'units'
 	});
+	
+	const availableUnits = [
+		{ id: 'units', label: 'Units', emoji: '📦' },
+		{ id: 'hours', label: 'Hours', emoji: '⏱️' },
+		{ id: 'kg', label: 'Kilograms', emoji: '⚖️' },
+		{ id: 'liters', label: 'Liters', emoji: '💧' },
+		{ id: 'USD', label: 'USD', emoji: '💲' },
+		{ id: 'meters', label: 'Meters', emoji: '📏' },
+		{ id: 'km', label: 'Kilometers', emoji: '🚗' },
+        { id: 'days', label: 'Days', emoji: '📅' }
+	];
 	let showEmojiPicker = $state(false);
 
 	// Type auto-complete state (merged into expanded panel logic)
@@ -711,6 +722,11 @@
 		// If we close on blur, clicking items in the panel might fail due to race conditions
 	}
 
+    function handleUnitSelect(unit: any) {
+        draftSlot.unit = unit.id;
+        showExpandedDraft = false;
+    }
+
     function handleInventoryAdd() {
         if (!draftSlot.name.trim()) return;
 
@@ -722,7 +738,7 @@
                 type_id: draftSlot.type_id,
                 quantity: draftSlot.quantity,
                 emoji: draftSlot.emoji,
-                unit: draftSlot.type_id === 'money' ? 'USD' : 'units',
+                unit: draftSlot.unit || (draftSlot.type_id === 'money' ? 'USD' : 'units'),
                 max_natural_div: 1,
                 min_allocation_percentage: 0.01,
                 recurrence: draftSlot.recurrence as any || 'monthly',
@@ -748,7 +764,7 @@
                 type_id: draftSlot.type_id,
                 quantity: draftSlot.quantity,
                 emoji: draftSlot.emoji,
-                unit: draftSlot.type_id === 'money' ? 'USD' : 'units',
+                unit: draftSlot.unit || (draftSlot.type_id === 'money' ? 'USD' : 'units'),
                 max_natural_div: 1,
                 min_allocation_percentage: 0.01,
                 recurrence: draftSlot.recurrence as any || 'monthly',
@@ -785,7 +801,8 @@
             state_province: undefined,
             postal_code: undefined,
             country: undefined,
-            online_link: undefined
+            online_link: undefined,
+            unit: 'units'
         };
         // Clear search query when adding
         globalState.inventorySearchQuery = '';
@@ -796,9 +813,9 @@
 
     // Expanded Draft Panel State
     let showExpandedDraft = $state(false);
-    let expandedDraftTab = $state<'type' | 'time' | 'location' | 'emoji'>('type');
+    let expandedDraftTab = $state<'type' | 'time' | 'location' | 'emoji' | 'unit'>('type');
 
-    function toggleExpandedDraft(tab: 'type' | 'time' | 'location' | 'emoji') {
+    function toggleExpandedDraft(tab: 'type' | 'time' | 'location' | 'emoji' | 'unit') {
         if (showExpandedDraft && expandedDraftTab === tab) {
             showExpandedDraft = false;
         } else {
@@ -1026,6 +1043,13 @@
 										min="0" 
 										class="draft-input-qty"
 									/>
+                                    <button
+                                        class="unit-btn"
+                                        onclick={() => toggleExpandedDraft('unit')}
+                                        title="Choose Unit"
+                                    >
+                                        {availableUnits.find(u => u.id === draftSlot.unit)?.label || draftSlot.unit || 'Units'}
+                                    </button>
 								</div>
 
 								<!-- Expanded Draft Toggles -->
@@ -1076,6 +1100,9 @@
 											Time Details
 										{:else if expandedDraftTab === 'location'}
 											Location Details
+
+                                        {:else if expandedDraftTab === 'unit'}
+                                            Choose Unit
 										{:else}
 											Choose Emoji
 										{/if}
@@ -1122,6 +1149,19 @@
 											onlineLink={draftSlot.online_link}
 											onUpdate={handleLocationUpdate}
 										/>
+
+                                    {:else if expandedDraftTab === 'unit'}
+                                        <div class="type-grid">
+                                            {#each availableUnits as unit}
+                                                <button 
+                                                    class="type-grid-item" 
+                                                    onclick={() => handleUnitSelect(unit)}
+                                                >
+                                                    <span class="type-emoji">{unit.emoji}</span>
+                                                    <span class="type-label">{unit.label}</span>
+                                                </button>
+                                            {/each}
+                                        </div>
 									{/if}
 								</div>
 							</div>
@@ -2176,6 +2216,30 @@
 		display: inline-block;
         cursor: pointer;
 	}
+
+    .unit-btn {
+        background: none;
+        border: none;
+        font-size: 10px;
+        padding: 0 4px;
+        line-height: 1;
+        display: inline-block;
+        cursor: pointer;
+        color: #666;
+        border-left: 1px solid #eee;
+        height: 14px;
+        margin-left: 2px;
+        white-space: nowrap;
+        max-width: 60px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .unit-btn:hover {
+        color: #333;
+        background-color: #f5f5f5;
+        border-radius: 2px;
+    }
 
     .emoji-picker-container {
         position: absolute;

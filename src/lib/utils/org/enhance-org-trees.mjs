@@ -5,7 +5,7 @@
 
 import fs from 'fs';
 
-const trees = JSON.parse(fs.readFileSync('./src/lib/config/org-trees.json', 'utf8'));
+const trees = JSON.parse(fs.readFileSync('./src/lib/demo/orgs.json', 'utf8'));
 
 // Helper to add contributors to nodes
 function addContributors(tree, nodeId, contributors) {
@@ -557,8 +557,8 @@ if (trees.kfw) {
 // ENHANCE AFRICAN COUNTRIES
 // ═══════════════════════════════════════════════════════════════════
 
-const africanCountries = ['namibia', 'tanzania', 'liberia', 'sierra_leone', 'cote_ivoire', 
-  'mali', 'malawi', 'djibouti', 'congo_drc', 'senegal', 'chad', 'rwanda', 
+const africanCountries = ['namibia', 'tanzania', 'liberia', 'sierra_leone', 'cote_ivoire',
+  'mali', 'malawi', 'djibouti', 'congo_drc', 'senegal', 'chad', 'rwanda',
   'gabon', 'angola', 'guinea', 'mauritania', 'uganda'];
 
 africanCountries.forEach(country => {
@@ -715,7 +715,7 @@ if (trees.oman) {
 // ENHANCE EUROPEAN COUNTRIES
 // ═══════════════════════════════════════════════════════════════════
 
-const europeanCountries = ['sweden', 'finland', 'spain', 'portugal', 'italy', 
+const europeanCountries = ['sweden', 'finland', 'spain', 'portugal', 'italy',
   'luxembourg', 'iceland', 'ukraine'];
 
 europeanCountries.forEach(country => {
@@ -840,7 +840,7 @@ if (trees.multilateral_banks) {
 // SAVE ENHANCED TREES
 // ═══════════════════════════════════════════════════════════════════
 
-fs.writeFileSync('./src/lib/config/org-trees.json', JSON.stringify(trees, null, 2), 'utf8');
+fs.writeFileSync('./src/lib/demo/orgs.json', JSON.stringify(trees, null, 2), 'utf8');
 
 console.log('✅ Enhanced all organization trees with contributors!');
 console.log('   - Added contributor networks to priority nodes');

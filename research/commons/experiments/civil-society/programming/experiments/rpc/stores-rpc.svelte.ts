@@ -135,7 +135,7 @@ export interface INetworkCoordinatorRpc {
 	registerCommitment(commitment: RpcStub<ICommitmentRpc>): Promise<void>;
 
 	/** Discover participants with compatible needs/capacity */
-	discoverParticipants(needTypeId: string): Promise<RpcStub<ICommitmentRpc>[]>;
+	discoverParticipants(resourceTypeId: string): Promise<RpcStub<ICommitmentRpc>[]>;
 
 	/** Get commitment stub by public key */
 	getCommitment(pubKey: string): Promise<RpcStub<ICommitmentRpc> | null>;
@@ -360,7 +360,7 @@ export const myCapacitySlotsStore: Readable<AvailabilitySlot[] | null> = derived
 );
 
 /** My Need Types (derived) */
-export const myNeedTypesStore: Readable<string[]> = derived(
+export const myResourceTypesStore: Readable<string[]> = derived(
 	[myNeedSlotsStore],
 	([$needSlots]) => {
 		if (!$needSlots) return [];

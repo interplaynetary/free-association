@@ -6,7 +6,7 @@ import {
     generateFlowProposals,
     type DistributedIPFState,
     type FlowProposal
-} from '../../allocation-ipf-distributed';
+} from '../../solver';
 import type { AvailabilitySlot, NeedSlot, Commitment } from '../../schemas';
 
 // ═══════════════════════════════════════════════════════════════════

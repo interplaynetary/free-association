@@ -17,9 +17,13 @@
 
 import type {
     AvailabilitySlot,
-    NeedSlot,
-    Commitment
+    NeedSlot
 } from '@playnet/free-association/schemas';
+
+import {
+    findOwner,
+    type ResourceOwner
+} from '../../ipf-core.js';
 
 import {
     slotsCompatible
@@ -201,7 +205,7 @@ interface CompatibilityInfo {
 export function calculateSlotBasedPriorityAllocation(
     capacitySlots: AvailabilitySlot[],
     needSlots: NeedSlot[],
-    allCommitments: Record<string, Commitment>,
+    resourcesMap: Record<string, ResourceOwner>,
     options?: PriorityAllocationOptions
 ): SlotAllocationRecord[] {
 
@@ -215,7 +219,7 @@ export function calculateSlotBasedPriorityAllocation(
     const allocationMatrix = initialAllocationWithSurplus(
         capacitySlots,
         needSlots,
-        allCommitments,
+        resourcesMap,
         debug
     );
 
@@ -371,7 +375,7 @@ export function meetsMinimumAllocation(
 export function initialAllocationWithSurplus(
     capacitySlots: AvailabilitySlot[],
     needSlots: NeedSlot[],
-    allCommitments: Record<string, Commitment>,
+    resourcesMap: Record<string, ResourceOwner>,
     debug: boolean
 ): SlotAllocationMatrix {
 
@@ -382,8 +386,8 @@ export function initialAllocationWithSurplus(
         matrix[cs.id] = {};
         for (const ns of needSlots) {
             // Find pubkeys from slots
-            const providerPubKey = findOwner(cs.id, allCommitments) || 'unknown';
-            const recipientPubKey = findOwner(ns.id, allCommitments) || 'unknown';
+            const providerPubKey = findOwner(cs.id, resourcesMap) || 'unknown';
+            const recipientPubKey = findOwner(ns.id, resourcesMap) || 'unknown';
 
             matrix[cs.id][ns.id] = {
                 amount: 0,

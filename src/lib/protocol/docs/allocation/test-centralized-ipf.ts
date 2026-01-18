@@ -2,7 +2,7 @@
  * Quick test to see if centralized IPF converges on Provider(200) → Recipient(50)
  */
 
-import { calculateIPFAllocation } from '../../allocation-ipf.js';
+import { calculateIPFAllocation } from '../experimental/allocation-ipf.js';
 import type { AvailabilitySlot, NeedSlot, Commitment } from '../../schemas.js';
 
 const cs: AvailabilitySlot = {

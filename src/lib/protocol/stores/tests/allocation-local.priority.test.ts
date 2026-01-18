@@ -1,6 +1,6 @@
 
 import { describe, it, expect } from 'bun:test';
-import { getSlotPriority } from '../../allocation-local';
+import { getSlotPriority } from '../../docs/experimental/allocation-local';
 import type { AvailabilitySlot, NeedSlot, Commitment } from '@playnet/free-association/schemas';
 
 describe('getSlotPriority (Optimized Person-to-Person)', () => {

@@ -15,7 +15,7 @@
 <script lang="ts">
   import type { NeedSlot, AvailabilitySlot } from '$lib/protocol/schemas';
   import { NeedSlotSchema, AvailabilitySlotSchema } from '$lib/protocol/schemas';
-  import NeedTypeSelector from './NeedTypeSelector.svelte';
+  import ResourceTypeSelector from './ResourceTypeSelector.svelte';
   import BasicInfo from './form/BasicInfo.svelte';
   import QuantityInput from './form/QuantityInput.svelte';
   import TimeSelector from './form/TimeSelector.svelte';
@@ -156,7 +156,7 @@
   <div class="form-sections">
     <!-- Need Type Selection -->
     <section class="form-section">
-      <NeedTypeSelector
+      <ResourceTypeSelector
         selected={formData.type_id}
         onSelect={(id) => updateField('type_id', id)}
         required

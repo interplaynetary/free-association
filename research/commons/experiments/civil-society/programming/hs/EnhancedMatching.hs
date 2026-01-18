@@ -82,7 +82,7 @@ data RecurrenceTrack = Recurring | OneTime
 -- | Resource slot (need or capacity)
 data ResourceSlot = ResourceSlot
   { slotId :: String
-  , needTypeId :: ResourceType
+  , resourceTypeId :: ResourceType
   , quantity :: Capacity
   , startDate :: Maybe Day
   , endDate :: Maybe Day
@@ -241,7 +241,7 @@ From match.ts:
 slotsCompatible :: ResourceSlot -> ResourceSlot -> IO Bool
 slotsCompatible need capacity = do
   -- 1. Type match (CRITICAL!)
-  if needTypeId need /= needTypeId capacity
+  if resourceTypeId need /= resourceTypeId capacity
     then return False
     else do
       -- 2. Time compatibility (timezone-aware!)
@@ -424,7 +424,7 @@ exampleTimezoneMatch = do
   
   let nycProvider = ResourceSlot
         { slotId = "nyc-capacity"
-        , needTypeId = "tutoring"
+        , resourceTypeId = "tutoring"
         , quantity = 5
         , startDate = Just (fromGregorian 2024 3 4)  -- Monday
         , endDate = Nothing
@@ -446,7 +446,7 @@ exampleTimezoneMatch = do
   
   let londonRecipient = ResourceSlot
         { slotId = "london-need"
-        , needTypeId = "tutoring"
+        , resourceTypeId = "tutoring"
         , quantity = 3
         , startDate = Just (fromGregorian 2024 3 4)  -- Monday
         , endDate = Nothing
@@ -488,7 +488,7 @@ exampleAsymmetricRecurrence = do
   
   let recurringCapacity = ResourceSlot
         { slotId = "monday-tutoring"
-        , needTypeId = "tutoring"
+        , resourceTypeId = "tutoring"
         , quantity = 10
         , startDate = Just (fromGregorian 2024 1 1)
         , endDate = Nothing
@@ -505,7 +505,7 @@ exampleAsymmetricRecurrence = do
   
   let aliceRecurring = ResourceSlot
         { slotId = "alice-weekly"
-        , needTypeId = "tutoring"
+        , resourceTypeId = "tutoring"
         , quantity = 5
         , startDate = Just (fromGregorian 2024 1 1)
         , endDate = Nothing
@@ -522,7 +522,7 @@ exampleAsymmetricRecurrence = do
   
   let bobOnetime = ResourceSlot
         { slotId = "bob-onetime"
-        , needTypeId = "tutoring"
+        , resourceTypeId = "tutoring"
         , quantity = 3
         , startDate = Just (fromGregorian 2024 1 15)
         , endDate = Nothing

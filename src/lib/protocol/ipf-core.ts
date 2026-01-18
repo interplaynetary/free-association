@@ -7,9 +7,10 @@
 
 import type {
     AvailabilitySlot,
-    NeedSlot,
-    Commitment
+    NeedSlot
 } from './schemas.js';
+
+import type { GlobalRecognitionWeights } from './recognition.js';
 
 import {
     slotsCompatible
@@ -27,6 +28,15 @@ export interface IPFSharedOptions {
     epsilon?: number;
 }
 
+export interface ResourceOwner {
+    capacity_slots?: AvailabilitySlot[];
+    need_slots?: NeedSlot[];
+}
+
+export interface RecognitionSource {
+    global_recognition_weights?: GlobalRecognitionWeights | null;
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // CORE MATH
 // ═══════════════════════════════════════════════════════════════════
@@ -38,14 +48,14 @@ export interface IPFSharedOptions {
  * 
  * @param cs Capacity Slot
  * @param ns Need Slot
- * @param allCommitments Lookup for global recognition weights
+ * @param context Lookup for resources and weights (e.g. allCommitments)
  * @param epsilon Small constant for connectivity
  * @param gamma Recipient influence exponent
  */
 export function calculateSeedValue(
     cs: AvailabilitySlot,
     ns: NeedSlot,
-    allCommitments: Record<string, Commitment>,
+    context: Record<string, ResourceOwner & RecognitionSource>,
     epsilon: number = 1e-6,
     gamma: number = 0.5
 ): number {
@@ -59,17 +69,17 @@ export function calculateSeedValue(
         return 0;
     }
 
-    const providerPubkey = findOwner(cs.id!, allCommitments) || 'unknown';
-    const recipientPubkey = findOwner(ns.id!, allCommitments) || 'unknown';
+    const providerPubkey = findOwner(cs.id!, context) || 'unknown';
+    const recipientPubkey = findOwner(ns.id!, context) || 'unknown';
 
     // 2. Get Priorities (0.0 - 1.0)
-    const providerPriority = getSlotPriority(cs, recipientPubkey, allCommitments[providerPubkey]);
-    const recipientPriority = getSlotPriority(ns, providerPubkey, allCommitments[recipientPubkey]);
+    const providerPriority = getSlotPriority(cs, recipientPubkey, context[providerPubkey]);
+    const recipientPriority = getSlotPriority(ns, providerPubkey, context[recipientPubkey]);
 
     console.log(`[SEED-CALC] Provider ${providerPubkey.slice(0, 10)}... → Recipient ${recipientPubkey.slice(0, 10)}...`);
     console.log(`[SEED-CALC]   providerPriority=${providerPriority.toFixed(4)} (provider's recognition of recipient)`);
     console.log(`[SEED-CALC]   recipientPriority=${recipientPriority.toFixed(4)} (recipient's recognition of provider)`);
-    console.log(`[SEED-CALC]   Provider's global_recognition_weights:`, allCommitments[providerPubkey]?.global_recognition_weights);
+    console.log(`[SEED-CALC]   Provider's global_recognition_weights:`, context[providerPubkey]?.global_recognition_weights);
 
     // 3. Compute Potential (Symmetric IPF Seed)
     // K_pr = (p_provider + ε)^γ × (p_recipient + ε)^(1-γ)
@@ -134,9 +144,9 @@ export function calculateConstraintFactor(
 // HELPER UTILS
 // ═══════════════════════════════════════════════════════════════════
 
-export function findOwner(slotId: string, commitments: Record<string, Commitment>): string | undefined {
-    for (const pubkey in commitments) {
-        const c = commitments[pubkey];
+export function findOwner(slotId: string, resourcesMap: Record<string, ResourceOwner>): string | undefined {
+    for (const pubkey in resourcesMap) {
+        const c = resourcesMap[pubkey];
         const capacityMatch = c.capacity_slots?.find(s => s.id === slotId);
         if (capacityMatch) return pubkey;
         const needMatch = c.need_slots?.find(s => s.id === slotId);
@@ -148,7 +158,7 @@ export function findOwner(slotId: string, commitments: Record<string, Commitment
 export function getSlotPriority(
     slot: AvailabilitySlot | NeedSlot,
     personPubkey: string,
-    commitment?: Commitment
+    source?: RecognitionSource
 ): number {
     if (!slot.id) return 0;
 
@@ -159,8 +169,8 @@ export function getSlotPriority(
     }
 
     // Global recognition fallback
-    if (commitment && commitment.global_recognition_weights) {
-        return commitment.global_recognition_weights[personPubkey] || 0;
+    if (source && source.global_recognition_weights) {
+        return source.global_recognition_weights[personPubkey] || 0;
     }
 
     return 0;

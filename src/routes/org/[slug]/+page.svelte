@@ -11,7 +11,7 @@
 		myMutualRecognition,
 		myNeedSlotsStore,
 		myCapacitySlotsStore,
-		myNeedTypesStore,
+		myResourceTypesStore,
 		myCapacityTypesStore,
 		myCommitmentStore,
 		setMyNeedSlots,
@@ -23,7 +23,7 @@
 	} from '$lib/protocol/stores/stores.svelte';
 
 	import { globalState } from '$lib/global.svelte';
-	import { demoTreeStore } from '$lib/protocol/stores/demoTree.svelte';
+	import { demoTreeStore } from '$lib/demo/tree.svelte';
 	import { currentPath } from '$lib/global.svelte';
 	import { derived, get } from 'svelte/store';
 	import { t, loading } from '$lib/translations';
@@ -34,10 +34,10 @@
 		NonRootNode,
 		RootNode
 	} from '$lib/protocol/schemas';
-	import { types, formatNeedType } from '$lib/protocol/needTypes-local';
+	import { types, formatResourceType } from '$lib/protocol/resource-types';
 	import type { PageData } from './+page';
 	import { globalOrganizations } from '$lib/network/organizations.svelte';
-	import { DEMO_ORGANIZATIONS } from '$lib/config/org-trees';
+	import { DEMO_ORGANIZATIONS } from '$lib/demo/orgs';
 	import {
 		sharesOfGeneralFulfillmentMap,
 		getAllContributorsFromTree
@@ -91,7 +91,7 @@
 
 	// Form state for adding new slots
 	let newNeedName = $state('');
-	let newNeedType = $state('food');
+	let newResourceType = $state('food');
 	let newNeedQuantity = $state(10);
 
 	let newCapacityName = $state('');
@@ -278,7 +278,7 @@ if (data.isUserTree) {
 		const newSlot: NeedSlot = {
 			id: `need_${Date.now()}_${Math.random()}`,
 			name: newNeedName,
-			type_id: newNeedType,
+			type_id: newResourceType,
 			quantity: newNeedQuantity,
 			unit: 'units',
 			max_natural_div: 1,
@@ -340,7 +340,7 @@ if (data.isUserTree) {
 	}
 
 	// Batch update handlers for Type component
-	function handleNeedTypeBatchUpdate(typeId: string, updates: Partial<NeedSlot>) {
+	function handleResourceTypeBatchUpdate(typeId: string, updates: Partial<NeedSlot>) {
 		const updated = needSlots.map((slot) =>
 			slot.type_id === typeId ? { ...slot, ...updates } : slot
 		);
@@ -451,7 +451,7 @@ if (data.isUserTree) {
 	// This is the "others_recognition_of_me" equivalent for demo mode
 	import { readable } from 'svelte/store';
 	import type { GlobalRecognitionWeights } from '@playnet/free-association/schemas';
-	import { getOrgTreesMap } from '$lib/config/org-trees';
+	import { getOrgTreesMap } from '$lib/demo/orgs';
 
 	const demoOrgRecognitionMap = readable<Record<string, GlobalRecognitionWeights>>({}, (set) => {
 		// Load all org configs and compute their recognition weights
@@ -639,7 +639,7 @@ if (data.isUserTree) {
 	// Recognition weights auto-update when tree changes
 	// Mutual recognition auto-updates when recognition weights or network data changes
 
-	import { formatBudget } from '$lib/config/org-trees';
+	import { formatBudget } from '$lib/demo/orgs';
 
 	// Convert initial budget to display format
 	function convertToDisplay(fullAmount: number): { value: number; unit: 'K' | 'M' | 'B' } {
@@ -697,9 +697,9 @@ if (data.isUserTree) {
 								placeholder="Need name..."
 								onkeydown={(e) => e.key === 'Enter' && addNeedSlot()}
 							/>
-							<select bind:value={newNeedType}>
+							<select bind:value={newResourceType}>
 								{#each types as type}
-									<option value={type.id}>{formatNeedType(type.id)}</option>
+									<option value={type.id}>{formatResourceType(type.id)}</option>
 								{/each}
 							</select>
 							<input type="number" bind:value={newNeedQuantity} min="0" step="0.1" />
@@ -711,14 +711,14 @@ if (data.isUserTree) {
 								<div class="empty-state">No need slots yet. Add one above!</div>
 							{:else}
 								<!-- Organize need slots by type -->
-								{#each $myNeedTypesStore as typeId (typeId)}
+								{#each $myResourceTypesStore as typeId (typeId)}
 									<Type
 										{typeId}
-										typeName={formatNeedType(typeId)}
+										typeName={formatResourceType(typeId)}
 										slots={$myNeedSlotsStore}
 										kind="need"
 										capacityId="need-{typeId}"
-										onBatchUpdate={handleNeedTypeBatchUpdate}
+										onBatchUpdate={handleResourceTypeBatchUpdate}
 										onSlotUpdate={handleNeedSlotUpdate}
 										onSlotDelete={removeNeedSlot}
 									>
@@ -767,7 +767,7 @@ if (data.isUserTree) {
 							/>
 							<select bind:value={newCapacityType}>
 								{#each types as type}
-									<option value={type.id}>{formatNeedType(type.id)}</option>
+									<option value={type.id}>{formatResourceType(type.id)}</option>
 								{/each}
 							</select>
 							<input type="number" bind:value={newCapacityQuantity} min="0" step="0.1" />
@@ -782,7 +782,7 @@ if (data.isUserTree) {
 								{#each $myCapacityTypesStore as typeId (typeId)}
 									<Type
 										{typeId}
-										typeName={formatNeedType(typeId)}
+										typeName={formatResourceType(typeId)}
 										slots={$myCapacitySlotsStore}
 										kind="capacity"
 										capacityId="capacity-{typeId}"
