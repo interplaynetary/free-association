@@ -1112,15 +1112,40 @@
 								
 								<div class="expanded-content">
 									{#if expandedDraftTab === 'type'}
-										<div class="type-grid">
-											{#each filteredTypes as type}
-												<button 
-													class="type-grid-item" 
-													onclick={() => handleTypeSelect(type)}
-												>
-													<span class="type-emoji">{type.emoji}</span>
-													<span class="type-label">{type.label}</span>
-												</button>
+										{@const groupedTypes = (() => {
+											const groups: Record<string, typeof filteredTypes> = {};
+											const categoryOrder: string[] = [];
+
+											filteredTypes.forEach(type => {
+												const cat = type.category || 'Other';
+												if (!groups[cat]) {
+													groups[cat] = [];
+													categoryOrder.push(cat);
+												}
+												groups[cat].push(type);
+											});
+
+											return categoryOrder.map(cat => ({
+												name: cat,
+												types: groups[cat]
+											}));
+										})()}
+										<div class="category-list">
+											{#each groupedTypes as category}
+												<div class="category-section">
+													<h5 class="category-title">{category.name}</h5>
+													<div class="type-grid">
+														{#each category.types as type}
+															<button 
+																class="type-grid-item" 
+																onclick={() => handleTypeSelect(type)}
+															>
+																<span class="type-emoji">{type.emoji}</span>
+																<span class="type-label">{type.label}</span>
+															</button>
+														{/each}
+													</div>
+												</div>
 											{/each}
 											{#if filteredTypes.length === 0}
 												<div class="no-results">No types found matching "{draftSlot.name}"</div>
@@ -2372,8 +2397,6 @@
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
 		gap: 8px;
-		max-height: 200px;
-		overflow-y: auto;
 	}
 
 	.type-grid-item {
@@ -2405,5 +2428,28 @@
 		color: #334155;
 		text-align: center;
 	}
+
+    .category-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding-bottom: 12px;
+    }
+
+    .category-section {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .category-title {
+        font-size: 11px;
+        text-transform: uppercase;
+        color: #888;
+        font-weight: 600;
+        margin: 0;
+        letter-spacing: 0.5px;
+        padding-left: 2px;
+    }
 </style>
 
