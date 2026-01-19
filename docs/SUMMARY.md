@@ -14,11 +14,6 @@
 * [Recognition](concepts/recognition.md) - Acknowledging contribution
 * [Allocation](concepts/allocation.md) - Distributing resources
 
-## Architecture (How It's Built)
-
-* [Architecture Overview](architecture/README.md)
-* [Distributed Architecture](architecture/distributed-architecture.md) - Core Patterns
-
 ## Implementation (How to Use It)
 
 * [For Organizations](implementation/organizations.md)
