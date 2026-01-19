@@ -61,7 +61,7 @@ link.click();
 
 ## Data Format
 
-The exported data follows a non-proprietary JSON schema documented in our [Protocol Specification](../technical/protocol.md).
+The exported data follows a non-proprietary JSON schema documented in our [Protocol Specification](../reference/protocol-spec.md).
 
 ### Export Structure
 
@@ -243,7 +243,7 @@ gpg free-association-export-*.json.gpg
 ## Related Documentation
 
 - **[Privacy Policy](../../src/routes/privacy/+page.svelte)**: How we handle your data
-- **[Protocol Specification](../technical/protocol.md)**: Technical data format details
+- **[Protocol Specification](../reference/protocol-spec.md)**: Technical data format details
 - **[Data Import Guide](./data-import.md)**: How to import data (coming soon)
 - **[User Rights](../../src/routes/privacy/+page.svelte#your-privacy-rights)**: Your data rights under GDPR/CCPA
 

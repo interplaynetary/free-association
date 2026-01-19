@@ -312,9 +312,9 @@ Larger networks increase:
 - Technical questions: [Open an issue](https://github.com/interplaynetary/free-association/issues)
 
 **Documentation:**
-- [Protocol Specification](../technical/protocol.md)
-- [Mathematical Foundations](../technical/mathematics.md)
-- [Glossary](../technical/glossary.md)
+- [Protocol Specification](../reference/protocol-spec.md)
+- [Mathematical Foundations](../reference/mathematics.md)
+- [Glossary](../reference/glossary.md)
 
 **Community:**
 - [OpenCollective](https://opencollective.com/free-association)

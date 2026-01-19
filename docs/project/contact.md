@@ -35,7 +35,7 @@ For:
 
 **Protocol Specification:** [PROTOCOL.md](../../PROTOCOL.md)
 
-**Mathematical Details:** [Mathematical Foundations](../technical/mathematics.md)
+**Mathematical Details:** [Mathematical Foundations](../reference/mathematics.md)
 
 ### Development
 

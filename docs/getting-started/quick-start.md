@@ -55,7 +55,7 @@ A_i ∝ R_i / Σ R (proportional to recognition share)
 Subject to: Σ A_i ≤ Capacity and A_i ≤ Need_i
 ```
 
-[Mathematical foundations →](../technical/mathematics.md)
+[Mathematical foundations →](../reference/mathematics.md)
 
 ---
 
@@ -88,11 +88,11 @@ Resources flow automatically to recognized partners based on actual need and con
 
 **Technical Contributors:**
 - [Development setup](../implementation/developers.md)
-- [Review protocol](../technical/protocol.md)
+- [Review protocol](../reference/protocol-spec.md)
 - [Explore codebase](https://github.com/interplaynetary/free-association)
 
 **Researchers:**
-- [Mathematical foundations](../technical/mathematics.md)
-- [Network dynamics](../technical/network-dynamics.md)
-- [Theoretical distinctions](../theory/vs-charity.md)
+- [Mathematical foundations](../reference/mathematics.md)
+- [Recognition](../concepts/recognition.md)
+- [Allocation](../concepts/allocation.md)
 

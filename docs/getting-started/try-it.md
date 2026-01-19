@@ -40,7 +40,7 @@ Try different scenarios:
 
 After exploring the demo:
 
-- [Understand how it works](../concepts/how-it-works.md)
+- [Core Concepts](../concepts/README.md) - Identity, Resources, Recognition, Allocation
 - [See real-world use cases](../use-cases/README.md)
 - [Explore implementation options](../implementation/organizations.md)
 

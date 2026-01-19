@@ -184,7 +184,7 @@ Support exchanged among peers based on reciprocity and solidarity. Free Associat
 
 ## Further Reading
 
-**Concepts:** [How It Works](../concepts/how-it-works.md)
+**Concepts:** [Core Concepts](../concepts/README.md)
 
 **Mathematics:** [Mathematical Foundations](mathematics.md)
 

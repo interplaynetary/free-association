@@ -6,19 +6,23 @@
 * [Try the System](getting-started/try-it.md)
 * [Quick Start Guide](getting-started/quick-start.md)
 
-## Understanding Free Association
+## Core Concepts
 
-* [The Coordination Problem](concepts/the-problem.md)
-* [How It Works](concepts/how-it-works.md)
-* [The Allocation Algorithm](concepts/allocation-algorithm.md)
+* [Concepts Overview](concepts/README.md)
+* [Identity](concepts/identity.md) - Who you are
+* [Resources](concepts/resources.md) - What you have and need
+* [Recognition](concepts/recognition.md) - Acknowledging contribution
+* [Allocation](concepts/allocation.md) - Distributing resources
 
-## Free Association Coalition
+## Architecture (How It's Built)
 
-* [Invitation to Coordination Sessions](coalition/invitation.md)
-* [Participation Framework](coalition/participation-framework.md)
-* [Coalition Service Entity](coalition/service-entity.md)
-* [Coordination Sessions](coalition/coordination-sessions.md)
-* [Appendix: Technical Details](coalition/appendix.md)
+* [Architecture Overview](architecture/README.md)
+* [Distributed Architecture](architecture/distributed-architecture.md) - Core Patterns
+
+## Implementation (How to Use It)
+
+* [For Organizations](implementation/organizations.md)
+* [For Developers](implementation/developers.md)
 
 ## Real-World Application
 
@@ -30,16 +34,19 @@
 * [Community Resource Sharing](use-cases/community.md)
 * [Expected Outcomes](use-cases/outcomes.md)
 
-## Implementation
+## Free Association Coalition
 
-* [For Organizations](implementation/organizations.md)
-* [For Developers](implementation/developers.md)
+* [Invitation to Coordination Sessions](coalition/invitation.md)
+* [Participation Framework](coalition/participation-framework.md)
+* [Coalition Service Entity](coalition/service-entity.md)
+* [Coordination Sessions](coalition/coordination-sessions.md)
+* [Appendix: Technical Details](coalition/appendix.md)
 
-## Technical Reference
+## Reference
 
-* [Mathematical Foundations](technical/mathematics.md)
-* [Protocol Specification](technical/protocol.md)
-* [Glossary](technical/glossary.md)
+* [Glossary](reference/glossary.md)
+* [Mathematical Foundations](reference/mathematics.md)
+* [Protocol Specification](reference/protocol-spec.md)
 
 ## Project Information
 
@@ -47,4 +54,3 @@
 * [Code of Conduct](project/code-of-conduct.md)
 * [Governance Structure](project/governance.md)
 * [Contact & Support](project/contact.md)
-

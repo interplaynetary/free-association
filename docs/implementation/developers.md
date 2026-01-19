@@ -269,7 +269,7 @@ function allocate(recipient, provider, share) {
 
 ### Protocol Specification
 
-See [Protocol Specification](../technical/protocol.md) for formal protocol documentation including:
+See [Protocol Specification](../reference/protocol-spec.md) for formal protocol documentation including:
 - Data structures
 - Calculation algorithms
 - Network communication
@@ -277,7 +277,7 @@ See [Protocol Specification](../technical/protocol.md) for formal protocol docum
 
 ### Mathematical Foundations
 
-See [Mathematical Foundations](../technical/mathematics.md) for:
+See [Mathematical Foundations](../reference/mathematics.md) for:
 - Formal properties
 - Proof sketches
 - Convergence analysis
@@ -355,8 +355,8 @@ bun run build
 
 **Documentation:**
 - This guide
-- [Protocol Specification](../technical/protocol.md)
-- [Mathematical Foundations](../technical/mathematics.md)
+- [Protocol Specification](../reference/protocol-spec.md)
+- [Mathematical Foundations](../reference/mathematics.md)
 - Inline code comments
 
 **Community:**
