@@ -31,11 +31,8 @@
 
 ## Free Association Coalition
 
-* [Invitation to Coordination Sessions](coalition/invitation.md)
 * [Participation Framework](coalition/participation-framework.md)
-* [Coalition Service Entity](coalition/service-entity.md)
-* [Coordination Sessions](coalition/coordination-sessions.md)
-* [Appendix: Technical Details](coalition/appendix.md)
+* [Coalition Service Entity](coalition/service-entity.md)w
 
 ## Reference
 
