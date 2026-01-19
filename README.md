@@ -1,11 +1,9 @@
-# Free Association Coalition
-## Draft Participation Framework for Review
-*Drafted by: Initial working group convened during 2025 coordination sessions*
+# Free Association
 
-This coalition consists of entities experimenting with protocols for voluntary coordination and capacity-building. The coalition proposes a re-engineering of how collective action and resource allocation can be coordinated.
+This repository consists of modules and infrastructure for experimenting with protocols for voluntary coordination and capacity-building. It proposes a re-engineering of how collective action and resource allocation can be coordinated.
 
 **Coordination is based on:**
-- Publishing (what is, what I have/need/prioritize)
+- Publishing (what is, capacities/needs/priorities)
 - Derivation (what we can infer collectively)
     - Recognition (acknowledgement of who/what contributes)
     - Allocation (how we divide our capacities)

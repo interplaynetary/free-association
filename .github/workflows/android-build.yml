@@ -1,10 +1,8 @@
-# Android Build Workflow
+# Android Build Workflow (Fastlane)
 #
 # REQUIRED SECRETS:
-# - RELEASE_KEYSTORE: Base64 encoded Android Release Keystore (use `base64 android/release.jks`)
+# - RELEASE_KEYSTORE: Base64 encoded Android Release Keystore
 # - RELEASE_KEYSTORE_PASSWORD: Password for the keystore
-#
-# Setup Helper: Run `./setup_keystore.sh` to generate these credentials.
 #
 name: Build Android
 
@@ -21,7 +19,13 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v3
 
-      - name: Setup java
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+
+      - name: Setup Java
         uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
@@ -32,32 +36,31 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Install app dependencies
-        run: bun install
+      - name: Install dependencies
+        run: |
+          bun install
+          bundle install
 
       - name: Build Svelte app
         run: bun run build:static
 
-      - name: Capacitor update
-        run: bunx cap update
+      - name: Capacitor Sync
+        run: bunx cap sync android
 
-      - name: Capacitor copy
-        run: bunx cap copy
-
-      - name: Build app bundle
-        run: cd android && ./gradlew bundle
-
-      - name: Extract Android signing key from env
+      - name: Decode Keystore
         run: |
-          echo "${{ secrets.RELEASE_KEYSTORE }}" > android/release.jks.base64
-          base64 -d android/release.jks.base64 > android/release.decrypted.jks
+          echo "${{ secrets.RELEASE_KEYSTORE }}" | base64 --decode > android/release.decrypted.jks
 
-      - name: Sign dev build
-        run: jarsigner -keystore android/release.decrypted.jks -storepass "${{ secrets.RELEASE_KEYSTORE_PASSWORD }}" -signedjar ./android/app/build/outputs/bundle/release/app-release-signed.aab ./android/app/build/outputs/bundle/release/app-release.aab release
+      - name: Fastlane Build
+        env:
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+        run: |
+          cd android
+          bundle exec fastlane build
 
       - name: Upload release bundle
         uses: actions/upload-artifact@v3
         with:
           name: app-release
-          path: android/app/build/outputs/bundle/release/app-release-signed.aab
+          path: output/app-release.aab
           retention-days: 60
