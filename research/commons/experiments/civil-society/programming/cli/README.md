@@ -421,7 +421,7 @@ In your route (e.g., `+page.ts`):
 
 ```typescript
 export const ssr = false
-export const prerender = false
+export const prerender = true
 ```
 
 This ensures Git operations run only in the browser.

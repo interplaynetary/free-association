@@ -712,7 +712,7 @@
 		if (!deckOverlay) {
 			console.log('[Map] Initializing DeckGL Overlay');
 			deckOverlay = new MapboxOverlay({
-				interleaved: true, // Share WebGL context to fix Mac/Safari errors
+				interleaved: false, // Force separate canvas to ensure "Always On Top" visibility
 				layers: []
 			});
 			map.addControl(deckOverlay as any);

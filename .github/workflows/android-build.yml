@@ -1,0 +1,63 @@
+# Android Build Workflow
+#
+# REQUIRED SECRETS:
+# - RELEASE_KEYSTORE: Base64 encoded Android Release Keystore (use `base64 android/release.jks`)
+# - RELEASE_KEYSTORE_PASSWORD: Password for the keystore
+#
+# Setup Helper: Run `./setup_keystore.sh` to generate these credentials.
+#
+name: Build Android
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+
+      - name: Setup java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install app dependencies
+        run: bun install
+
+      - name: Build Svelte app
+        run: bun run build:static
+
+      - name: Capacitor update
+        run: bunx cap update
+
+      - name: Capacitor copy
+        run: bunx cap copy
+
+      - name: Build app bundle
+        run: cd android && ./gradlew bundle
+
+      - name: Extract Android signing key from env
+        run: |
+          echo "${{ secrets.RELEASE_KEYSTORE }}" > android/release.jks.base64
+          base64 -d android/release.jks.base64 > android/release.decrypted.jks
+
+      - name: Sign dev build
+        run: jarsigner -keystore android/release.decrypted.jks -storepass "${{ secrets.RELEASE_KEYSTORE_PASSWORD }}" -signedjar ./android/app/build/outputs/bundle/release/app-release-signed.aab ./android/app/build/outputs/bundle/release/app-release.aab release
+
+      - name: Upload release bundle
+        uses: actions/upload-artifact@v3
+        with:
+          name: app-release
+          path: android/app/build/outputs/bundle/release/app-release-signed.aab
+          retention-days: 60

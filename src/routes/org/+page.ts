@@ -2,7 +2,7 @@ import { DEMO_ORGANIZATIONS, getOrgTreesMap } from '$lib/demo/orgs';
 import type { PageLoad } from './$types';
 
 // Client-side only (consistent with app-wide config)
-export const prerender = false;
+export const prerender = true;
 export const ssr = false;
 export const csr = true;
 

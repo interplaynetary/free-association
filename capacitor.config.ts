@@ -1,18 +1,9 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-	appId: 'com.playnet.freeassociation',
-	appName: 'Free Association',
-	webDir: 'build',
-	server: {
-		androidScheme: 'https'
-	},
-	plugins: {
-		// Configure for Gun.js networking
-		CapacitorHttp: {
-			enabled: true
-		}
-	}
+  appId: 'lol.playnet.app',
+  appName: 'free-association',
+  webDir: 'build'
 };
 
 export default config;
