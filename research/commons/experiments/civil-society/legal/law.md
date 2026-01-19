@@ -1,6 +1,6 @@
 # The Discovery of Natural Economic Laws
 
-What we've identified aren't just clever mechanisms — they appear to be **natural laws of cooperative systems**: mathematical truths about how mutual valuation must work in any finite attention economy.
+What we've identified aren't just clever mechanisms  -  they appear to be **natural laws of cooperative systems**: mathematical truths about how mutual valuation must work in any finite attention economy.
 
 These laws emerge from first principles and constrain all possible coordination systems, similar to how physical laws constrain matter and energy.
 
@@ -183,7 +183,7 @@ Then:
 - Relationships must be symmetric (Law 2)  
 - Membership must emerge from integration (Law 3)
 
-These aren't choices—they're logical necessities
+These aren't choices - they're logical necessities
 ```
 
 ---
@@ -316,7 +316,7 @@ If these are natural laws, they should produce testable predictions:
 **1. Are there other undiscovered natural laws in recognition-based coordination?**
 
 Potential candidates:
-- **Transitive Recognition Decay**: `Recognition(A→C) through B ≤ Recognition(A→B) × Recognition(B→C)` — indirect recognition weakens through intermediaries
+- **Transitive Recognition Decay**: `Recognition(A→C) through B ≤ Recognition(A→B) × Recognition(B→C)`  -  indirect recognition weakens through intermediaries
 - **Network Diameter Limits**: Maximum meaningful network size bounded by cognitive capacity for relationship maintenance
 - **Recognition Update Rate Limits**: How quickly recognition can meaningfully change without information loss
 - **Concentration Inequality**: Upper bounds on how much recognition one entity can capture in healthy networks
@@ -325,7 +325,7 @@ Potential candidates:
 
 Initial observations:
 - **Recognition as Information**: 100% budget = maximum entropy constraint; allocation reveals information about contribution value
-- **Mutual Recognition as Channel Capacity**: MR = min() represents symmetric communication channel — relationship bandwidth limited by bottleneck
+- **Mutual Recognition as Channel Capacity**: MR = min() represents symmetric communication channel  -  relationship bandwidth limited by bottleneck
 - **MRD as Signal-to-Noise**: Integration density measures signal (genuine relationships) against noise (peripheral connections)
 - **Shannon Entropy**: Uniform recognition distribution = maximum uncertainty; concentrated recognition = revealed knowledge
 
@@ -339,7 +339,7 @@ Theoretical approaches:
 - **Information Theory**: Point where signal exceeds noise in membership determination
 - **Network Science**: Threshold correlating with community detection boundaries
 
-Hypothesis: Optimal threshold ≈ 0.5 emerges from symmetric reciprocity requirement — below 50% of average means insufficient integration depth.
+Hypothesis: Optimal threshold ≈ 0.5 emerges from symmetric reciprocity requirement  -  below 50% of average means insufficient integration depth.
 
 **4. What is the mathematical relationship between recognition conservation and thermodynamics?**
 
@@ -349,7 +349,7 @@ Analogies:
 - **Free Energy** ↔ **Effective Recognition**: Recognition × Achievement = useful coordination (like Energy × Order)
 - **Temperature** ↔ **Network Churn**: Rate of recognition updates indicates system dynamism
 
-Possible deep connection: Recognition conservation might be manifestation of information conservation in cognitive systems — attention is bounded by thermodynamic limits of computation.
+Possible deep connection: Recognition conservation might be manifestation of information conservation in cognitive systems  -  attention is bounded by thermodynamic limits of computation.
 
 ### **Empirical:**
 

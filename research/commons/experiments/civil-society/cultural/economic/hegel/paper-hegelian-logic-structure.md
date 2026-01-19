@@ -5,7 +5,7 @@
 
 ## Preliminary Remarks on Method
 
-This work reconstructs the logic of coordination through proportional mutual recognition following Hegel's method in the *Science of Logic*. We proceed not by external description but by **immanent development**: each category contains internal contradictions that necessitate its sublation into the next. The progression is not arbitrary but **absolutely necessary**—each moment follows from the previous with logical necessity.
+This work reconstructs the logic of coordination through proportional mutual recognition following Hegel's method in the *Science of Logic*. We proceed not by external description but by **immanent development**: each category contains internal contradictions that necessitate its sublation into the next. The progression is not arbitrary but **absolutely necessary** - each moment follows from the previous with logical necessity.
 
 Following Hegel's triadic structure (Being-Essence-Concept), we unfold the logic of coordination through three main divisions:
 
@@ -24,7 +24,7 @@ Within each division, we trace the movement through contradiction to sublation, 
 
 We begin, as Hegel does, with the most abstract, immediate category: **pure being**. In the context of coordination, this is:
 
-**CAPACITY** — the pure being of the ability to provide.
+**CAPACITY**  -  the pure being of the ability to provide.
 
 Capacity is:
 - Immediate (not yet mediated by relationships)
@@ -47,7 +47,7 @@ Capacity is simply: "There is the ability to provide." Nothing more can be said.
 - Kitchen has capacity: 200 units
 - This is pure positivity, no determination
 
-But pure capacity, like Hegel's pure being, is so empty it is indistinguishable from nothing. Capacity that provides to no one, in no amount, for no purpose—is this capacity at all?
+But pure capacity, like Hegel's pure being, is so empty it is indistinguishable from nothing. Capacity that provides to no one, in no amount, for no purpose - is this capacity at all?
 
 **Internal Contradiction**: Pure capacity contains no principle of its own actualization. It is pure potentiality that cannot actualize itself.
 
@@ -65,11 +65,11 @@ But determination brings **negation**:
 - To be 150 is NOT to be 151
 - To be food-capacity is NOT to be clothing-capacity
 
-**Quality as Determinacy**: The determinate capacity has **qualitative character**—it is food-provision-capacity, not abstract capacity-in-general.
+**Quality as Determinacy**: The determinate capacity has **qualitative character** - it is food-provision-capacity, not abstract capacity-in-general.
 
 **Internal Contradiction**: The determinacy is still self-enclosed. The capacity knows its quantity (150) but not its distribution. It is determinate but not yet **for-another**.
 
-**Necessary Transition**: Capacity must become **being-for-another**—it must relate beyond itself.
+**Necessary Transition**: Capacity must become **being-for-another** - it must relate beyond itself.
 
 #### C. Capacity-For-Another (Being-for-Another)
 
@@ -86,7 +86,7 @@ This is not narcissism but **self-relation**: the capacity to recognize oneself 
 
 This introduces **need** as the correlate of capacity:
 
-**NEED** — the negative moment, the lack that capacity addresses.
+**NEED**  -  the negative moment, the lack that capacity addresses.
 
 Need is:
 - Alice needs 100 units (determinate lack)
@@ -121,13 +121,13 @@ We now have quantities:
 - Capacity: 150 (Carol), 200 (Kitchen)
 - Need: 100 (Alice), 90 (Bob)
 
-These are **quanta**—determinate magnitudes.
+These are **quanta** - determinate magnitudes.
 
 But quanta alone don't coordinate. Having 150 and needing 100 doesn't tell us how to distribute. The quantities remain **externally related**.
 
 **Internal Contradiction**: Pure quantities can be added, subtracted, but have no internal principle of proportional distribution. The quantum is **indifferent** to coordination.
 
-**Necessary Transition**: We need quantities that are **internally related**—we need **ratio**.
+**Necessary Transition**: We need quantities that are **internally related** - we need **ratio**.
 
 #### B. Ratio (Quantitative Relation)
 
@@ -162,11 +162,11 @@ In coordination, we work with **direct ratio**: recognition as proportion of who
 
 #### A. Recognition as Measure
 
-**Recognition** is the first true category of coordination. It is **measure**—the unity of quality and quantity.
+**Recognition** is the first true category of coordination. It is **measure** - the unity of quality and quantity.
 
 Recognition is:
-- **Qualitative**: It evaluates WHO (Carol, Kitchen)—a qualitative judgment
-- **Quantitative**: It assigns proportions (30%, 25%)—quantitative determination
+- **Qualitative**: It evaluates WHO (Carol, Kitchen) - a qualitative judgment
+- **Quantitative**: It assigns proportions (30%, 25%) - quantitative determination
 - **Measure**: The quantity determines the quality (30% means "strong relationship")
 
 Recognition is not arbitrary quantity (mere number) nor pure quality (mere preference). It is **measured quality**: quality that knows itself quantitatively.
@@ -258,7 +258,7 @@ Example: If mutual recognition falls below threshold, relationship shifts from "
 Measure contains its own sublation: the measureless.
 
 What happens if we try to make recognition absolute (unbounded, not proportional)?
-- Recognition becomes **measureless**—no determinate proportion
+- Recognition becomes **measureless** - no determinate proportion
 - This is **bad infinity**: "I can value infinitely many entities infinitely much"
 - The measureless collapses back to **nothing determinate**
 
@@ -273,7 +273,7 @@ The 100% proportional structure is not one option among others. It is the **logi
 3. Self-relating (proportions relate to each other as parts of whole)
 4. Actual (operationally meaningful)
 
-Any other structure (unbounded, not summing to unity, non-proportional) would be **logically deficient**—either indeterminate, incomplete, or incoherent.
+Any other structure (unbounded, not summing to unity, non-proportional) would be **logically deficient** - either indeterminate, incomplete, or incoherent.
 
 **Transition to Essence**: Measure points beyond itself. Recognition measures relationships, but what is the **nature** of relationship itself? We must move from immediate being (recognition as measurement) to **reflected being** (recognition as relation). We pass into the **Logic of Essence**.
 
@@ -284,7 +284,7 @@ Any other structure (unbounded, not summing to unity, non-proportional) would be
 
 ### Introduction: The Turn to Reflection
 
-In the Logic of Being, categories were immediate. In the Logic of Essence, categories are **reflective**—they exist only through relation to their other.
+In the Logic of Being, categories were immediate. In the Logic of Essence, categories are **reflective** - they exist only through relation to their other.
 
 Recognition in Being was: "I allocate 30% to Carol" (immediate measure).
 
@@ -340,7 +340,7 @@ This is where we must think with absolute logical necessity:
 **The Master-Slave Dialectic**: Hegel's Phenomenology shows that recognition must be **mutual** or it fails:
 - Master seeks recognition from slave
 - But slave's recognition is **coerced**, not free
-- Therefore master's recognition is **empty**—recognized only by one whose recognition doesn't count
+- Therefore master's recognition is **empty** - recognized only by one whose recognition doesn't count
 - True recognition requires **two free recognizers** mutually recognizing
 
 **The Minimum as Logical Necessity**:
@@ -363,9 +363,9 @@ The minimum operator is the **formal expression** of mutual freedom:
 
 Alternative operators fail logically:
 
-- **Average**: A could give 100%, B gives 0%, average = 50%. But there's no mutuality—B gives nothing yet benefits from averaging.
-- **Product**: Treats recognitions as independent probabilities. But recognition is not probability—it's commitment.
-- **Maximum**: Takes the higher value. This allows unilateral inflation—exactly what mutuality forbids.
+- **Average**: A could give 100%, B gives 0%, average = 50%. But there's no mutuality - B gives nothing yet benefits from averaging.
+- **Product**: Treats recognitions as independent probabilities. But recognition is not probability - it's commitment.
+- **Maximum**: Takes the higher value. This allows unilateral inflation - exactly what mutuality forbids.
 
 **The Minimum as Absolute**: The minimum is not one choice among others. It is the **only operator** that logically expresses: "relationship exists only to the extent BOTH parties freely constitute it."
 
@@ -392,7 +392,7 @@ Hegel's Master-Slave dialectic reveals the structure of **failed recognition**:
 **Why This Fails**:
 - Master wants recognition from free consciousness
 - But slave's recognition is coerced, not free
-- Therefore master is recognized only by slave—whose recognition doesn't count (because unfree)
+- Therefore master is recognized only by slave - whose recognition doesn't count (because unfree)
 - Master's satisfaction is **empty**
 
 **The Logic**: **Unilateral recognition is self-contradictory**. Recognition that is not mutual is not genuine recognition.
@@ -405,7 +405,7 @@ We can now see existing coordination systems as **variants of the master-slave s
 - Those with capital: masters (recognized through purchasing power)
 - Those without capital: slaves (must sell labor to live)
 - Recognition is mediated by money (abstract universal)
-- The wealthy are "recognized" (can command resources) but this recognition is not mutual—the poor must participate but their valuation doesn't matter
+- The wealthy are "recognized" (can command resources) but this recognition is not mutual - the poor must participate but their valuation doesn't matter
 
 **Hierarchical Authority**:
 - Superiors: masters (command recognition through authority)
@@ -536,7 +536,7 @@ The Concept is:
 
 #### A. The Universal: 100% as Totality
 
-Each entity has **100% recognition budget**. This is the **universal**—the whole that contains all particular recognitions.
+Each entity has **100% recognition budget**. This is the **universal** - the whole that contains all particular recognitions.
 
 The 100% is:
 - **Complete**: Nothing outside it
@@ -567,7 +567,7 @@ The proportion is **measure** (unity of quantity and quality): the quantity expr
 
 #### C. The Individual: The Concrete Recognition Act
 
-Each specific recognition (30% to Carol) is **individual**—the concrete actualization that unifies universal (100%) and particular (this proportion).
+Each specific recognition (30% to Carol) is **individual** - the concrete actualization that unifies universal (100%) and particular (this proportion).
 
 When Alice allocates 30% to Carol:
 - This is the **universal** (Alice's total recognition capacity) determining itself
@@ -693,15 +693,15 @@ Initially, the mechanism appears **external**: entities input recognition, syste
 
 The system seems like a **mechanism** that entities use (external tool).
 
-**Internal Contradiction**: If the system is external mechanism, entities are not self-determining—they are determined by external rules. This contradicts the autonomy principle.
+**Internal Contradiction**: If the system is external mechanism, entities are not self-determining - they are determined by external rules. This contradicts the autonomy principle.
 
-**Necessary Development**: The system must become **internal**—not external tool but self-expression of entities themselves.
+**Necessary Development**: The system must become **internal** - not external tool but self-expression of entities themselves.
 
 #### C. Absolute Mechanism: The Self-Executing System
 
 The mechanism becomes absolute when we recognize: **the rules are not external but constitute what coordination IS**.
 
-Entities don't "use" proportional formulas—they **ARE** proportional reasoners. The 100% budget is not a rule imposed on them but the form of their recognition capacity itself.
+Entities don't "use" proportional formulas - they **ARE** proportional reasoners. The 100% budget is not a rule imposed on them but the form of their recognition capacity itself.
 
 The mechanism is **self-executing**: it requires no external enforcement because it is the internal structure of recognition itself.
 
@@ -719,7 +719,7 @@ In the protocol: **The MS Interaction**
 Provider (capacity) + Recipient (need) → Allocation (satisfaction)
 ```
 
-This is **chemical combination**: neither provider nor recipient alone produces satisfaction—only their **combination** does.
+This is **chemical combination**: neither provider nor recipient alone produces satisfaction - only their **combination** does.
 
 The chemical metaphor: Provider has capacity (one substance), Recipient has need (another substance), their combination produces allocation (new compound).
 
@@ -739,7 +739,7 @@ The minimum operator is the **affinity function**: it determines whether and how
 
 Chemical process is still **blind**: entities combine but don't know why or toward what end.
 
-**Internal Contradiction**: The system produces satisfaction, but is this accidental or purposive? We need **teleology**—purpose-directed process.
+**Internal Contradiction**: The system produces satisfaction, but is this accidental or purposive? We need **teleology** - purpose-directed process.
 
 ---
 
@@ -779,7 +779,7 @@ The end (purpose) realizes itself through the means (allocation process).
 
 The end returns to itself through its realization. This is **self-realizing purpose**.
 
-**The Infinity Point**: The purpose is never finally achieved (always more satisfaction possible) yet always actualized (each moment produces satisfaction). This is **true infinity**—the end that achieves itself continuously without exhausting itself.
+**The Infinity Point**: The purpose is never finally achieved (always more satisfaction possible) yet always actualized (each moment produces satisfaction). This is **true infinity** - the end that achieves itself continuously without exhausting itself.
 
 ---
 
@@ -1054,7 +1054,7 @@ The parallel is not metaphorical but **structural**: the protocol instantiates t
 
 - Winfield, Richard Dien. *Hegel's Science of Logic: A Critical Rethinking* (2012)
 
-- Brandom, Robert. *A Spirit of Trust* (2019) — on Hegelian recognition and normativity
+- Brandom, Robert. *A Spirit of Trust* (2019)  -  on Hegelian recognition and normativity
 
 ---
 

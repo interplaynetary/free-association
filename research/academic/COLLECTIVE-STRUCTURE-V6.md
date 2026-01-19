@@ -1103,7 +1103,7 @@ Collective trees provide **coordination**:
 - Efficiency: Single pooled allocation vs. many bilateral
 - Transparency: Shared view of collective priorities
 
-**Neither replaces the other—they coexist:**
+**Neither replaces the other - they coexist:**
 
 Example: Community fund distribution
 1. Individual trees express personal priorities (individual layer)
@@ -1289,7 +1289,7 @@ weight.
 
 **Integration with V6:**
 
-Collective trees don't replace individual trees—they complement them.
+Collective trees don't replace individual trees - they complement them.
 Individual trees remain the source of truth and handle personal resource
 management. Collective trees provide governance for group decisions.
 

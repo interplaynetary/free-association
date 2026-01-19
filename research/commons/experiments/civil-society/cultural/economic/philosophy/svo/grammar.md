@@ -114,7 +114,7 @@ Therefore, the free-association inversion is the moment of collective self-consc
 - "We do not need to appeal to a higher justice; we can _create_ justice amongst ourselves."
 - "We do not need to worship creative power; we can _recognize_ and _enable_ it in each other."
 
-It is the realization that the kingdom of heaven, the republic of virtue, is not a place to be entered but a social relation to be built—**and we are the ones who must build it, with the virtues we have always possessed but projected onto others.**
+It is the realization that the kingdom of heaven, the republic of virtue, is not a place to be entered but a social relation to be built - **and we are the ones who must build it, with the virtues we have always possessed but projected onto others.**
 
 ---
 

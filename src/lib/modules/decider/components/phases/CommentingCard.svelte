@@ -76,7 +76,7 @@
 				{#each challenges as challenge}
 					<div class="challenge-item">
 						{challenge.content}
-						<small>— {challenge.authorPub.slice(0, 8)}...</small>
+						<small> -  {challenge.authorPub.slice(0, 8)}...</small>
 					</div>
 				{/each}
 			</div>

@@ -5,9 +5,9 @@
 
 **What if your most impactful contribution wasn't funding a company, but building the infrastructure that allows all impact organizations to coordinate at scale?**
 
-Playnet develops **Free-Association** — an open-source, peer-to-peer protocol that creates dynamic resource flows based on mutual recognition of value. This isn't another grantmaking platform. It's infrastructure for a regenerative economy: a computational protocol that could distribute resources in a perfectly value-aligned way, potentially de-risking entire impact portfolios and creating multiplicative effects across ecosystems.
+Playnet develops **Free-Association**  -  an open-source, peer-to-peer protocol that creates dynamic resource flows based on mutual recognition of value. This isn't another grantmaking platform. It's infrastructure for a regenerative economy: a computational protocol that could distribute resources in a perfectly value-aligned way, potentially de-risking entire impact portfolios and creating multiplicative effects across ecosystems.
 
-Unlike traditional mechanisms that rely on grant applications, selection committees, or price signals alone, Free-Association creates direct pathways between those who have surplus capacity and those whose work genuinely advances shared values and objectives. The protocol operates through computational allocation based on **mutual recognition**—measurable, verifiable acknowledgment of who enables whom to create value.
+Unlike traditional mechanisms that rely on grant applications, selection committees, or price signals alone, Free-Association creates direct pathways between those who have surplus capacity and those whose work genuinely advances shared values and objectives. The protocol operates through computational allocation based on **mutual recognition** - measurable, verifiable acknowledgment of who enables whom to create value.
 
 **Current State:** We're co-designing applications across sectors (finance, education, cooperatives) while building robust technical infrastructure. The core mathematics is implemented and testable at **free.playnet.lol**.
 
@@ -45,7 +45,7 @@ We present a protocol for resource coordination that complements existing market
 **What makes this work:** The protocol's mathematical foundation ensures that false signals decay while genuine impact is amplified. This creates antifragility in your impact portfolio and systematic advantages for authentic value creation over greenwashing or impact washing.
 
 **For impact investors, this means:**
-- Your investments don't just fund individual companies—they contribute to building infrastructure that makes all impact companies more likely to succeed
+- Your investments don't just fund individual companies - they contribute to building infrastructure that makes all impact companies more likely to succeed
 - Portfolio companies can coordinate on shared needs without creating dependencies or competitive disadvantages
 - You gain visibility into genuine ecosystem value creation beyond individual company metrics
 - Your capital stack can align around values while potentially generating better risk-adjusted returns through ecosystem effects
@@ -53,9 +53,9 @@ We present a protocol for resource coordination that complements existing market
 ### How The Protocol Works
 
 #### Recognition as Measurable Value Signal
-Each participant has **100% recognition** to distribute among those who enable their capacity to create value. This isn't abstract sentiment—it's a quantifiable measure of enabling relationships:
+Each participant has **100% recognition** to distribute among those who enable their capacity to create value. This isn't abstract sentiment - it's a quantifiable measure of enabling relationships:
 - You recognize those whose work creates conditions for your meaningful contribution (direct collaborators, infrastructure providers, knowledge sources)
-- Recognition is **non-transferable** (can't be bought, sold, or inherited—it must be earned through genuine contribution)
+- Recognition is **non-transferable** (can't be bought, sold, or inherited - it must be earned through genuine contribution)
 - Recognition is **dynamically adjustable** (reflects changing relationships and evolving impact)
 - Recognition captures both direct value creation and contributions to ecosystem conditions you depend on
 
@@ -142,7 +142,7 @@ Free-Association fundamentally reframes resource allocation: everyone invests in
 **Protocol-Based Allocation:**
 - Foundation recognizes: "Alice's water infrastructure is 15% of what enables our impact portfolio to succeed (creates conditions for regenerative agriculture, supports community health, advances our mission)"
 - Funding Alice is investing in ecosystem infrastructure that enables the foundation's entire portfolio
-- No power imbalance — mutual value recognition
+- No power imbalance  -  mutual value recognition
 - Value flows create multiplicative effects across the network
 
 #### Mathematical Foundations: De-Risking Through Protocol Guarantees
@@ -192,7 +192,7 @@ The protocol provides mathematical certainties that traditional allocation mecha
 - ✓ **Continuous performance feedback** (recognition adjusts in real-time to outcomes)
 - ✓ **Transparent and auditable** (all allocations visible with mathematical rationale)
 - ✓ **Scales efficiently** (computational cost doesn't increase with participant count)
-- ✓ **Systematic correction** (success amplifies, failure redirects—automatically)
+- ✓ **Systematic correction** (success amplifies, failure redirects - automatically)
 
 #### Scaling Properties
 
@@ -209,7 +209,7 @@ The protocol provides mathematical certainties that traditional allocation mecha
 
 ### Portfolio Strategy: Infrastructure, Not Individual Bets
 
-We don't fund isolated projects—we fund **ecosystem infrastructure that enables portfolio-wide value creation.**
+We don't fund isolated projects - we fund **ecosystem infrastructure that enables portfolio-wide value creation.**
 
 **Current Focus Areas** (emerging from network recognition patterns):
 - **Regenerative infrastructure** (water systems, regenerative agriculture, energy) - the physical foundations that enable all other work
@@ -269,7 +269,7 @@ We don't fund isolated projects—we fund **ecosystem infrastructure that enable
 
 **From zero-sum competition to multiplicative coordination:**
 
-Traditional allocation is extractive—every dollar to one initiative is a dollar not available to another. Free-Association creates **positive-sum dynamics:**
+Traditional allocation is extractive - every dollar to one initiative is a dollar not available to another. Free-Association creates **positive-sum dynamics:**
 - Infrastructure that enables company A to succeed also creates conditions for companies B, C, and D
 - More value creation → more recognition → more resources → more infrastructure → more value creation
 - Self-interest aligns with ecosystem health (your success depends on ecosystem infrastructure)
@@ -307,7 +307,7 @@ Free-Association is open-source infrastructure for coordinating value-aligned re
 - Impact allocation can be computational and mathematically rigorous, not discretionary and political
 - Resources can flow to genuine ecosystem value, not grant-writing performance
 - Coordination can scale to internet-size networks while maintaining values alignment
-- Infrastructure for a regenerative economy is not just possible—it's computable, testable, and adaptable
+- Infrastructure for a regenerative economy is not just possible - it's computable, testable, and adaptable
 
 **Exploration Opportunities:**
 

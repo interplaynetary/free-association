@@ -32,7 +32,7 @@ Organizations working in crisis response establish recognition based on:
 - Geographic coverage
 - Mission alignment
 
-No resources flow yet—this is relationship establishment.
+No resources flow yet - this is relationship establishment.
 
 **2. Declare Available Capacity**
 

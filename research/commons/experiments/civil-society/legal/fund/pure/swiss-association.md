@@ -2,15 +2,15 @@
 
 ## Statutes of Playnet Association
 
-### Article 1 — Name and Seat
+### Article 1  -  Name and Seat
 
 The Association "Playnet" (the "Association") is established under Articles 60 et seq. of the Swiss Civil Code. Its seat is in Zurich, Switzerland.
 
-### Article 2 — Purpose
+### Article 2  -  Purpose
 
 The Association exists to support and experiment with games/organizations that enable societal flourishing.
 
-### Article 3 — Powers
+### Article 3  -  Powers
 
 In furtherance of its purpose, the Association may:
 
@@ -22,7 +22,7 @@ In furtherance of its purpose, the Association may:
 * Delegate operational authority to designated persons, services, or systems
 * Employ any other lawful means consistent with its purpose
 
-### Article 4 — Membership
+### Article 4  -  Membership
 
 **4.1 Determination**\
 Membership is determined computationally. A person is a member when their Mutual Recognition Density (MRD) equals or exceeds the threshold value (currently 0.5).
@@ -36,7 +36,7 @@ The current member list consists of all participants with MRD ≥ threshold as o
 **4.4 Exit**\
 Membership ends automatically when MRD falls below threshold. Members may also exit by written declaration.
 
-### Article 5 — Organs
+### Article 5  -  Organs
 
 The Association has two organs:
 
@@ -57,7 +57,7 @@ Board composition updates when:
 * Current Board member declines to continue, OR
 * Higher-ranked member accepts position
 
-### Article 6 — General Assembly
+### Article 6  -  General Assembly
 
 **6.1 Powers**\
 The General Assembly:
@@ -73,7 +73,7 @@ Meets at least annually. All members may attend. Notice period: 14 days.
 **6.3 Decisions**\
 Decisions on constitutional matters follow the Decider process specification at [playnet.gitbook.io/docs/decider/decider](https://playnet.gitbook.io/docs/decider/decider). Routine matters are determined by computational protocols.
 
-### Article 7 — Board
+### Article 7  -  Board
 
 **7.1 Minimal Responsibilities**\
 Board members have only these duties:
@@ -101,7 +101,7 @@ Board service is voluntary. Reasonable expenses may be reimbursed.
 **7.5 Liability Protection**\
 Board members execute protocol instructions mechanically. They are not personally liable for allocation decisions made by the protocol.
 
-### Article 8 — Compliance Services
+### Article 8  -  Compliance Services
 
 **8.1 Compliance Requirement**\
 The Association must comply with Swiss AML (Anti-Money Laundering) and KYC (Know Your Customer) laws.
@@ -128,7 +128,7 @@ The protocol applies compliance filters computationally. The Board does not over
 **8.5 Compliance Service Selection**\
 The General Assembly may designate a compliance service provider via Decider process. The service must be independent of the Board.
 
-### Article 9 — Resources
+### Article 9  -  Resources
 
 **9.1 Resource Allocation**\
 Resources are allocated according to the Resource Allocation Protocol specification at [playnet.gitbook.io/docs/collective-recognition](https://playnet.gitbook.io/docs/collective-recognition).
@@ -139,7 +139,7 @@ Members declare needs. Providers declare capacities and allocate to needs. When 
 **9.3 Financial Records**\
 All flows are recorded in a transparent ledger maintained per the protocol specification.
 
-### Article 10 — Computational Protocols
+### Article 10  -  Computational Protocols
 
 **10.1 Protocol Specifications**\
 The Association operates through three computational protocols:
@@ -154,7 +154,7 @@ Current protocol specifications are maintained at [playnet.gitbook.io/docs/decid
 **10.3 Interface**\
 The Board implements protocol outputs. Protocol computations are authoritative for membership and resource allocation.
 
-### Article 11 — Dissolution
+### Article 11  -  Dissolution
 
 **11.1 Decision**\
 Dissolution requires Decider process with supermajority (75% weighted support).
@@ -162,7 +162,7 @@ Dissolution requires Decider process with supermajority (75% weighted support).
 **11.2 Liquidation**\
 Upon dissolution, assets are distributed to members pro-rata by collective-recognition-share (calculated across all members as of dissolution decision), or to organizations with similar purpose.
 
-### Article 12 — Entry into Force
+### Article 12  -  Entry into Force
 
 These Statutes enter into force upon adoption by the founding members.
 

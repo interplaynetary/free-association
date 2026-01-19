@@ -219,7 +219,7 @@ This transforms the framework from:
 To:
 - "A coordination mechanism that **produces** accurate knowledge through interaction"
 
-It's not just a way to **use** accurate recognition—it's a way to **generate** accurate recognition!
+It's not just a way to **use** accurate recognition - it's a way to **generate** accurate recognition!
 
 ## Future Research Directions
 
@@ -239,7 +239,7 @@ By reframing benefit gradient estimation as an **emergent property** rather than
 4. ✅ Unify with velocity of correction principle
 5. ✅ Align with how real systems work (markets, reputation, etc.)
 
-**The system doesn't assume accurate maps of reality—it creates the conditions for maps to become accurate through use.**
+**The system doesn't assume accurate maps of reality - it creates the conditions for maps to become accurate through use.**
 
 ---
 

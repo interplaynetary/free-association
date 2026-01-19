@@ -150,7 +150,7 @@ Each participant maintains their unique identity and approach:
 
 * **Contribution Recognition** (-100% to 100%): Evaluates whether an entity positively or negatively impacts your goals/needs. Negative recognition acknowledges harmful or obstructive relationships. Used for evaluation and assessment.
 
-* **Allocation Weight** (0-100%, non-transferable, dynamically adjustable): Determines how to divide shared capacities among recognized contributors. Only positive values—you allocate to those you support. Used in resource distribution formulas.
+* **Allocation Weight** (0-100%, non-transferable, dynamically adjustable): Determines how to divide shared capacities among recognized contributors. Only positive values - you allocate to those you support. Used in resource distribution formulas.
 
 ### **Derivation Algorithms:**
 
@@ -182,7 +182,7 @@ Each participant maintains their unique identity and approach:
 
 ### **Temporal Aspects & State Management:**
 
-* **Record Validity:** State declarations include `valid_until` or `expiry` timestamps. Expired records don't automatically delete—they remain in history but are excluded from current state derivations.
+* **Record Validity:** State declarations include `valid_until` or `expiry` timestamps. Expired records don't automatically delete - they remain in history but are excluded from current state derivations.
 
 * **Recognition Currency:** Recognition distributions remain valid until superseded by newer distributions from the same issuer. No automatic expiry; participants update as relationships evolve.
 

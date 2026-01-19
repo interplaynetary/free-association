@@ -11,7 +11,7 @@ The percentage (summing to 100%) that an entity allocates among contributors to 
 
 
 ### Entity
-Any participant in the network—organization, community, institution, individual—that can publish priority weights, capacity, and needs.
+Any participant in the network - organization, community, institution, individual - that can publish priority weights, capacity, and needs.
 
 ### Network
 The collection of entities and their recognition relationships. Forms the basis for resource allocation calculation.
@@ -58,7 +58,7 @@ Unsatisfied portion of declared need: `Remaining_Need = max(0, Declared_Need - T
 Category of resource being coordinated. Can be tangible (funding, facilities) or intangible (expertise, mission-aligned values).
 
 ### Filter
-Specification limiting resource compatibility—time windows, geographic locations, resource types, or other constraints.
+Specification limiting resource compatibility - time windows, geographic locations, resource types, or other constraints.
 
 ---
 

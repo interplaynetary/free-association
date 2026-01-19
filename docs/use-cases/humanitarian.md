@@ -217,7 +217,7 @@ Humanitarian coordination networks benefit from:
 - Capacity diversity (international, regional, local)
 - Operational standards alignment
 
-Recognition networks can grow progressively—start with core partners, expand over time.
+Recognition networks can grow progressively - start with core partners, expand over time.
 
 ### Integration with Existing Systems
 

@@ -131,7 +131,7 @@ There are two fundamental collective weighting systems:
 
 ---
 
-## **5.1 SCMRS — Contribution-Weighted Collective Share**
+## **5.1 SCMRS  -  Contribution-Weighted Collective Share**
 
 (Synthetic-Collective Mutual Recognition Share)
 
@@ -149,7 +149,7 @@ Used for cooperative production and sybil-resistant influence weighing.
 
 ---
 
-## **5.2 SCRMRS — Equal-Voice Collective Share**
+## **5.2 SCRMRS  -  Equal-Voice Collective Share**
 
 (Synthetic-Collective Relative Mutual Recognition Share)
 
@@ -236,7 +236,7 @@ N_r^{(t+1)}
 = \max\left(0,, N_r^{(t)} - \sum_{p} A_{\text{actual},p}^{(t)}(r)\right).
 ]
 
-Repeats until capacity or need exhausted—always converges.
+Repeats until capacity or need exhausted - always converges.
 
 ---
 

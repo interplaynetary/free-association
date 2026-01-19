@@ -60,11 +60,11 @@ It's designed to be flexible and adaptable to different needs.
 
 ---
 
-# Free Association — A Protocol for Institutional Coordination
+# Free Association  -  A Protocol for Institutional Coordination
 
 ## In Brief
 
-**The Free Association protocol lets organizations work together without giving up control.** Each organization keeps its own data, systems, and decision-making authority, but shares "translation guides" so others can understand and use their information. There's no central authority, no membership fees, no binding commitments — just a simple set of conventions that makes coordination possible.
+**The Free Association protocol lets organizations work together without giving up control.** Each organization keeps its own data, systems, and decision-making authority, but shares "translation guides" so others can understand and use their information. There's no central authority, no membership fees, no binding commitments  -  just a simple set of conventions that makes coordination possible.
 
 **Who is this for?** UN agencies, governments, foundations, NGOs, regional bodies, or any institution that wants to coordinate with others without centralization.
 
@@ -124,7 +124,7 @@ Publish simple code that converts between your format and others' formats. This 
 
 ### 3. You Maintain a "Contact List"
 
-Publish a simple list of other organizations you know are using the protocol. Others can use your list to discover new partners. Multiple lists exist — you choose which ones to trust and follow.
+Publish a simple list of other organizations you know are using the protocol. Others can use your list to discover new partners. Multiple lists exist  -  you choose which ones to trust and follow.
 
 ### 4. You Coordinate Directly
 
@@ -136,7 +136,7 @@ Work with other implementers directly. No approvals needed. No central body to r
 
 ### Why UN Agencies and Governments Should Consider This
 
-**Sovereignty:** Full control over data, budgets, and operations — crucial for governmental and UN entities with strict mandates
+**Sovereignty:** Full control over data, budgets, and operations  -  crucial for governmental and UN entities with strict mandates
 
 **No New Procurement:** Use existing systems; just add translation layers
 
@@ -308,11 +308,11 @@ A: The protocol has no binding obligations, no membership, no central entity. It
 
 ## Protocol Principles
 
-**Sovereignty** — Implementers retain full authority over data, budgets, and decisions  
-**Voluntariness** — Protocol adoption is opt-in, modular, and non-binding  
-**Distributed** — All functions are peer-to-peer, no central coordination  
-**Interoperable** — Coordination through implementer-created transformation protocols  
-**Forkable** — Protocol can be modified, forked, or extended by any implementer
+**Sovereignty**  -  Implementers retain full authority over data, budgets, and decisions  
+**Voluntariness**  -  Protocol adoption is opt-in, modular, and non-binding  
+**Distributed**  -  All functions are peer-to-peer, no central coordination  
+**Interoperable**  -  Coordination through implementer-created transformation protocols  
+**Forkable**  -  Protocol can be modified, forked, or extended by any implementer
 
 ---
 
@@ -587,7 +587,7 @@ def transform(iati_org):
 
 **Natural Selection:** Over time, certain implementations may become widely adopted ("reference implementations"), certain discovery lists may become widely subscribed ("trusted networks"), and certain transformation mappings may become standard ("canonical mappings").
 
-**Emergence of De Facto Standards:** This emergence through adoption is natural and encouraged. However, formal standardization remains impossible by design—implementers retain sovereignty to fork, ignore, or compete with any pattern regardless of adoption level.
+**Emergence of De Facto Standards:** This emergence through adoption is natural and encouraged. However, formal standardization remains impossible by design - implementers retain sovereignty to fork, ignore, or compete with any pattern regardless of adoption level.
 
 **Competition Dynamics:** Multiple implementations will compete, best practices will emerge through use, and specialized forks will develop for different contexts. This is healthy ecosystem evolution, not fragmentation.
 
@@ -739,7 +739,7 @@ Required files in implementer repositories:
 
 ## Specification Summary (Legal/Formal Contexts)
 
-> The Free Association is a commons-resource specification for peer-to-peer institutional coordination with no central authority. Protocol versions identified by cryptographic content hash; implementers reference specific hashes. Specification updates proposed via distributed collaboration (Git, forums); no canonical version exists—implementers choose which hash to follow. All coordination infrastructure (indexes, calendars, communications, discovery lists) maintained by implementers; no central coordination points exist. Discovery lists published in machine-readable format at `.well-known/free-association-protocol` or dedicated repositories; entities subscribe to multiple lists to construct network views. Transformation mappings published as executable code with test cases following standard directory structure. Protocol name openly usable; forking encouraged with variant naming conventions. Minimal implementation requires: public repository with patterns, OSI/CC licensing, metadata, protocol hash reference. All operations remain within implementer entities. No centralized funds. Implementers define own schemas/protocols and create transformation mappings per technical specification. Liability remains with source implementers; protocol itself bears zero liability. Implementation open to any self-identifying entity; no permission required. Implementation roles (Full/Partial/Observer) self-selected. Implementation networks emerge through mutual recognition via distributed discovery lists. Disputes resolved through direct communication or mediation; no exclusion mechanism exists. Implementers may stop collaborating with specific entities while continuing protocol use. Protocol forking/variants encouraged with naming conventions (FA-Regional/Sectoral/Methodological). Multiple protocol versions coexist and interoperate through transformation mappings. Protocol use is voluntary and non-binding; no enforcement mechanism exists.
+> The Free Association is a commons-resource specification for peer-to-peer institutional coordination with no central authority. Protocol versions identified by cryptographic content hash; implementers reference specific hashes. Specification updates proposed via distributed collaboration (Git, forums); no canonical version exists - implementers choose which hash to follow. All coordination infrastructure (indexes, calendars, communications, discovery lists) maintained by implementers; no central coordination points exist. Discovery lists published in machine-readable format at `.well-known/free-association-protocol` or dedicated repositories; entities subscribe to multiple lists to construct network views. Transformation mappings published as executable code with test cases following standard directory structure. Protocol name openly usable; forking encouraged with variant naming conventions. Minimal implementation requires: public repository with patterns, OSI/CC licensing, metadata, protocol hash reference. All operations remain within implementer entities. No centralized funds. Implementers define own schemas/protocols and create transformation mappings per technical specification. Liability remains with source implementers; protocol itself bears zero liability. Implementation open to any self-identifying entity; no permission required. Implementation roles (Full/Partial/Observer) self-selected. Implementation networks emerge through mutual recognition via distributed discovery lists. Disputes resolved through direct communication or mediation; no exclusion mechanism exists. Implementers may stop collaborating with specific entities while continuing protocol use. Protocol forking/variants encouraged with naming conventions (FA-Regional/Sectoral/Methodological). Multiple protocol versions coexist and interoperate through transformation mappings. Protocol use is voluntary and non-binding; no enforcement mechanism exists.
 
 ---
 

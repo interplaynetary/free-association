@@ -1,8 +1,8 @@
-# Free Association Coalition — Technical Structure
+# Free Association Coalition  -  Technical Structure
 
-> **Architectural Inspiration:** This coalition structure applies principles from [RDL/Compute](/src/lib/modules/compute) — a distributed computation system with content-hash versioning, language-agnostic boundaries, and peer-to-peer coordination.
+> **Architectural Inspiration:** This coalition structure applies principles from [RDL/Compute](/src/lib/modules/compute)  -  a distributed computation system with content-hash versioning, language-agnostic boundaries, and peer-to-peer coordination.
 
-Below are all three deliverables: a **Mermaid org chart**, a **one-page coalition brief**, and a **CPF-ready legal paragraph** — all aligned with the ultra-lean structure and sovereignty-first design.
+Below are all three deliverables: a **Mermaid org chart**, a **one-page coalition brief**, and a **CPF-ready legal paragraph**  -  all aligned with the ultra-lean structure and sovereignty-first design.
 
 ---
 
@@ -30,11 +30,11 @@ flowchart TD
 
 # ✅ **2. One-Page Coalition Brief (Ultra-Lean Multilateral Version)**
 
-## **Free Association Coalition — One-Page Structural Brief**
+## **Free Association Coalition  -  One-Page Structural Brief**
 
 ### **Purpose**
 
-The Free Association Coalition is a minimal, neutral multilateral coordination mechanism enabling organizations to experiment with next-generation digital public infrastructure for resource alignment — without requiring pooled funds, centralized systems, or binding governance structures. Members create and share their own interoperability patterns and protocols through distributed repositories, while each member maintains full sovereignty over its own resources, data, and operations.
+The Free Association Coalition is a minimal, neutral multilateral coordination mechanism enabling organizations to experiment with next-generation digital public infrastructure for resource alignment  -  without requiring pooled funds, centralized systems, or binding governance structures. Members create and share their own interoperability patterns and protocols through distributed repositories, while each member maintains full sovereignty over its own resources, data, and operations.
 
 ---
 
@@ -47,7 +47,7 @@ The Free Association Coalition is a minimal, neutral multilateral coordination m
 * Hosts the **primary index** of member-maintained protocol and pattern repositories (members may maintain their own indexes/mirrors).
 * Can be hosted by any member institution or rotated periodically.
 * No authority over member data, budgets, or decisions.
-* No curation or quality control role — organization emerges from member activity.
+* No curation or quality control role  -  organization emerges from member activity.
 * Functions can be distributed: learning exchanges organized by any member, indexes maintained collaboratively or in federated form.
 
 ### **2. Member Organizations**
@@ -243,7 +243,7 @@ Recommended JSON format (inspired by RDL subscription management):
 * **Innovation:** Experimental patterns compete freely; no gatekeepers
 * **Network Effects:** More repositories = more transformation paths = easier coordination
 
-The distributed repository model creates a **commons without central authority** — coordination infrastructure that grows and self-organizes based on member needs.
+The distributed repository model creates a **commons without central authority**  -  coordination infrastructure that grows and self-organizes based on member needs.
 
 ---
 
@@ -460,7 +460,7 @@ The [RDL distributed computation system](/src/lib/modules/compute) demonstrates 
 | **Repository Structure** | Standard paths: `~{pubKey}/programs/`, `~{pubKey}/data/`, `~{pubKey}/provenance/` |
 | **Plugin Architecture** | `ProgramLanguageRuntime` interface allows adding SQL, WASM, etc. |
 
-**Key Insight:** Organizations implementing the Free Association Coalition can use RDL as computational infrastructure for distributed coordination—programs become coordination protocols, schemas become interoperability standards, and provenance becomes accountability.
+**Key Insight:** Organizations implementing the Free Association Coalition can use RDL as computational infrastructure for distributed coordination - programs become coordination protocols, schemas become interoperability standards, and provenance becomes accountability.
 
 **Files to Study:**
 - `compute/schema.ts` - Formal specification (like coalition discovery format)

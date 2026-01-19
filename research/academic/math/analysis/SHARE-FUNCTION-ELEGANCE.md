@@ -32,7 +32,7 @@ Required properties:
 3. Bounded: 0 ≤ S(e,f,R) ≤ M for some finite M
 4. Lipschitz continuity: |S(e,f,R) - S(e,f,R')| ≤ L·d(R,R')
 
-Derived Concept — Allocatable Regime:
+Derived Concept  -  Allocatable Regime:
 For given (S, R), pair (e,f) is allocatable when: ∂S/∂R > 0
 ```
 

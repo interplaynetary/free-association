@@ -35,7 +35,7 @@ Provides **5 concrete examples** showing how α creates a spectrum:
 | **0.7** | Member-Weighted | New collectives, federations | Resource allocation by preferences |
 | **1.0** | Pure Aggregation | Statistical groups, informal networks | Demographics, temporary coalitions |
 
-**Key Insight**: The gradient shows that most real organizations aren't pure Type 1 or Type 2—they exist on a spectrum.
+**Key Insight**: The gradient shows that most real organizations aren't pure Type 1 or Type 2 - they exist on a spectrum.
 
 ### **7.2.2 Dynamic and Context-Dependent α** ✅
 - **Maturation formula**: Shows how α evolves over time
@@ -57,7 +57,7 @@ If a ∈ A and A ∈ C, then:
   MR(C,D) ≥ w(a,A)·w(A,C)·MR(a,D)
 ```
 
-**Implication**: Individuals never "lost" in collectives—their strong mutual recognitions propagate upward.
+**Implication**: Individuals never "lost" in collectives - their strong mutual recognitions propagate upward.
 
 **Proof sketch included**: Shows this follows from hybrid MR construction.
 

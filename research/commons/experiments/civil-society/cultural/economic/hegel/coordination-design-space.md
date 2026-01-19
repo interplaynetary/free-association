@@ -5,7 +5,7 @@
 
 ## Abstract
 
-We present a parametric framework characterizing the design space of proportional mutual coordination mechanisms. Rather than prescribing a single mechanism, we identify the fundamental parameters and their constraints, mapping the space of coherent coordination structures. We show that different parameter choices yield qualitatively different mechanisms, each with distinct properties. The Free Association protocol emerges as one point in this space—characterized by symmetric minimum aggregation, satisfaction-weighted feedback, and non-transferable authority. We prove which parameters have constrained ranges (logical necessity) versus which represent genuine design choices (parametric freedom). This meta-framework enables principled mechanism design by making explicit the degrees of freedom and their consequences.
+We present a parametric framework characterizing the design space of proportional mutual coordination mechanisms. Rather than prescribing a single mechanism, we identify the fundamental parameters and their constraints, mapping the space of coherent coordination structures. We show that different parameter choices yield qualitatively different mechanisms, each with distinct properties. The Free Association protocol emerges as one point in this space - characterized by symmetric minimum aggregation, satisfaction-weighted feedback, and non-transferable authority. We prove which parameters have constrained ranges (logical necessity) versus which represent genuine design choices (parametric freedom). This meta-framework enables principled mechanism design by making explicit the degrees of freedom and their consequences.
 
 **Keywords**: mechanism design, design space, parametric frameworks, coordination theory, proportional reasoning
 
@@ -924,7 +924,7 @@ Rather than claiming a single mechanism is "necessary," we have mapped the desig
 
 ### Key Insight
 
-The minimum operator is not absolutely necessary—it is necessary **given complete veto as requirement**. Different contexts and values lead to different optimal Θ:
+The minimum operator is not absolutely necessary - it is necessary **given complete veto as requirement**. Different contexts and values lead to different optimal Θ:
 
 ```
 Symmetric peers + complete veto       → Θ = (1, min, F₁, 0, 0.5, 1)

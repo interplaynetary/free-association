@@ -48,10 +48,10 @@ Entities self-identifying as Coalition Service Entities commit to:
 ## **Funding Models**
 
 Coalition Service Entities may use:
-- **Coalition Allocation** — automated allocation through Free Association mechanics based on network recognition
-- **Grants** — foundation, government, or institutional funding for DPI/DPG development
-- **Service Fees** — free core DPIs/DPGs; optional premium features
-- **Hybrid** — combination of above
+- **Coalition Allocation**  -  automated allocation through Free Association mechanics based on network recognition
+- **Grants**  -  foundation, government, or institutional funding for DPI/DPG development
+- **Service Fees**  -  free core DPIs/DPGs; optional premium features
+- **Hybrid**  -  combination of above
 
 ---
 

@@ -14,11 +14,11 @@ We present a complete mathematical framework for decentralized coordination that
 
 ## **0\. Quick Start: What & Why**
 
-**What it does**: This framework enables decentralized coordination through **mutual recognition**—acknowledging who/what contributes value. Entities allocate recognition budgets (summing to 100%), creating normalized priorities with trade-offs. When two entities recognize each other, mutual recognition equals the minimum of their recognitions, creating **perfect reciprocity in proportion** and **discouraging free-riding**: a 50%-to-10% relationship is valued at 10%.
+**What it does**: This framework enables decentralized coordination through **mutual recognition** - acknowledging who/what contributes value. Entities allocate recognition budgets (summing to 100%), creating normalized priorities with trade-offs. When two entities recognize each other, mutual recognition equals the minimum of their recognitions, creating **perfect reciprocity in proportion** and **discouraging free-riding**: a 50%-to-10% relationship is valued at 10%.
 
-**Why it works**: Recognition is non-transferable and revocable—you control it completely. The min() operator means you can't inflate mutual value alone; both must reciprocate. The budget constraint (ΣR=1) forces prioritization. The anti-gaming theorem proves that allocating recognition to those who help your goals mathematically maximizes goal achievement. The result: **cooperation emerges from self-interest**, not altruism or enforcement.
+**Why it works**: Recognition is non-transferable and revocable - you control it completely. The min() operator means you can't inflate mutual value alone; both must reciprocate. The budget constraint (ΣR=1) forces prioritization. The anti-gaming theorem proves that allocating recognition to those who help your goals mathematically maximizes goal achievement. The result: **cooperation emerges from self-interest**, not altruism or enforcement.
 
-**Why it's fast**: Every moment of misallocation costs goal achievement. This creates powerful incentives to discover errors quickly, correct immediately, and maintain conditions (transparency, sovereignty, discovery tools) that maximize **correction velocity**. The framework is self-healing—misallocations get corrected at maximum speed because speed itself is incentive-aligned. Attacks don't need special defenses; they simply get corrected away.
+**Why it's fast**: Every moment of misallocation costs goal achievement. This creates powerful incentives to discover errors quickly, correct immediately, and maintain conditions (transparency, sovereignty, discovery tools) that maximize **correction velocity**. The framework is self-healing - misallocations get corrected at maximum speed because speed itself is incentive-aligned. Attacks don't need special defenses; they simply get corrected away.
 
 **Core primitives** (see sections 2-4 for mathematical detail):
 - **MR**: Mutual recognition = min(your recognition, their recognition)
@@ -35,7 +35,7 @@ We present a complete mathematical framework for decentralized coordination that
 
 ## **1\. Introduction**
 
-Modern coordination systems face fundamental challenges: centralization risks creating single points of failure, gaming vulnerabilities undermine cooperation, scale limitations prevent global coordination, and sovereignty erosion reduces individual agency. Existing solutions—market mechanisms, voting systems, reputation scores, blockchain consensus—each address parts of this problem but introduce new limitations.
+Modern coordination systems face fundamental challenges: centralization risks creating single points of failure, gaming vulnerabilities undermine cooperation, scale limitations prevent global coordination, and sovereignty erosion reduces individual agency. Existing solutions - market mechanisms, voting systems, reputation scores, blockchain consensus - each address parts of this problem but introduce new limitations.
 
 We propose a novel approach: **mutual recognition as a fundamental coordination primitive**. By building coordination directly from pairwise recognition relationships between sovereign entities, we create a system where cooperation emerges naturally from self-interested behavior, scale becomes irrelevant, and individual control is mathematically enforced.
 
@@ -105,7 +105,7 @@ where ( U ) is the AI's utility function.
 
 ### **2.3 Mutual Recognition**
 
-**Intuition**: Mutual recognition creates **perfect reciprocity in proportion**. When two entities recognize each other, the actual mutual recognition is capped by whoever values the relationship less. If Alice values Bob at 50% but Bob only values Alice at 10%, their mutual recognition is 10% — the minimum. This **discourages free-riding** and **encourages mutual engagement**: to get more mutual recognition from someone, you need to reciprocate proportionally.
+**Intuition**: Mutual recognition creates **perfect reciprocity in proportion**. When two entities recognize each other, the actual mutual recognition is capped by whoever values the relationship less. If Alice values Bob at 50% but Bob only values Alice at 10%, their mutual recognition is 10%  -  the minimum. This **discourages free-riding** and **encourages mutual engagement**: to get more mutual recognition from someone, you need to reciprocate proportionally.
 
 **Mathematical formulation**: \[ MR(e,f) \= \\min(R(e,f), R(f,e)) \]
 
@@ -148,7 +148,7 @@ For collective ( C \\subseteq \\mathcal{E} ):
 
 ### **4.1 SCMRS: Contribution-Weighted Shares**
 
-**Intuition**: SCMRS answers "Whose contribution-recognitions should count more when allocating collective resources?" Members with **stronger network integration have proportionally more influence**. It sums each member's mutual recognitions within the collective and normalizes. Someone deeply connected with many members (high total MR) gets a larger share than someone peripherally connected. **Use when contribution should be weighted by relationship strength**—cooperative production, resource allocation based on value provided.
+**Intuition**: SCMRS answers "Whose contribution-recognitions should count more when allocating collective resources?" Members with **stronger network integration have proportionally more influence**. It sums each member's mutual recognitions within the collective and normalizes. Someone deeply connected with many members (high total MR) gets a larger share than someone peripherally connected. **Use when contribution should be weighted by relationship strength** - cooperative production, resource allocation based on value provided.
 
 **Mathematical formulation**: \[ SCMRS\_C(e) \= \\frac{TMR\_C(e)}{\\sum\_{f \\in C} TMR\_C(f)} \]
 
@@ -156,7 +156,7 @@ For collective ( C \\subseteq \\mathcal{E} ):
 
 ### **4.2 SCRMRS: Equal-Voice Shares**
 
-**Intuition**: SCRMRS provides **equal voting power regardless of network position**. Each member's MRS (their personal view of mutual-value proportions) is treated as an equal vote, then aggregated. Someone with many connections doesn't get more say than someone with fewer connections. **Use when equal voice is desired** — democratic governance, one-person-one-vote contexts, where every perspective matters equally regardless of contribution level.
+**Intuition**: SCRMRS provides **equal voting power regardless of network position**. Each member's MRS (their personal view of mutual-value proportions) is treated as an equal vote, then aggregated. Someone with many connections doesn't get more say than someone with fewer connections. **Use when equal voice is desired**  -  democratic governance, one-person-one-vote contexts, where every perspective matters equally regardless of contribution level.
 
 **Mathematical formulation**: \[ SCRMRS\_C(e) \= \\frac{1}{|C|} \\sum\_{f \\in C} MRS(f,e) \]
 
@@ -209,7 +209,7 @@ A **limit** ( \\mathcal{L} ) transforms a distribution ( d: S \\rightarrow \\mat
 
 ### **6.0 Mutual Recognition Density (MRD)**
 
-**Intuition**: MRD measures **network integration depth**—how well-connected you are relative to the average. If the average member has mutual recognition of 0.4 with the group, and you have 0.6, your MRD is 1.5 (above average). MRD enables **membership to emerge from relationship depth**: when MRD ≥ threshold (typically 0.5), you're sufficiently integrated to be considered a member. This is **naturally resistant to Sybil attacks and collusion** because fake accounts can't easily build deep mutual relationships, while providing **transparent onboarding paths** for genuine participants.
+**Intuition**: MRD measures **network integration depth** - how well-connected you are relative to the average. If the average member has mutual recognition of 0.4 with the group, and you have 0.6, your MRD is 1.5 (above average). MRD enables **membership to emerge from relationship depth**: when MRD ≥ threshold (typically 0.5), you're sufficiently integrated to be considered a member. This is **naturally resistant to Sybil attacks and collusion** because fake accounts can't easily build deep mutual relationships, while providing **transparent onboarding paths** for genuine participants.
 
 **Mathematical formulation**: \[ MRD\_C(e) \= \\frac{TMR\_C(e)}{AMR(C)} \= \\frac{\\sum\_{f \\in C} MR(e,f)}{\\frac{1}{|C|}\\sum\_{g \\in C} TMR\_C(g)} \]
 
@@ -337,7 +337,7 @@ where weights satisfy ( \\sum w \= 1 ) at each level.
 
 **Proof sketch**: By construction of hybrid MR, the aggregation component includes ( w(a,A) \\cdot w(A,C) \\cdot MR(a,D) ), and the entity component is non-negative.
 
-**Implication**: Individuals are never "lost" in collectives—their strong mutual recognitions propagate upward, providing a lower bound on the hyper-collective's mutual recognition.
+**Implication**: Individuals are never "lost" in collectives - their strong mutual recognitions propagate upward, providing a lower bound on the hyper-collective's mutual recognition.
 
 ### **7.4 Cross-Level Capacity Allocation**
 
@@ -439,7 +439,7 @@ Thus sovereignty preserves recursively through aggregation. Similar proofs apply
 
 ## **8\. Capacity Allocation Mechanisms**
 
-**Intuition**: Providers with capacity (resources, funding, compute time, attention) allocate **proportionally to their chosen share signal** (MRS, SCMRS, or SCRMRS), **capped at declared needs**. If a provider has 100 units and someone needs 10 but would get 15 based on shares, they receive only 10. Remaining needs update **across rounds until equilibrium**—like water finding its level. This **multi-provider-need-satisfaction** naturally converges without central coordination.
+**Intuition**: Providers with capacity (resources, funding, compute time, attention) allocate **proportionally to their chosen share signal** (MRS, SCMRS, or SCRMRS), **capped at declared needs**. If a provider has 100 units and someone needs 10 but would get 15 based on shares, they receive only 10. Remaining needs update **across rounds until equilibrium** - like water finding its level. This **multi-provider-need-satisfaction** naturally converges without central coordination.
 
 ### **8.1 Basic Allocation Framework**
 
@@ -612,13 +612,13 @@ If ( e ) splits proportionally ( R(s\_i, f) \= r \\cdot \\alpha\_i ) with ( \\su
 \[ MR(s\_i, f) \= \\min(r \\cdot \\alpha\_i, r' \\cdot \\alpha\_i) \= \\alpha\_i \\cdot \\min(r, r') \]  
 \[ \\sum\_i MR(s\_i, f) \= \\sum\_i \\alpha\_i \\cdot \\min(r, r') \= \\min(r, r') \= MR(e,f) \]
 
-**Equality achieved!** But ( e ) gained **nothing** from splitting—total mutual recognition unchanged.
+**Equality achieved!** But ( e ) gained **nothing** from splitting - total mutual recognition unchanged.
 
 For non-proportional splits, ( \\sum\_i MR(s\_i, f) \\le MR(e,f) ) (can only decrease).
 
 **Conclusion**: Fragmenting identity provides **no benefit** under anti-gaming. Splitting cannot increase influence, only preserve it (best case) or reduce it.
 
-**Why Sybil Resistance Works**: Anti-gaming ensures ( f ) responds proportionally to received recognition. When ( e )'s budget fragments across sybils, ( f )'s response fragments proportionally. Budget conservation on both sides guarantees splitting provides zero gain. No coordination needed, no special detection required—just rational self-interest.
+**Why Sybil Resistance Works**: Anti-gaming ensures ( f ) responds proportionally to received recognition. When ( e )'s budget fragments across sybils, ( f )'s response fragments proportionally. Budget conservation on both sides guarantees splitting provides zero gain. No coordination needed, no special detection required - just rational self-interest.
 
 ### **9.3 Convergence Theorem and Fixed-Point Dynamics**
 
@@ -651,7 +651,7 @@ This measures the total squared deviation between recognition allocations and mu
 
 ### **9.4 Robustness Through Correction Velocity**
 
-**Core Principle**: The framework doesn't need special security mechanisms. Instead, it implements conditions that maximize **correction velocity**—and these conditions naturally make misallocations (including attacks) self-correcting.
+**Core Principle**: The framework doesn't need special security mechanisms. Instead, it implements conditions that maximize **correction velocity** - and these conditions naturally make misallocations (including attacks) self-correcting.
 
 **Key Insight**: Attacks are just **persistent misallocations**. If misallocations get corrected quickly, attacks cannot persist.
 
@@ -787,7 +787,7 @@ This measures the total squared deviation between recognition allocations and mu
 - No benevolence or altruism
 - No ability to detect "malicious" intent
 
-**Result**: Framework is **value-neutral**. It doesn't judge whether allocations are "good" or "bad"—it just enables fast correction based on each entity's self-interest. If an entity genuinely provides value and builds mutual recognition, they're not an "attacker"—they're a legitimate participant, regardless of their intent.
+**Result**: Framework is **value-neutral**. It doesn't judge whether allocations are "good" or "bad" - it just enables fast correction based on each entity's self-interest. If an entity genuinely provides value and builds mutual recognition, they're not an "attacker" - they're a legitimate participant, regardless of their intent.
 
 ## **10\. Implementation Architecture**
 
@@ -1141,7 +1141,7 @@ The framework serves as a **universal coordination language** across:
 - Conceptual entities (ideas, goals, values)
 - Hybrid entities (cyborgs, human-AI teams, augmented organizations)
 
-The mathematics remains identical—only the interpretation of recognition differs by entity type.
+The mathematics remains identical - only the interpretation of recognition differs by entity type.
 
 ### **11.2 Post-Anthropocentric Coordination**
 
@@ -1321,7 +1321,7 @@ We envision a future where:
 - Individuals maintain sovereignty while participating in collective intelligence  
 - Organization emerges organically from the bottom up
 
-The Free-Association Framework provides the mathematical foundation for this vision—a world where cooperation is not imposed but emerges naturally from the simple act of mutual recognition.
+The Free-Association Framework provides the mathematical foundation for this vision - a world where cooperation is not imposed but emerges naturally from the simple act of mutual recognition.
 
 ## **Appendices**
 

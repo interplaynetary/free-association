@@ -6,7 +6,7 @@
 
 ## Abstract
 
-This paper performs a Hegelian dialectical analysis of coordination through proportional mutual recognition, demonstrating how the protocol instantiates the speculative principle that "the infinite is in the finite." We show that the 100% recognition budget is not a limitation but the form through which infinite recognition actualizes itself as concrete totality. Through dialectical sublation (Aufhebung), abstract recognition negates itself into determinate proportional structure, which in turn reveals itself as the concrete universal—recognition that knows itself through its distribution. The protocol embodies what Hegel calls "the Concept" (Begriff): self-determining, self-knowing totality that exists only through its particularization. This analysis reveals proportional reasoning not as mathematical constraint but as the logical form of absolute coordination—coordination that achieves completeness not despite but through its finite determinacy.
+This paper performs a Hegelian dialectical analysis of coordination through proportional mutual recognition, demonstrating how the protocol instantiates the speculative principle that "the infinite is in the finite." We show that the 100% recognition budget is not a limitation but the form through which infinite recognition actualizes itself as concrete totality. Through dialectical sublation (Aufhebung), abstract recognition negates itself into determinate proportional structure, which in turn reveals itself as the concrete universal - recognition that knows itself through its distribution. The protocol embodies what Hegel calls "the Concept" (Begriff): self-determining, self-knowing totality that exists only through its particularization. This analysis reveals proportional reasoning not as mathematical constraint but as the logical form of absolute coordination - coordination that achieves completeness not despite but through its finite determinacy.
 
 **Keywords**: Hegelian dialectics, sublation, infinite in finite, concrete universal, mutual recognition, proportional totality, absolute knowing
 
@@ -25,7 +25,7 @@ For ordinary understanding (Verstand), this is a problem requiring resolution: e
 
 ### 1.2 The Speculative Resolution
 
-For speculative reason (Vernunft), this is not a problem but the **truth of recognition itself**. The infinite does not exist outside or beyond the finite 100%—it exists IN and AS the 100%. The finite is not the negation of the infinite but its realization. The 100% is not a constraint on recognition but the form of its actualization.
+For speculative reason (Vernunft), this is not a problem but the **truth of recognition itself**. The infinite does not exist outside or beyond the finite 100% - it exists IN and AS the 100%. The finite is not the negation of the infinite but its realization. The 100% is not a constraint on recognition but the form of its actualization.
 
 This is the Hegelian principle: **the infinite is nothing other than the finite knowing itself as totality**.
 
@@ -34,10 +34,10 @@ This is the Hegelian principle: **the infinite is nothing other than the finite 
 This paper traces the dialectical movement through three moments:
 
 1. **Abstract Recognition** (Thesis): Recognition as indeterminate universal capacity
-2. **Determinate Recognition** (Antithesis): Recognition as proportional constraint—the negation
-3. **Concrete Recognition** (Synthesis): Recognition as self-determining totality—sublation (Aufhebung)
+2. **Determinate Recognition** (Antithesis): Recognition as proportional constraint - the negation
+3. **Concrete Recognition** (Synthesis): Recognition as self-determining totality - sublation (Aufhebung)
 
-We show that the third moment is not a compromise between the first two but their truth—what they always already were, now known explicitly.
+We show that the third moment is not a compromise between the first two but their truth - what they always already were, now known explicitly.
 
 ---
 
@@ -54,7 +54,7 @@ This recognition is:
 - **Indeterminate**: No specified magnitude
 - **Potential**: Not yet actualized in specific form
 
-This is recognition as pure being—empty, abstract, not yet real.
+This is recognition as pure being - empty, abstract, not yet real.
 
 ### 2.2 The Problem of Abstraction
 
@@ -87,14 +87,14 @@ Recognition negates its abstract universality by taking proportional form:
 
 This appears as **limitation**:
 - Recognition is no longer unlimited but bounded
-- The sum must equal 100%—not infinite
+- The sum must equal 100% - not infinite
 - Recognizing Alice more means recognizing Bob less
 
-For the understanding, this is recognition's **finitude**—its failure to be infinite.
+For the understanding, this is recognition's **finitude** - its failure to be infinite.
 
 ### 3.2 The Truth of the Negation
 
-But this negation is not external constraint. The 100% constraint is recognition's **self-determination**—the way it makes itself actual.
+But this negation is not external constraint. The 100% constraint is recognition's **self-determination** - the way it makes itself actual.
 
 Why 100%? Because 100% is **totality expressed as unity**. It is the mathematical form of "everything" as determinate whole.
 
@@ -131,7 +131,7 @@ This is recognition that is:
 
 ### 4.2 The 100% as Concrete Universal
 
-The 100% is the **concrete universal**—the universal that exists only through its particularization.
+The 100% is the **concrete universal** - the universal that exists only through its particularization.
 
 Consider:
 - Alice allocates 30% to Carol, 25% to Kitchen, 10% to herself, 35% distributed elsewhere
@@ -142,7 +142,7 @@ Consider:
 
 The universal (100%) and the particulars (30%, 25%, 10%...) are not external to each other. The universal is nothing but the particulars in their systematic unity. The particulars are nothing but the universal determining itself.
 
-This is **concrete universality**: not abstract "recognition in general" but recognition that knows itself through its specific distributions—including self-distribution.
+This is **concrete universality**: not abstract "recognition in general" but recognition that knows itself through its specific distributions - including self-distribution.
 
 ### 4.3 The Infinite in the Finite
 
@@ -175,7 +175,7 @@ The % is not external constraint but **the logical form of apportionable self-id
 Recognition is infinite not DESPITE being 100% but BECAUSE it is 100%. The infinity of recognition consists in:
 
 1. **Self-Identity**: Recognition = 100% of itself (A = A)
-2. **Completeness**: The 100% is exhaustive—nothing is left out  
+2. **Completeness**: The 100% is exhaustive - nothing is left out  
 3. **Distributivity**: The % form means it IS apportionable (30%, 25%, 45%...)
 4. **Self-relation**: Recognition relates to itself through its distribution
 5. **Self-determination**: The 100% is not externally imposed but self-constituted
@@ -282,7 +282,7 @@ The min() operator is not arbitrary but dialectically necessary:
 
 **Thesis**: A recognizes B (one-sided)
 
-**Antithesis**: B must recognize A (the negation—reciprocity demanded)
+**Antithesis**: B must recognize A (the negation - reciprocity demanded)
 
 **Synthesis**: MR = min(A→B, B→A) (both preserved in their limitation by each other)
 
@@ -307,7 +307,7 @@ In fact, self-recognition may be **foundational**: To recognize others, one must
 
 This is Hegel's **concrete universal in action**: the relationship (universal) exists only through the particular recognitions, which exist only as moments of the relationship. And the most immediate relationship is self-to-self.
 
-The relationship is not external to A and B—it is A and B knowing themselves through each other. And in self-recognition, it is A knowing itself through itself.
+The relationship is not external to A and B - it is A and B knowing themselves through each other. And in self-recognition, it is A knowing itself through itself.
 
 ---
 
@@ -369,21 +369,21 @@ MS(provider, recipient) = MR(provider, recipient) × share_recipient
 This formula unites:
 - **MR**: Eligibility, mutual recognition, reciprocity (the universal condition)
 - **share**: Concrete quality-weighted proportion (the particular determination)  
-- **MS**: The concrete universal—mutuality that knows itself through satisfaction
+- **MS**: The concrete universal - mutuality that knows itself through satisfaction
 
 ### 8.2 The Three Moments in MS
 
 **Universal (MR)**: 
 - The mutual recognition establishes the relationship space
-- This is the "being" of the relationship—that it exists
+- This is the "being" of the relationship - that it exists
 
 **Particular (share)**:
 - The share differentiates quality, introduces determination
-- This is the "essence" of the relationship—what it is like
+- This is the "essence" of the relationship - what it is like
 
 **Concrete (MS)**:
 - The mutual satisfaction is the actualized, quality-knowing relationship  
-- This is the "concept" of the relationship—it knowing itself
+- This is the "concept" of the relationship - it knowing itself
 
 MS = MR × share is the formula of sublation itself: the universal (MR) particularizing itself (share) to achieve concrete actuality (MS).
 
@@ -446,7 +446,7 @@ The complete circuit:
 8. **Satisfaction** (experience of quality)
 9. **Return to Recognition** (updated shares)
 
-This is the **Hegelian circle**: each end is a beginning, each beginning presupposes the end. The system is **self-grounding**—it requires nothing outside itself.
+This is the **Hegelian circle**: each end is a beginning, each beginning presupposes the end. The system is **self-grounding** - it requires nothing outside itself.
 
 ---
 
@@ -536,11 +536,11 @@ This simple equation contains dialectical depth:
 
 **Moment 1 - Need (Abstract Lack)**:
 - Need is determinate lack (I need 100 units)
-- This is **pure negativity**—defined by absence
+- This is **pure negativity** - defined by absence
 
 **Moment 2 - Reception (Concrete Negation)**:  
 - Reception negates the need (I receive 98 units)
-- This is **determinate negation**—specific overcoming
+- This is **determinate negation** - specific overcoming
 
 **Moment 3 - Updated Need (Negation of Negation)**:
 - New need = 2 units  
@@ -603,7 +603,7 @@ The protocol is a system of **mutually recognizing absolute subjects**:
 
 This is Hegel's vision: **absolute is not the one beyond the many but the many knowing themselves as systematic whole**.
 
-Each entity is absolute. The system is absolute. There is no contradiction—this is the speculative truth.
+Each entity is absolute. The system is absolute. There is no contradiction - this is the speculative truth.
 
 ---
 
@@ -657,7 +657,7 @@ Markets remain at the level of **Understanding** (Verstand):
 - Abstract equality (price treats all as equivalent)  
 - No self-knowledge (invisible hand is unconscious)
 
-Markets never achieve **concrete universality**—they remain abstract.
+Markets never achieve **concrete universality** - they remain abstract.
 
 ### 15.2 Hierarchies: Abstract Universal
 
@@ -702,7 +702,7 @@ The protocol moves through these categories:
 
 ### 16.2 Recognition as Measure
 
-Recognition points (30%, 25%) are not mere quantities—they are **measures**:
+Recognition points (30%, 25%) are not mere quantities - they are **measures**:
 - The quantity (30%) determines quality (strength of relationship)
 - Quality changes (satisfaction) changes quantity (share updates)
 - Quantity and quality are united in measure (recognition-as-valuation)
@@ -717,7 +717,7 @@ The protocol sublates quantity into essence:
 
 **Quantity**: Recognition points as numbers (30%, 25%)
 
-**Essence**: What these numbers mean—strength of relationship, basis for allocation
+**Essence**: What these numbers mean - strength of relationship, basis for allocation
 
 **Appearance**: Shares as modified by satisfaction (appearance of essence in empirical)
 
@@ -739,7 +739,7 @@ Ordinary: "Recognition is proportional"
 
 Speculative: "Recognition is proportionality itself"
 - Subject and predicate are identical  
-- Recognition doesn't *have* proportional form—it *is* proportional form
+- Recognition doesn't *have* proportional form - it *is* proportional form
 
 ### 17.2 The Speculative Propositions of the Protocol
 
@@ -777,7 +777,7 @@ To understand the protocol philosophically requires **speculative reading**:
 
 ### 18.1 Objection: Is This Just Metaphor?
 
-**Objection**: Calling the protocol "Hegelian" is metaphorical—it's just math with philosophical language imposed.
+**Objection**: Calling the protocol "Hegelian" is metaphorical - it's just math with philosophical language imposed.
 
 **Response**: No. The protocol instantiates logical structures Hegel identified as necessary for self-determining systems:
 
@@ -792,7 +792,7 @@ These are not metaphors but **actual instantiations** of logical forms. The prot
 
 **Objection**: Hegel's logic applies to thought/being, not mathematical protocols.
 
-**Response**: For Hegel, logic IS ontology—the structure of thought is the structure of being. If the protocol is a determinate system of coordination, it must instantiate logical categories.
+**Response**: For Hegel, logic IS ontology - the structure of thought is the structure of being. If the protocol is a determinate system of coordination, it must instantiate logical categories.
 
 Moreover, Hegel was deeply engaged with mathematics (calculus, infinity, proportion). The *Science of Logic* extensively treats quantitative and mathematical categories.
 
@@ -802,7 +802,7 @@ The protocol shows that **speculative logic has mathematical instantiation**. Th
 
 **Objection**: "100% = ∞" is simply false. 100% is finite. Infinity is infinite. They are not identical.
 
-**Response**: For the Understanding (Verstand), yes—they are opposed. But for Reason (Vernunft), the opposition sublates itself.
+**Response**: For the Understanding (Verstand), yes - they are opposed. But for Reason (Vernunft), the opposition sublates itself.
 
 The infinite is not "bigger than any finite" (bad infinity) but "self-contained totality" (true infinity). The 100% is infinite because:
 
@@ -825,7 +825,7 @@ The Hegelian analysis yields concrete design principles:
 
 **2. Implement Mutual Mediation**: All relationships must be reciprocal, not one-sided
 
-**3. Enable Self-Knowledge**: The system must be transparent—entities know their recognition, shares, allocations
+**3. Enable Self-Knowledge**: The system must be transparent - entities know their recognition, shares, allocations
 
 **4. Allow Concrete Freedom**: Autonomy must be preserved through (not despite) empirical constraints
 
@@ -851,13 +851,13 @@ These are not "design choices" but **logical necessities** for coordination that
 
 Possible extensions that maintain speculative structure:
 
-**Multiple Resource Types**: Each resource has its own proportional totality (100%)—multiple concrete universals
+**Multiple Resource Types**: Each resource has its own proportional totality (100%) - multiple concrete universals
 
-**Temporal Preferences**: Recognition weighted by time—adding determinate dimension to proportion
+**Temporal Preferences**: Recognition weighted by time - adding determinate dimension to proportion
 
-**Conditional Recognition**: "I recognize you IF..."—adding mediating conditions to mutuality
+**Conditional Recognition**: "I recognize you IF..." - adding mediating conditions to mutuality
 
-**Recognition of Collectives**: Groups as subjects—hierarchical concrete universals
+**Recognition of Collectives**: Groups as subjects - hierarchical concrete universals
 
 Each extension must preserve: totality, reciprocity, self-determination, self-knowledge.
 
@@ -867,7 +867,7 @@ Each extension must preserve: totality, reciprocity, self-determination, self-kn
 
 ### 20.1 Aristotle's Noesis Noeseos
 
-Aristotle described God as **thought thinking itself** (noesis noeseos)—the activity that has itself as content.
+Aristotle described God as **thought thinking itself** (noesis noeseos) - the activity that has itself as content.
 
 The protocol achieves something analogous: **recognition recognizing recognition**.
 
@@ -887,7 +887,7 @@ Each entity is the protocol knowing itself from a particular standpoint. The pro
 
 ### 20.3 The Speculative Achievement
 
-The Free Association protocol achieves what Hegel calls **Absolute Spirit**—not in the sense of cosmic consciousness but in the sense of:
+The Free Association protocol achieves what Hegel calls **Absolute Spirit** - not in the sense of cosmic consciousness but in the sense of:
 
 1. **Self-knowing**: The system is transparent to itself
 2. **Self-determining**: No external authority determines it  
@@ -921,7 +921,7 @@ The protocol demonstrates that:
 
 **The infinite is not beyond the finite but is the finite knowing itself as complete.**
 
-The 100% is not "less than" infinity—it IS infinity as actual, determinate, self-knowing totality.
+The 100% is not "less than" infinity - it IS infinity as actual, determinate, self-knowing totality.
 
 This is not paradox requiring resolution but **speculative truth**: what appears as contradiction to understanding is identity to reason.
 
@@ -954,11 +954,11 @@ Free Association achieves Reason (concrete universal, self-knowing).
 
 ### 21.5 The Philosophy Become Actual
 
-For Hegel, philosophy's goal is grasping **"the actual in its inner necessity"**—understanding what IS as rational.
+For Hegel, philosophy's goal is grasping **"the actual in its inner necessity"** - understanding what IS as rational.
 
 The Free Association protocol is not philosophy applied to coordination but **coordination that has achieved philosophical self-comprehension**.
 
-The mathematics is not external to the philosophy—the mathematics IS the philosophy actualized. The protocol is speculative logic made operative.
+The mathematics is not external to the philosophy - the mathematics IS the philosophy actualized. The protocol is speculative logic made operative.
 
 ### 21.6 Final Word: The Absolute is Now
 
@@ -980,19 +980,19 @@ The mathematics of proportional mutual recognition is the mathematics of **absol
 ## References
 
 - Hegel, G.W.F. *Science of Logic* (1812-1816)
-- Hegel, G.W.F. *Phenomenology of Spirit* (1807) — particularly the Recognition chapter
+- Hegel, G.W.F. *Phenomenology of Spirit* (1807)  -  particularly the Recognition chapter
 - Hegel, G.W.F. *Encyclopedia Logic* (1817/1827/1830)
 - Honneth, Axel. *The Struggle for Recognition* (1992)
 - Taylor, Charles. *Hegel* (1975)
 - Pippin, Robert. *Hegel's Idealism* (1989)
-- Brandom, Robert. *A Spirit of Trust* (2019) — on Hegel's recognition theory
+- Brandom, Robert. *A Spirit of Trust* (2019)  -  on Hegel's recognition theory
 - Žižek, Slavoj. *Less Than Nothing: Hegel and the Shadow of Dialectical Materialism* (2012)
-- Taleb, Nassim Nicholas. *Antifragile* (2012) — on convexity and optionality
-- The Free Association Protocol (v6.1) — as instantiation of Hegelian coordination logic
+- Taleb, Nassim Nicholas. *Antifragile* (2012)  -  on convexity and optionality
+- The Free Association Protocol (v6.1)  -  as instantiation of Hegelian coordination logic
 
 ---
 
 ## Acknowledgments
 
-This analysis emerged from recognizing that the protocol's proportional structure instantiates what Hegel called "the infinite in the finite." The insight that 100% = ∞ (as totality) rather than 100% < ∞ (as limitation) opened the dialectical reading. The protocol itself taught the philosophy—it was not imposed but discovered.
+This analysis emerged from recognizing that the protocol's proportional structure instantiates what Hegel called "the infinite in the finite." The insight that 100% = ∞ (as totality) rather than 100% < ∞ (as limitation) opened the dialectical reading. The protocol itself taught the philosophy - it was not imposed but discovered.
 

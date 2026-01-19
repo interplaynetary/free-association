@@ -32,7 +32,7 @@ This coalition consists of entities experimenting with protocols for voluntary c
 
 **Reciprocal-Alignment-Density (RAD):** Measures network integration depth by normalizing participant's total reciprocal-alignment against network average. `RAD(i) = Σ RA(i, members) / Average_RA`. Used for membership determination (when `RAD ≥ threshold`) enabling membership to emerge from relationship depth.
 
-Note, distribution choice reflects: *whose contribution-recognitions should be taken into account when formulating proportions to prioritize allocations?* — individual control suggests relative-recognition/relative-mutual-recognition, cooperatively-realized capacities suggest collective-mutual-recognition (weighted by contribution) or collective-relative-mutual-recognition (equal voice).
+Note, distribution choice reflects: *whose contribution-recognitions should be taken into account when formulating proportions to prioritize allocations?*  -  individual control suggests relative-recognition/relative-mutual-recognition, cooperatively-realized capacities suggest collective-mutual-recognition (weighted by contribution) or collective-relative-mutual-recognition (equal voice).
 
 **Participants can publish/propose/offer/allocate with the help of protocols of their choosing.** 
 
@@ -91,6 +91,6 @@ This framework bypasses institutionalized intermediaries by asking: **"Whose per
 
 *Local choice:* How to determine recognition, generate capacity, organize internally, whether to use traditional intermediaries as convenience layers
 
-*Contested domain:* Whose contribution recognized and how much — social/epistemic (learning) not structural/legal (enforcement)
+*Contested domain:* Whose contribution recognized and how much  -  social/epistemic (learning) not structural/legal (enforcement)
 
 **The framework enables direct relational coordination at any scale without requiring agreement on intermediate structures.**

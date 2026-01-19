@@ -247,7 +247,7 @@ Added Python pseudocode for:
 
 1. **Complete sensitivity landscape**: 14 Greeks provide comprehensive risk analytics
 2. **Derived from total derivatives**: All Greeks consistent with budget constraint
-3. **Practical decision framework**: Not just theory—actionable algorithms
+3. **Practical decision framework**: Not just theory - actionable algorithms
 4. **Risk management**: Greeks-based limits and hedging strategies
 5. **Monitoring infrastructure**: Dashboard and visualization specifications
 6. **Consistency checks**: Schwarz symmetries validate implementations

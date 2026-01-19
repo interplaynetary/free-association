@@ -4,7 +4,7 @@
 
 ## Abstract
 
-We present the minimal logical structure necessary and sufficient for autonomous mutual coordination. Beginning from the concept of capacity (ability to provide), we derive through necessity: (i) proportional measure normalized to 100%, (ii) bilateral minimum operator for mutual recognition, (iii) satisfaction feedback for empirical correction, and (iv) non-transferable recognition authority. We prove these are not design choices but logical requirements following from the conditions: self-determination, mutuality, completeness, and empirical grounding. The analysis reveals that infinity equals 100% of itself, and the percentage form embodies "generic distributivity"—the capacity for apportionment intrinsic to numerical self-identity.
+We present the minimal logical structure necessary and sufficient for autonomous mutual coordination. Beginning from the concept of capacity (ability to provide), we derive through necessity: (i) proportional measure normalized to 100%, (ii) bilateral minimum operator for mutual recognition, (iii) satisfaction feedback for empirical correction, and (iv) non-transferable recognition authority. We prove these are not design choices but logical requirements following from the conditions: self-determination, mutuality, completeness, and empirical grounding. The analysis reveals that infinity equals 100% of itself, and the percentage form embodies "generic distributivity" - the capacity for apportionment intrinsic to numerical self-identity.
 
 **Keywords**: coordination mechanisms, proportional reasoning, mutual recognition, logical necessity, self-determination
 
@@ -287,7 +287,7 @@ These are not design choices but logical requirements. Any deviation produces co
 - Non-feedback ⇒ no correction toward reality
 - Transferable ⇒ coercible, not autonomous
 
-The analysis reveals deep structure: the infinite equals 100% of itself, and this self-identity expressed as percentage already contains apportionability. The % form is generic distributivity—the logical structure of apportionable totality.
+The analysis reveals deep structure: the infinite equals 100% of itself, and this self-identity expressed as percentage already contains apportionability. The % form is generic distributivity - the logical structure of apportionable totality.
 
 **Significance**: This is not one coordination mechanism among many, but *the* necessary form of self-determining mutual coordination. The structure follows from first principles with logical necessity.
 

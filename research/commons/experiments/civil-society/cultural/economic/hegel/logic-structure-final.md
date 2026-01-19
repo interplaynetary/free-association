@@ -4,7 +4,7 @@
 
 ## Abstract
 
-We prove the minimum operator is **uniquely necessary** for mutual recognition by identifying the core requirement: **perfect reciprocal proportionality**—each party's proportional claim must equal their commitment level (bounded by the other party). We show proportional structure is logically necessary for commensurable coordination, satisfaction feedback is functionally necessary for quality convergence, and non-transferability follows definitionally from autonomy. The analysis distinguishes logical necessity (no alternative), functional necessity (goal-dependent), and definitional necessity (concept-dependent).
+We prove the minimum operator is **uniquely necessary** for mutual recognition by identifying the core requirement: **perfect reciprocal proportionality** - each party's proportional claim must equal their commitment level (bounded by the other party). We show proportional structure is logically necessary for commensurable coordination, satisfaction feedback is functionally necessary for quality convergence, and non-transferability follows definitionally from autonomy. The analysis distinguishes logical necessity (no alternative), functional necessity (goal-dependent), and definitional necessity (concept-dependent).
 
 ---
 
@@ -65,9 +65,9 @@ Consider r_{A→B} = 0.8, r_{B→A} = 0.2
 
 - **Average**: MR = 0.5. Claims (0.5) equal neither commitment. Creates value not present in either commitment. ✗
 
-- **Harmonic**: MR = 0.32. Same issue—commitment-claim disconnection. ✗
+- **Harmonic**: MR = 0.32. Same issue - commitment-claim disconnection. ✗
 
-- **Maximum**: MR = 0.8 = Alice's commitment. But this violates symmetry—Alice's high value overrides Bob's low commitment. ✗
+- **Maximum**: MR = 0.8 = Alice's commitment. But this violates symmetry - Alice's high value overrides Bob's low commitment. ✗
 
 **Why Minimum Works**: 
 ```
@@ -102,7 +102,7 @@ These follow as consequences, not separate requirements.
 
 ## III. Functional Necessity: Satisfaction Feedback
 
-**Observation**: Pure proportional allocation (a_i ∝ r_i) is logically coherent but empirically arbitrary—no correction mechanism.
+**Observation**: Pure proportional allocation (a_i ∝ r_i) is logically coherent but empirically arbitrary - no correction mechanism.
 
 **Proposition 3** (Functional Necessity). For quality convergence and learning from experience, satisfaction feedback is necessary:
 
@@ -186,7 +186,7 @@ System gravitates toward quality.
 My commitment r = my proportional claim (if reciprocated)
 Direct correspondence: commitment ≡ claim
 ```
-No attenuation, no inflation—just bounded reciprocity.
+No attenuation, no inflation - just bounded reciprocity.
 
 ---
 
@@ -208,7 +208,7 @@ No attenuation, no inflation—just bounded reciprocity.
 
 We identify three necessity types:
 
-**Logical**: Minimum operator via perfect reciprocal proportionality—commitment equals claim (bounded by other party). Proportional structure for commensurability.
+**Logical**: Minimum operator via perfect reciprocal proportionality - commitment equals claim (bounded by other party). Proportional structure for commensurability.
 
 **Functional**: Satisfaction feedback for quality convergence and learning.
 

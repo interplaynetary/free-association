@@ -1,4 +1,4 @@
-That’s a deep and interesting set of questions — you’re essentially talking about blending **Swiss association (Verein) law** with **automated financial infrastructure** and **tokenized governance / distribution** mechanisms. Let’s unpack this step-by-step.
+That’s a deep and interesting set of questions  -  you’re essentially talking about blending **Swiss association (Verein) law** with **automated financial infrastructure** and **tokenized governance / distribution** mechanisms. Let’s unpack this step-by-step.
 
 ---
 
@@ -9,7 +9,7 @@ A **Swiss Verein** is a nonprofit *association* (under Art. 60 et seq. of the Sw
 * Simple to establish (by-laws/statutes + founding meeting).
 * Not necessarily subject to mandatory audit unless large enough.
 * Can hold a bank account and engage in financial transactions if consistent with its purpose.
-* Can (with care) be used as a *neutral coordination entity* for global projects — e.g., professional associations, open-source foundations, DAO-like structures.
+* Can (with care) be used as a *neutral coordination entity* for global projects  -  e.g., professional associations, open-source foundations, DAO-like structures.
 
 So, it’s a good legal "anchor" for a decentralized organization.
 
@@ -56,7 +56,7 @@ This lets you:
 If your Verein’s *bylaws/statutes* define a **protocol-governed distribution system**, then:
 
 * You can encode the logic in a **smart contract** (e.g. DAO-style treasury).
-* Tokens could represent *membership rights, votes, or claims* — but **not** profit rights (since that would break the nonprofit definition).
+* Tokens could represent *membership rights, votes, or claims*  -  but **not** profit rights (since that would break the nonprofit definition).
 * The Verein could act as the **legal wrapper** for a DAO-like treasury, e.g. “the Verein executes distributions according to the smart contract outcomes”.
 
 Tools to look at:

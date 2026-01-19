@@ -225,7 +225,7 @@ Integrated the **Velocity of Correction Principle** throughout UNIVERSAL.md, sim
 "Transparency enables verification but has privacy implications. It helps defend against attacks by making misallocations visible."
 
 **After**:
-"Transparency maximizes correction velocity—misallocations are immediately visible. Privacy trades off against correction speed."
+"Transparency maximizes correction velocity - misallocations are immediately visible. Privacy trades off against correction speed."
 
 **Difference**: From defensive justification to optimization trade-off
 
@@ -309,7 +309,7 @@ Integrated the **Velocity of Correction Principle** throughout UNIVERSAL.md, sim
 
 ### Privacy Trade-offs
 
-**Old**: "We want transparency for security but privacy for users—conflict!"
+**Old**: "We want transparency for security but privacy for users - conflict!"
 
 **New**: "Transparency maximizes velocity. Privacy reduces velocity. Choose the right point on the trade-off curve for your application."
 
@@ -410,5 +410,5 @@ The velocity principle could be applied to:
 4. **Discovery tools**: Design for velocity maximization
 5. **Privacy extensions**: Frame as velocity trade-off quantification
 
-The principle is generative—it produces insights and design guidance beyond security.
+The principle is generative - it produces insights and design guidance beyond security.
 

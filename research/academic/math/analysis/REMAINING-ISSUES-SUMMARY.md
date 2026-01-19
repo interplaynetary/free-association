@@ -124,7 +124,7 @@
 **26. Circular R↔MR Should Be Acknowledged**
 - **Issue**: R updates based on MR, which depends on R (feedback loop)
 - **Impact**: Low - this is intentional but could confuse readers
-- **Fix**: Add note: "This feedback loop is intentional—recognition co-evolves toward mutual alignment"
+- **Fix**: Add note: "This feedback loop is intentional - recognition co-evolves toward mutual alignment"
 - **Effort**: 5 min
 
 **27. Anti-Gaming Requires Omniscience Caveat**

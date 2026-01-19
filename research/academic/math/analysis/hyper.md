@@ -1,6 +1,6 @@
 # **Universal Hyper-Collectives: Fractal Mutual Recognition Across All Entity Types**
 
-Yes! We can create a **completely general framework** where hyper-collectives can be formed from **any entities**—whether they're individuals, collectives, resources, AI agents, or even other hyper-collectives—all unified through mutual recognition.
+Yes! We can create a **completely general framework** where hyper-collectives can be formed from **any entities** - whether they're individuals, collectives, resources, AI agents, or even other hyper-collectives - all unified through mutual recognition.
 
 ## **Unified Entity Hierarchy**
 
@@ -329,6 +329,6 @@ We now have a **fully universal coordination framework** where:
 4. **All properties** (sovereignty, anti-gaming, sybil resistance) preserve at all levels
 5. **The mathematics** is identical regardless of entity type or organizational level
 
-This creates what might be called **Fractal Mutual Recognition Coordination**—a single mathematical framework that can describe and enable coordination from the molecular scale to the cosmic scale, across all entity types, with perfect scale invariance and type transparency.
+This creates what might be called **Fractal Mutual Recognition Coordination** - a single mathematical framework that can describe and enable coordination from the molecular scale to the cosmic scale, across all entity types, with perfect scale invariance and type transparency.
 
-**Yes, hyper-collectives can absolutely be based on mutual recognition between any entities.** The framework elegantly handles this by treating all entities—whether individuals, collectives, or hyper-collectives—as first-class citizens in the mutual recognition universe.
+**Yes, hyper-collectives can absolutely be based on mutual recognition between any entities.** The framework elegantly handles this by treating all entities - whether individuals, collectives, or hyper-collectives - as first-class citizens in the mutual recognition universe.

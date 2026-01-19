@@ -18,7 +18,7 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-**Subheading**: "The protocol that scales infinitely because it's not about scarcity — it's about proportional reasoning."
+**Subheading**: "The protocol that scales infinitely because it's not about scarcity  -  it's about proportional reasoning."
 
 ---
 

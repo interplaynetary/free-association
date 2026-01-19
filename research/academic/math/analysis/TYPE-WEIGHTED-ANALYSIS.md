@@ -298,7 +298,7 @@ Applied to any share calculation:
 
 **Add note in Section 4.2 after SCRMRS**:
 
-> **Note on Type-Based Weighting**: Earlier drafts included type-weighted SCMRS to balance influence across entity types. We've removed this to maintain type-transparent coordination—the framework processes all types identically, with differences only in recognition generation. Collectives wanting type-specific policies can use filters (Section 5) to create type-specific sub-collectives, or define custom share signals for their specific use case.
+> **Note on Type-Based Weighting**: Earlier drafts included type-weighted SCMRS to balance influence across entity types. We've removed this to maintain type-transparent coordination - the framework processes all types identically, with differences only in recognition generation. Collectives wanting type-specific policies can use filters (Section 5) to create type-specific sub-collectives, or define custom share signals for their specific use case.
 
 ---
 
@@ -334,7 +334,7 @@ Removing Type-Weighted SCMRS:
 
 **Recommendation**: **Remove Section 4.3** from UNIVERSAL.md
 
-The framework is stronger without it—simpler, more consistent, and more faithful to the type-transparent coordination principle.
+The framework is stronger without it - simpler, more consistent, and more faithful to the type-transparent coordination principle.
 
 ---
 

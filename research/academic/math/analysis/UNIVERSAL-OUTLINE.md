@@ -72,7 +72,7 @@
 - Anti-gaming becomes vacuous
 
 **4.2 The Discovery**
-> **Trade-offs are NOT an axiom—they're DERIVED from anti-gaming having meaning!**
+> **Trade-offs are NOT an axiom - they're DERIVED from anti-gaming having meaning!**
 
 - For optimization to be non-trivial, signals must be bounded
 - Increasing signal to one partner must cost something
@@ -156,7 +156,7 @@ Increasing signal doesn't decrease allocation
 - **Clarity**: What's sovereign (Layer 1) vs what's collective (Layer 2)
 
 **6.3 The Key Insight**
-> "What we called 'shares' are just Layer 2 transformations—optional, not fundamental!"
+> "What we called 'shares' are just Layer 2 transformations - optional, not fundamental!"
 
 ### 7. Layer 1: The Signal Design Space
 
@@ -229,7 +229,7 @@ Weighted sum of member signals
 **8.5 Market-Like Clearing** (if using sovereign signals!)
 ```
 φ = market_clear(supply, demand_signals)
-But NOT with money—use recognition/votes
+But NOT with money - use recognition/votes
 ```
 
 **8.6 The Transformation Requirement**
@@ -313,7 +313,7 @@ Allocate signal proportional to realized transformation output.
 Under mild conditions (Lipschitz, bounded), iterative updates converge exponentially to fixed point.
 
 **11.4 Interpretation**
-System naturally evolves toward states where signals align with transformation outputs—creating stable equilibria.
+System naturally evolves toward states where signals align with transformation outputs - creating stable equilibria.
 
 ### 12. Sybil Resistance
 
@@ -409,7 +409,7 @@ With equality only if:
 ### 15. Axiom Minimality: The Reduction
 
 **15.1 The Discovery**
-We don't need 4 axioms—only 3!
+We don't need 4 axioms - only 3!
 
 **Original (apparent) axioms**:
 1. Sovereign signals
@@ -428,7 +428,7 @@ We don't need 4 axioms—only 3!
 - Allocation responsiveness ← from goal optimization
 
 **15.2 Why This Matters**
-> "The budget constraint isn't imposed—it's the minimal structure required for coordination to be non-trivial."
+> "The budget constraint isn't imposed - it's the minimal structure required for coordination to be non-trivial."
 
 This reveals the framework's NECESSITY, not just sufficiency.
 
@@ -454,9 +454,9 @@ Entity is incentivized to REDUCE signal to helpful partners!
 This violates anti-gaming fundamentally.
 
 **16.4 The Insight**
-> "Weak monotonicity is not just technical—it's the mathematical expression of respect for sovereignty."
+> "Weak monotonicity is not just technical - it's the mathematical expression of respect for sovereignty."
 
-For your expression to be respected, it must be honored—not penalized.
+For your expression to be respected, it must be honored - not penalized.
 
 ### 17. The Fundamental Theorem of Constraints
 
@@ -489,14 +489,14 @@ Choose based on application requirements!
 ### 18. What We Discovered
 
 **18.1 Sovereignty Is Mathematical**
-Not ideological or political—it's a precise mathematical property:
+Not ideological or political - it's a precise mathematical property:
 - Unilateral revocability
 - Non-transferability
 - Flow not stock
 - Instantaneous effect
 
 **18.2 Money Violates Sovereignty**
-This isn't a value judgment—it's a mathematical fact:
+This isn't a value judgment - it's a mathematical fact:
 - Money transfers ownership
 - Retrieval requires consent
 - Accumulated stock
@@ -526,7 +526,7 @@ For ANY mechanism satisfying the axioms:
 ```
 
 **The insight**:
-> "We didn't design a coordination system. We discovered the MINIMAL REQUIREMENTS for sovereignty-preserving coordination—and found they generate an infinite design space, all with guaranteed anti-gaming properties."
+> "We didn't design a coordination system. We discovered the MINIMAL REQUIREMENTS for sovereignty-preserving coordination - and found they generate an infinite design space, all with guaranteed anti-gaming properties."
 
 ### 20. The Vision
 
@@ -602,7 +602,7 @@ ALL mechanisms satisfying the axioms exhibit:
 Weak monotonicity (∂φ/∂σ ≥ 0) separates sovereign from authoritarian mechanisms.
 
 **The vision**:
-A world where sovereignty and cooperation are mathematically compatible—not through compromise, but through fundamental structure.
+A world where sovereignty and cooperation are mathematically compatible - not through compromise, but through fundamental structure.
 
 ---
 

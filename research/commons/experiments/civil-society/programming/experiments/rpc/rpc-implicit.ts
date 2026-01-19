@@ -36,21 +36,21 @@ import type {
  */
 class Commitment extends RpcTarget {
 	private valid = true;
-	
+
 	constructor(
 		private pubKey: string,
 		private data: () => CommitmentData | null
 	) {
 		super();
 	}
-	
+
 	// Simple validity check - throws if invalid
 	private check(): void {
 		if (!this.valid) {
 			throw new Error('Commitment no longer valid (connection closed?)');
 		}
 	}
-	
+
 	// All methods just check validity and proceed
 	async commitment(): Promise<CommitmentData> {
 		this.check();
@@ -58,27 +58,27 @@ class Commitment extends RpcTarget {
 		if (!c) throw new Error('No commitment');
 		return c;
 	}
-	
+
 	async needs(): Promise<NeedSlot[]> {
 		this.check();
 		return (await this.commitment()).need_slots || [];
 	}
-	
+
 	async capacity(): Promise<AvailabilitySlot[]> {
 		this.check();
 		return (await this.commitment()).capacity_slots || [];
 	}
-	
+
 	async recognition(): Promise<GlobalRecognitionWeights> {
 		this.check();
 		return (await this.commitment()).global_recognition_weights || {};
 	}
-	
+
 	async key(): Promise<string> {
 		this.check();
 		return this.pubKey;
 	}
-	
+
 	// "Revocation" is just marking invalid
 	// Real revocation happens when connection closes!
 	invalidate(): void {
@@ -104,25 +104,25 @@ class Commitment extends RpcTarget {
  */
 class Session extends RpcTarget {
 	private valid = true;
-	
+
 	constructor(
 		public sessionId: string,
 		private create: (recipientId: string) => Commitment
 	) {
 		super();
 	}
-	
+
 	private check(): void {
 		if (!this.valid) {
 			throw new Error('Session ended');
 		}
 	}
-	
+
 	async commitment(): Promise<RpcStub<Commitment>> {
 		this.check();
 		return this.create(this.sessionId) as any;
 	}
-	
+
 	async logout(): Promise<void> {
 		this.valid = false;
 		// Connection can close here, breaking all capabilities!
@@ -145,16 +145,16 @@ class Auth extends RpcTarget {
 	) {
 		super();
 	}
-	
+
 	async login(pubKey: string, signature: string): Promise<RpcStub<Session>> {
 		if (!this.verify(pubKey, signature)) {
 			throw new Error('Invalid signature');
 		}
-		
+
 		const sessionId = crypto.randomUUID();
 		return new Session(sessionId, this.create) as any;
 	}
-	
+
 	private verify(pubKey: string, signature: string): boolean {
 		// TODO: Implement signature verification
 		return true;
@@ -273,13 +273,13 @@ export {
 /**
  * 1. "Once you've awaited an RPC in the batch, the batch is done,
  *     and all the remote references received through it become broken."
- *     — Article line 134
+ *      -  Article line 134
  * 
  *    Revocation by connection lifecycle!
  * 
  * 2. "It is impossible for the client to 'forge' a session object.
  *     The only way to get one is to call authenticate()"
- *     — Article line 209
+ *      -  Article line 209
  * 
  *    Security by possession, not verification!
  * 

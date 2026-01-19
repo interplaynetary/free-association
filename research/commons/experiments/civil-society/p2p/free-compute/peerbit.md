@@ -34,23 +34,23 @@ The file stays alive in the system, replicated widely
 
 ✨ What Peerbit Unlocks Here
 Peerbit is incredibly exciting because it enables modular, programmable, live-updating replication logic:
-Replication is driven by data context — you choose what properties (time, identity, utility score) influence placement
+Replication is driven by data context  -  you choose what properties (time, identity, utility score) influence placement
 
 Unlike IPFS which is static, Peerbit lets replication evolve over time
 
 Ideal for your model where value = contribution over time
 
-Yes — Peerbit is extremely well-suited for the kind of dynamic repartitioning you described. In fact, it’s one of the only protocols in the decentralized space that explicitly enables live, programmable replication domains — a foundational requirement for what you’re building.
+Yes  -  Peerbit is extremely well-suited for the kind of dynamic repartitioning you described. In fact, it’s one of the only protocols in the decentralized space that explicitly enables live, programmable replication domains  -  a foundational requirement for what you’re building.
 Here’s a breakdown showing how Peerbit supports your vision, point-by-point:
 
 ✅ Your Idea: Dynamic Repartitioning Based on Mutual Contribution
-“Data persists where it has mutualist value — and decays otherwise.”
+“Data persists where it has mutualist value  -  and decays otherwise.”
 🔧 How Peerbit Enables This:
 Peerbit lets you define custom replication domains using any property (e.g., timestamp, hash, author ID, contribution score).
 
 You can dynamically project data onto a [0, 1] range, which can change over time (e.g., as mutualism changes).
 
-Replication ranges can shift continuously — data is only stored by nodes in the matching sub-range.
+Replication ranges can shift continuously  -  data is only stored by nodes in the matching sub-range.
 
 You can use logic like:
 
@@ -64,7 +64,7 @@ So, if someone’s contribution score drops, their data can automatically fall o
 ✅ Your Idea: Programs That Scale or Shrink With Their Utility
 “Healthy code/data scales; unhealthy decays.”
 🔧 How Peerbit Enables This:
-Data in Peerbit isn't pinned forever — it only stays replicated if:
+Data in Peerbit isn't pinned forever  -  it only stays replicated if:
 
 It remains within the active replication domain
 
@@ -72,7 +72,7 @@ Enough peers choose to replicate it (incentivized by contribution)
 
 You can link replication ranges to live scores, like mutual value, usage count, or peer-reinforcement.
 
-Programs (code) are data — they follow the same rules.
+Programs (code) are data  -  they follow the same rules.
 
 The system becomes self-healing and adaptive, like a living organism pruning dead tissue.
 
@@ -104,7 +104,7 @@ Fully extensible to reflect social, temporal, identity, or utility logic
 Would you like a custom code example showing how to build a Peerbit domain based on a live “mutual contribution score”?
 
 Mapping the Future of Replication: Custom Data Domains in Peerbit
-Imagine a system where data replication isn’t fixed but is dynamically mapped to a continuous space. With Peerbit’s custom data domains, you can define replication ranges that flexibly reflect properties of your data—whether that’s a hash, a timestamp, or even the buffering timeline of a live video stream.
+Imagine a system where data replication isn’t fixed but is dynamically mapped to a continuous space. With Peerbit’s custom data domains, you can define replication ranges that flexibly reflect properties of your data - whether that’s a hash, a timestamp, or even the buffering timeline of a live video stream.
 A Generalized Address Space
 Traditional replication methods rely on fixed partitions or discrete addressing. In contrast, range-based replication projects content onto a 1-dimensional line bounded by [0, 1]. This continuous space can represent any property you choose:
 Hash Mapping:
@@ -217,7 +217,7 @@ The store uses a custom domain where the timestamp property is mapped into the r
 Bringing It All Together
 Peerbit’s custom data domains represent a paradigm shift in replication:
 Flexibility:
-Map any property—hash, time, or identity—into a continuous space, adapting replication to your application’s needs.
+Map any property - hash, time, or identity - into a continuous space, adapting replication to your application’s needs.
 Efficiency:
 Dynamic adjustment of replication ranges minimizes rebalancing overhead and improves data availability.
 Real-World Utility:

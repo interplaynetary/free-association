@@ -4,7 +4,7 @@
 
 In traditional economic systems, resources are typically owned by individuals or organizations who then make unilateral decisions about their distribution. These systems often create sharp distinctions between what is "mine" and what is "yours," leading to dynamics of scarcity, hoarding, and zero-sum competition. The Mutual Fulfillment System offers a radical alternative: a mathematical framework where resource allocation emerges organically from patterns of mutual recognition within a network of contributors.
 
-Rather than starting with the premise of exclusive ownership, this system starts with the understanding that all capacities exist within webs of relationships. When you recognize someone's contributions, you're not simply acknowledging their work—you're participating in a sophisticated network of value flows that determines how resources circulate throughout the community.
+Rather than starting with the premise of exclusive ownership, this system starts with the understanding that all capacities exist within webs of relationships. When you recognize someone's contributions, you're not simply acknowledging their work - you're participating in a sophisticated network of value flows that determines how resources circulate throughout the community.
 
 ## Core Principles
 
@@ -14,11 +14,11 @@ The Mutual Fulfillment System is built on several fundamental principles:
 
 2. **Network-Emergent Distribution**: Resource distribution isn't determined by centralized decisions or market mechanisms, but emerges organically from the pattern of recognitions throughout the network.
 
-3. **Capacity as Relationship**: Resources (or "capacities") aren't conceived as static objects to be owned, but as dynamic potentials that are governed through relationships. A room isn't simply a physical space—it's a capacity whose use is determined by the web of recognitions surrounding it.
+3. **Capacity as Relationship**: Resources (or "capacities") aren't conceived as static objects to be owned, but as dynamic potentials that are governed through relationships. A room isn't simply a physical space - it's a capacity whose use is determined by the web of recognitions surrounding it.
 
 4. **Transitive Value Flows**: Value can flow through multiple hops in the network, creating indirect benefits that return to contributors through circular paths. This captures the reality that in healthy communities, giving often returns to the giver through indirect routes.
 
-5. **Self-Governance Through Community**: Individuals govern their own capacities not through direct self-allocation, but through their patterns of recognizing others, which then mathematically determines how their capacity flows—including back to themselves.
+5. **Self-Governance Through Community**: Individuals govern their own capacities not through direct self-allocation, but through their patterns of recognizing others, which then mathematically determines how their capacity flows - including back to themselves.
 
 ## The Mathematical Foundation
 
@@ -41,7 +41,7 @@ Critically, these calculations respect the physical constraints of the resources
 
 One of the most fascinating aspects of this system is how individuals receive portions of their own capacity through transitive network connections. For example, when Alice shares her room capacity with Bob and Charlie, and they in turn recognize Alice's contributions, a portion of Alice's capacity (around 27.78% in our example) returns to her through these circular paths.
 
-This isn't a bug in the system—it's a feature that reflects a profound truth about community interdependence. By recognizing others, you create pathways that return value to you. This discourages pure self-interest (directly allocating everything to yourself) and rewards balanced recognition across the network.
+This isn't a bug in the system - it's a feature that reflects a profound truth about community interdependence. By recognizing others, you create pathways that return value to you. This discourages pure self-interest (directly allocating everything to yourself) and rewards balanced recognition across the network.
 
 In practice, this means that caring for yourself becomes inseparable from caring for the community. If Alice wants to increase her access to her own room, she must strengthen her mutual fulfillment with others, who will then increase their recognition of her contributions, returning to her as increased capacity allocation.
 
@@ -73,7 +73,7 @@ Implementing this system requires both technical infrastructure and cultural pra
 
 ## Conclusion: A New Paradigm for Resource Governance
 
-The Mutual Fulfillment System isn't merely an incremental improvement on existing resource allocation methods—it's a fundamentally different paradigm that aligns with emerging understandings of value as relational rather than absolute.
+The Mutual Fulfillment System isn't merely an incremental improvement on existing resource allocation methods - it's a fundamentally different paradigm that aligns with emerging understandings of value as relational rather than absolute.
 
 By mathematically implementing the principle that "what goes around comes around," this system provides a concrete framework for communities seeking to move beyond both market-based competition and centralized allocation. It offers a third way: resource governance through networks of mutual recognition.
 

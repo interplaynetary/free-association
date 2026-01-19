@@ -36,18 +36,18 @@ All these properties are **consequences of a single incentive**: maximize the sp
 - Correct them immediately
 - Maintain systems that enable fast discovery"
 
-**Simplification**: Anti-gaming isn't just about optimality—it's about **speed to optimality**.
+**Simplification**: Anti-gaming isn't just about optimality - it's about **speed to optimality**.
 
 ### 2. Convergence (Section 9.3)
 
 **Current**: "System converges to fixed point where R ∝ MR"
 
-**With insight**: "Entities don't just converge—they're incentivized to converge FAST:
+**With insight**: "Entities don't just converge - they're incentivized to converge FAST:
 - Each iteration closer to fixed point = better goal achievement
 - Faster updates = faster benefit realization
 - No incentive to delay or slow convergence"
 
-**Simplification**: Convergence isn't just guaranteed—it's **accelerated by self-interest**.
+**Simplification**: Convergence isn't just guaranteed - it's **accelerated by self-interest**.
 
 ### 3. Transparency (Section 9.4 - Privacy)
 
@@ -59,7 +59,7 @@ All these properties are **consequences of a single incentive**: maximize the sp
 - Public MR values enable fast discovery of beneficial partners
 - **Privacy trades off against correction speed**"
 
-**Simplification**: Transparency isn't a necessary evil—it's **velocity-optimal**.
+**Simplification**: Transparency isn't a necessary evil - it's **velocity-optimal**.
 
 ### 4. Sybil Resistance (Section 9.2)
 
@@ -106,7 +106,7 @@ All these properties are **consequences of a single incentive**: maximize the sp
 - No sunk cost fallacy = optimal allocation always
 - Threat of revocation incentivizes partners to maintain value"
 
-**Simplification**: Revocability isn't just sovereignty—it's **correction velocity**.
+**Simplification**: Revocability isn't just sovereignty - it's **correction velocity**.
 
 ### 8. Sovereignty (Throughout)
 
@@ -117,7 +117,7 @@ All these properties are **consequences of a single incentive**: maximize the sp
 - No coordination overhead = fast response to changing conditions
 - Decentralized correction = parallel optimization"
 
-**Simplification**: Sovereignty isn't just a value—it's **algorithmically optimal for correction speed**.
+**Simplification**: Sovereignty isn't just a value - it's **algorithmically optimal for correction speed**.
 
 ---
 
@@ -318,7 +318,7 @@ exists, but that entities are incentivized to reach it *as fast as possible*.
    - Faster finding → faster goal achievement
    - Commons-based discovery infrastructure benefits all
 
-**Result**: The framework is *self-healing*—errors are naturally corrected 
+**Result**: The framework is *self-healing* - errors are naturally corrected 
 at maximum speed because correction velocity is aligned with individual incentives.
 
 **Connection to other properties**: Velocity of correction explains why:
@@ -354,7 +354,7 @@ at maximum speed because correction velocity is aligned with individual incentiv
 "System converges to fixed point by Lyapunov function"
 
 **After**:
-"System converges because entities want it to converge—each iteration improves goal achievement"
+"System converges because entities want it to converge - each iteration improves goal achievement"
 
 ---
 

@@ -1101,7 +1101,7 @@ Cycle t+3: ...oscillates forever
      Decline remainder
      Satisfaction still high (got what you needed)
    
-   Result: No oscillation—you get exactly what you need every cycle
+   Result: No oscillation - you get exactly what you need every cycle
    ```
 
 3. **Weighted Aggregation (Smoothing):**
@@ -1191,7 +1191,7 @@ Future allocation → Allocation satisfaction (loop)
 ```
 
 **ANALYSIS:**
-This is the core learning loop—it's INTENDED behavior, but needs stability.
+This is the core learning loop - it's INTENDED behavior, but needs stability.
 
 **STABILIZERS:**
 1. **Hierarchical Aggregation (Dampening Factor):**
@@ -1214,7 +1214,7 @@ This is the core learning loop—it's INTENDED behavior, but needs stability.
    If node has 10 contributors each with points:
    Single contributor's satisfaction affects their share: 1/10 = 10%
    
-   Not winner-take-all—proportional impact
+   Not winner-take-all - proportional impact
    ```
 
 3. **Per-Type Damping (from v4/v5):**
@@ -1257,7 +1257,7 @@ Declining resources return to provider's available capacity in SAME cycle.
      Step 3: Declined resources → back to available capacity
      Step 4: Reallocate declined resources to other recipients
      
-   All happens in one calculation round—no cascade across cycles
+   All happens in one calculation round - no cascade across cycles
    ```
 
 2. **Need-Based Capping:**
@@ -1265,7 +1265,7 @@ Declining resources return to provider's available capacity in SAME cycle.
    FinalAllocation = min(RawAllocation, RemainingNeed)
    
    Even if capacity surges, can't force allocation beyond need
-   Recipients don't have to actively decline—system auto-caps
+   Recipients don't have to actively decline - system auto-caps
    ```
 
 3. **Learning From Decline Patterns:**
@@ -1376,7 +1376,7 @@ Combined Calculation:
     Slot-Based contribution (from satisfaction aggregation)
     
   Both weighted by their tree positions
-  No conflict—they add together
+  No conflict - they add together
 ```
 
 **Example:**
@@ -1566,5 +1566,5 @@ The v6 satisfaction-based feedback system is stable because:
 The system converges to a satisfaction equilibrium where allocations
 match actual utility, and satisfaction ratings reflect true helpfulness.
 
-This is a **learning system with guaranteed stability**—it gets smarter
+This is a **learning system with guaranteed stability** - it gets smarter
 without becoming chaotic.

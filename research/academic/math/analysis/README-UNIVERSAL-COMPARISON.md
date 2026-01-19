@@ -5,7 +5,7 @@
 ### 1. **"Fourth Type of Economic Relationship"** Framing
 
 **README** (lines 3-7):
-> The Solution: A fourth type of economic relationship based on **mutual recognition**—where entities acknowledge each other's contributions toward shared goals and allocate resources accordingly.
+> The Solution: A fourth type of economic relationship based on **mutual recognition** - where entities acknowledge each other's contributions toward shared goals and allocate resources accordingly.
 
 **UNIVERSAL**: Doesn't explicitly frame this as the "fourth type" after markets, charity, and bureaucracy.
 
@@ -40,7 +40,7 @@
 
 **README** (lines 744-745):
 > **Free Association:**
-> - No ownership of other entities—each maintains 100% autonomy
+> - No ownership of other entities - each maintains 100% autonomy
 > - Recognition continuously adjustable based on current contributions
 
 **UNIVERSAL**: Discusses sovereignty extensively but doesn't explicitly emphasize "100% autonomy" or "no ownership of other entities."
@@ -130,7 +130,7 @@ Add clearer three-failure-modes framing and "fourth type" positioning.
 > - **Charity** creates dependency rather than partnership
 > - **Bureaucracy** requires centralized control and moves slowly
 > 
-> We propose a **fourth type of economic relationship** based on mutual recognition—where entities acknowledge each other's contributions toward shared goals and allocate resources accordingly. This creates coordination that is fast (converges in seconds), fair (mathematically guaranteed), efficient (direct resource flows), and decentralized (no central authority).
+> We propose a **fourth type of economic relationship** based on mutual recognition - where entities acknowledge each other's contributions toward shared goals and allocate resources accordingly. This creates coordination that is fast (converges in seconds), fair (mathematically guaranteed), efficient (direct resource flows), and decentralized (no central authority).
 
 **Impact**: Immediately clear WHY the framework matters and WHAT it replaces.
 
@@ -152,7 +152,7 @@ Make explicit distinctions from charity and equity models more prominent.
 **From Equity/Ownership (Past Investment → Present Contribution)**:
 - Equity: Fixed ownership shares from past capital provision, transferable, creates permanent claims
 - Mutual Stakeholding: Exchanged shares, but transferability enables persistent false recognition
-- Free Association: No ownership of other entities—each maintains 100% autonomy
+- Free Association: No ownership of other entities - each maintains 100% autonomy
   - Recognition reflects ongoing contributions, not past investments
   - Non-transferable recognition prevents accumulation of false claims
   - Present contributions determine flows, adjusted continuously

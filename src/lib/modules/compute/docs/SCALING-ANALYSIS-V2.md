@@ -608,7 +608,7 @@ For a 1,000-participant network:
 
 ## Conclusion
 
-**V2 is not just an improvement—it's a paradigm shift.**
+**V2 is not just an improvement - it's a paradigm shift.**
 
 - Removes artificial barriers (rounds)
 - Embraces natural patterns (events)
@@ -618,5 +618,5 @@ For a 1,000-participant network:
 **V1 works for 10-100 participants**
 **V2 works for 10-10,000+ participants**
 
-The improvement isn't just quantitative—it's **architectural**.
+The improvement isn't just quantitative - it's **architectural**.
 

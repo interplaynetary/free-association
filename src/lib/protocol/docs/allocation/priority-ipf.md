@@ -110,7 +110,7 @@ Subject to:
 1.  $\sum_r A_{pr} \le C_p$
 2.  $\sum_p A_{pr} \le N_r$
 
-This is the entropy-minimizing solution—the "most unbiased" way to satisfy constraints given the expressed preferences.
+This is the entropy-minimizing solution - the "most unbiased" way to satisfy constraints given the expressed preferences.
 
 ## Comparison to `allocation-local.ts`
 

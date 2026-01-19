@@ -1,10 +1,10 @@
-Nice — this is a rich, doable problem. Below I’ll explain **how zero-knowledge (ZK) compliance proofs work in practice**, how to **automate AML/KYC** in your Verein model, and give a **concrete implementation blueprint + recommended stack** you can follow (including privacy, revocation, auditability, and where the Board stays out of the loop). I’ll be concrete about trade-offs and legal cautions for Switzerland.
+Nice  -  this is a rich, doable problem. Below I’ll explain **how zero-knowledge (ZK) compliance proofs work in practice**, how to **automate AML/KYC** in your Verein model, and give a **concrete implementation blueprint + recommended stack** you can follow (including privacy, revocation, auditability, and where the Board stays out of the loop). I’ll be concrete about trade-offs and legal cautions for Switzerland.
 
 ---
 
 # 1) High level idea (one-line)
 
-Have a **regulated KYC provider** (attestor) verify identities off-chain and issue **verifiable credentials**. Members hold those credentials in their wallets and produce **zero-knowledge proofs** (ZKPs) that they satisfy required attributes (e.g., “KYC passed”, “not on sanctions list”, jurisdiction OK) — proofs that the protocol and the Board can verify **without learning personal data**. The Board only receives the verification result and cryptographic receipts (not raw identity data).
+Have a **regulated KYC provider** (attestor) verify identities off-chain and issue **verifiable credentials**. Members hold those credentials in their wallets and produce **zero-knowledge proofs** (ZKPs) that they satisfy required attributes (e.g., “KYC passed”, “not on sanctions list”, jurisdiction OK)  -  proofs that the protocol and the Board can verify **without learning personal data**. The Board only receives the verification result and cryptographic receipts (not raw identity data).
 
 Key research & industry work shows this pattern (SSI + ZK proofs + policy enforcement). ([arXiv][1])
 
@@ -12,13 +12,13 @@ Key research & industry work shows this pattern (SSI + ZK proofs + policy enforc
 
 # 2) Core components (short list)
 
-1. **Trusted KYC/Attestor** — a regulated service (or internal compliance team) that performs full KYC/AML and issues a signed credential.
-2. **Self-Sovereign Identity (SSI) wallet** — stores credentials locally for the user (mobile/browser).
-3. **Verifiable Credential (VC)** — W3C-style credential with attributes (e.g., country, risk score, KYC status).
-4. **ZK circuit / proving system** — a circuit that takes the VC (or a hash/commitment of it) and creates a ZK proof of required predicates (e.g., passed KYC, risk ≤ threshold, not-on-sanctions). Common primitives: zk-SNARK (Groth16, PLONK), zk-STARK, Halo2.
-5. **On-chain/off-chain verifier (oracle)** — verifies ZK proofs and attestor signatures and emits a lightweight verification token the protocol reads.
-6. **Revocation / freshness mechanism** — proves credential hasn’t been revoked (revocation accumulator, short-lived credentials, or freshness nonces).
-7. **Audit escrow (optional)** — encrypted identity records retained by attestor + auditor-key access (for regulators under warrant).
+1. **Trusted KYC/Attestor**  -  a regulated service (or internal compliance team) that performs full KYC/AML and issues a signed credential.
+2. **Self-Sovereign Identity (SSI) wallet**  -  stores credentials locally for the user (mobile/browser).
+3. **Verifiable Credential (VC)**  -  W3C-style credential with attributes (e.g., country, risk score, KYC status).
+4. **ZK circuit / proving system**  -  a circuit that takes the VC (or a hash/commitment of it) and creates a ZK proof of required predicates (e.g., passed KYC, risk ≤ threshold, not-on-sanctions). Common primitives: zk-SNARK (Groth16, PLONK), zk-STARK, Halo2.
+5. **On-chain/off-chain verifier (oracle)**  -  verifies ZK proofs and attestor signatures and emits a lightweight verification token the protocol reads.
+6. **Revocation / freshness mechanism**  -  proves credential hasn’t been revoked (revocation accumulator, short-lived credentials, or freshness nonces).
+7. **Audit escrow (optional)**  -  encrypted identity records retained by attestor + auditor-key access (for regulators under warrant).
 
 Important: Swiss law requires regulated customer identification when handling certain services; ZK proofs can preserve privacy but you still need a regulated attestor and auditable chain for regulators. See Swiss AML guidance. ([swissamf.com][2])
 
@@ -43,7 +43,7 @@ Important: Swiss law requires regulated customer identification when handling ce
 4. **Proof verification**
 
    * The protocol (off-chain service or on-chain verifier/contract) verifies the ZK proof and the attestor signature. If valid, it returns a **compliance token** (time-limited) or writes a small on-chain event (proof-verified, timestamp, attestor ID, proof hash).
-   * The Board / Execution layer only sees that a compliance token / verified flag exists for the recipient — nothing else.
+   * The Board / Execution layer only sees that a compliance token / verified flag exists for the recipient  -  nothing else.
 
 5. **Execution**
 
@@ -65,7 +65,7 @@ Important: Swiss law requires regulated customer identification when handling ce
 **Proof system**
 
 * **zk-SNARKs (Groth16/PLONK)**: small proof size and fast verification (good for on-chain). Need trusted setup in some schemes (PLONK and newer avoid complex setups).
-* **Halo2 / STARKs**: transparent setup options (no trusted setup) and better scaling for complex predicates — but larger proofs / verification cost tradeoffs.
+* **Halo2 / STARKs**: transparent setup options (no trusted setup) and better scaling for complex predicates  -  but larger proofs / verification cost tradeoffs.
 
 **Where to verify**
 
@@ -75,7 +75,7 @@ Important: Swiss law requires regulated customer identification when handling ce
 **Revocation**
 
 * **Accumulator-based revocation**: attestor maintains a Merkle/accumulator of valid credentials; proof includes membership; when revoked, credential removed. Efficient but requires updater.
-* **Short-lived tokens**: simpler — attestor issues short expiration tokens; users must re-prove regularly.
+* **Short-lived tokens**: simpler  -  attestor issues short expiration tokens; users must re-prove regularly.
 
 **Auditability**
 
@@ -225,7 +225,7 @@ If you want I can:
 * Produce a **minimal Circom circuit** and `snarkjs` commands for the `kyc_pass` predicate (proof-of-concept); or
 * Draft the **attestor contract / API spec** (issue VC, revoke VC, publish revocation root, sign proofs).
 
-Which of those would you like me to build next — the sequence diagram, a runnable Circom example, or the attestor API spec?
+Which of those would you like me to build next  -  the sequence diagram, a runnable Circom example, or the attestor API spec?
 
 [1]: https://arxiv.org/pdf/2510.05807?utm_source=chatgpt.com "Privacy-Preserving On-chain Permissioning for KYC- ..."
 [2]: https://swissamf.com/swiss-aml-kyc-requirements-and-procedures/?utm_source=chatgpt.com "Swiss AML-KYC Requirements"

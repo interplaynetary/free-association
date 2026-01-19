@@ -4,7 +4,7 @@
 
 **Decider is a structured way for groups to make decisions together fairly.**
 
-Think of it like a guided conversation where everyone gets a voice, concerns are heard, and the group finds the best solution together—not just the most popular one.
+Think of it like a guided conversation where everyone gets a voice, concerns are heard, and the group finds the best solution together - not just the most popular one.
 
 ***
 
@@ -64,13 +64,13 @@ Each **Proposal** contains:
 
 ### The Key Insight
 
-**Decider isn't about voting—it's about collaboration.**
+**Decider isn't about voting - it's about collaboration.**
 
 Traditional voting is binary: yes or no, winner or loser. It creates divisions.
 
 Decider is about **iterative refinement**: propose, learn, improve, support. It creates alignment.
 
-The best ideas aren't the ones people start with—they're the ones that emerge after everyone has contributed their knowledge, concerns, and creativity.
+The best ideas aren't the ones people start with - they're the ones that emerge after everyone has contributed their knowledge, concerns, and creativity.
 
 That's what Decider makes possible.
 
@@ -78,7 +78,7 @@ That's what Decider makes possible.
 
 ### The Complete Process
 
-Let's walk through how three friends—**Alice, Bob, and Carol**—use Decider to figure out what to have for dinner.
+Let's walk through how three friends - **Alice, Bob, and Carol** - use Decider to figure out what to have for dinner.
 
 #### **Step 1: Setting Up**
 
@@ -111,7 +111,7 @@ Everyone can see all three ideas as they come in. Once the time window closes or
 
 #### **Step 3: Raising Challenges** (Time Window: 24 hours)
 
-Now people can raise concerns about any proposal. This isn't about attacking ideas—it's about surfacing important information.
+Now people can raise concerns about any proposal. This isn't about attacking ideas - it's about surfacing important information.
 
 * **Bob raises a concern about Alice's pizza:** "Pizza has gluten, and Carol is allergic to gluten."
 * **Alice raises a concern about Bob's sushi:** "Sushi is really expensive, and we said we're on a budget this week."
@@ -121,7 +121,7 @@ Now people can raise concerns about any proposal. This isn't about attacking ide
 
 In this case, Carol's tacos received no challenges, so they pass directly to the final decisions without needing further discussion.
 
-**Why this matters:** Often, the person suggesting an idea doesn't know about problems others can see. This phase brings important facts to light before anyone commits to a decision. But if everyone agrees from the start, the process doesn't waste time—the proposal passes immediately.
+**Why this matters:** Often, the person suggesting an idea doesn't know about problems others can see. This phase brings important facts to light before anyone commits to a decision. But if everyone agrees from the start, the process doesn't waste time - the proposal passes immediately.
 
 ***
 
@@ -293,7 +293,7 @@ Think of it like this:
 * Everyone keeps their own notes on their own device
 * Everyone shares their notes directly with each other
 * Everyone can see everyone else's notes in real-time
-* No one is "in charge"—everyone has equal access to all information
+* No one is "in charge" - everyone has equal access to all information
 * If one person disappears, everyone else still has all the information
 
 It's like if you and your friends were all looking at the same whiteboard, but each person draws on their own section, and everyone can see the whole board automatically.
@@ -302,7 +302,7 @@ It's like if you and your friends were all looking at the same whiteboard, but e
 
 * **No single point of failure:** No one person controls everything
 * **Transparent:** Everyone sees everything as it happens
-* **Equal:** No hierarchy—everyone has the same power
+* **Equal:** No hierarchy - everyone has the same power
 * **Private:** Your personal data stays on your device, shared only with people you choose
 
 ***
@@ -343,7 +343,7 @@ Decider transforms how groups make decisions by:
 2. **Ensuring everyone is heard:** The phases guarantee every voice matters within clear time windows
 3. **Encouraging improvement:** Ideas evolve rather than just win or lose through challenges and modifications
 4. **Building consensus:** The result has genuine group support through point distribution
-5. **Removing gatekeepers:** No one person controls the process—it's peer-to-peer
+5. **Removing gatekeepers:** No one person controls the process - it's peer-to-peer
 6. **Being efficient:** Early exits mean groups don't waste time when there's already agreement
 7. **Tracking outcomes:** All passed proposals are recorded so the group has a clear record of decisions
 

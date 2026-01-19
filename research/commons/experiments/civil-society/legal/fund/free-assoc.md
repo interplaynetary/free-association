@@ -77,7 +77,7 @@ This allows us to compose specific **time-bound, location-aware slots** into gif
 
 Unlike generic capacity composition, slot-aware composition enables time-coordinated cooperation: your Tuesday morning cooking slot can compose directly with someone's Tuesday afternoon ingredients slot, creating precise temporal and spatial coordination.
 
-The network effects are particularly powerful because slot composition preserves **context**. A cooking capacity might compose specific morning prep slots with specific ingredient delivery slots, which compose with specific farming harvest slots, which compose with specific transportation availability slots—all operating with precise timing and location awareness. This creates supply chains that are not just economically efficient but temporally and spatially coordinated.
+The network effects are particularly powerful because slot composition preserves **context**. A cooking capacity might compose specific morning prep slots with specific ingredient delivery slots, which compose with specific farming harvest slots, which compose with specific transportation availability slots - all operating with precise timing and location awareness. This creates supply chains that are not just economically efficient but temporally and spatially coordinated.
 
 ### How Slot-to-Slot Composition Works:
 
@@ -192,7 +192,7 @@ And that is **_exactly_** who is attributed _shares_ of your surplus-capacity!
 
 ---
 
-To illustrate with another example: Imagine a potluck where pies you bake that you don't need (surplus) helps a neighbor spend less time cooking, _freeing their time_ to fix their oven — the same oven that later bakes bread for your community garden party. That's mutual-fulfillment: Your surplus doesn't vanish — is shared with those who directly/indirectly align with your needs/desires/values/goals, creating a ripple effect of mutual-support that comes back to you in unexpected ways while strengthening the network.
+To illustrate with another example: Imagine a potluck where pies you bake that you don't need (surplus) helps a neighbor spend less time cooking, _freeing their time_ to fix their oven  -  the same oven that later bakes bread for your community garden party. That's mutual-fulfillment: Your surplus doesn't vanish  -  is shared with those who directly/indirectly align with your needs/desires/values/goals, creating a ripple effect of mutual-support that comes back to you in unexpected ways while strengthening the network.
 
 This effectively moves us from _time as money_ to _time as mutual-fulfillment_!
 
@@ -304,7 +304,7 @@ A basic interface for free association is almost complete but we are seeking sup
 
 Remember: In contributing to Free Association, you're not donating to charity or investing for return. You're participating in a network where **the free development of each is the condition for the free development of all**. Your contributions help build a system where "individuals freely contribute to each other's self-actualization, where surplus flows according to mutual-recognition of real contributions towards each other's self-actualization, where relations activate only through mutual desire and participation."
 
-Your surplus becomes part of a living network of mutual-fulfillment that transcends both charity and investment—it becomes a concrete expression of truly free association.
+Your surplus becomes part of a living network of mutual-fulfillment that transcends both charity and investment - it becomes a concrete expression of truly free association.
 
 ## Appendix
 
@@ -318,7 +318,7 @@ This transcends both traditional charity and market exchange by creating organic
 
 ### This Is Not Traditional Investment 💡
 
-In traditional investment and equity structures, you provide capital expecting financial returns and ownership. You acquire equity — a fixed share that persists regardless of your ongoing contributions. The past (your initial investment) dominates the present.
+In traditional investment and equity structures, you provide capital expecting financial returns and ownership. You acquire equity  -  a fixed share that persists regardless of your ongoing contributions. The past (your initial investment) dominates the present.
 
 Consider mutual stakeholding with traditional equity: Organizations swap shares, creating bidirectional dividend (surplus) flows. While this creates non-zero-sum economic relationships where each gains by increasing others' well-being, it has a **crucial** flaw: In equity, you _own_ a share of others.
 
@@ -326,15 +326,15 @@ This ownership model means:
 
 - You can deploy duplicitous means to gain recognition
 - Once you secure shares, you _own_ that recognition permanently
-- The Past dominates the Present — you cannot remove recognition of past contributions that are no longer true
+- The Past dominates the Present  -  you cannot remove recognition of past contributions that are no longer true
 - The transferability of shares/tokens enables accumulation of false recognition that persists even when new information reveals the truth
 - mutual-false-recognition persists indefinitely.
 
 In Free Association:
 
-- You don't "own" a share of anyone else — we each own 100% of ourselves
+- You don't "own" a share of anyone else  -  we each own 100% of ourselves
 - Recognition can be re-attributed at any time based on real contributions
-- The Present reigns over the Past — recognition adjusts to reflect current social-material reality
+- The Present reigns over the Past  -  recognition adjusts to reflect current social-material reality
 - False recognition naturally decays while true recognition strengthens through mathematical necessity:
 
 ```
@@ -354,7 +354,7 @@ This mathematical property ensures that inflating recognition or maintaining fal
 
 In Free Association, we are free! You don't own me, and I don't own you! We owe each other nothing!
 
-This is Hegel's resolution of the master-slave dialectic realized in practice: mutual recognition without ownership or domination. Your contributions don't buy you permanent shares — they participate in an evolving network of mutual-recognition that continuously adjusts to reflect real social-material contributions.
+This is Hegel's resolution of the master-slave dialectic realized in practice: mutual recognition without ownership or domination. Your contributions don't buy you permanent shares  -  they participate in an evolving network of mutual-recognition that continuously adjusts to reflect real social-material contributions.
 
 ## Learn more 📚
 

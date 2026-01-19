@@ -30,7 +30,7 @@ This module computes network membership based on the strength of mutual recognit
 
 ### Core Concept
 
-**Membership is not granted—it emerges from the depth of reciprocal relationships.**
+**Membership is not granted - it emerges from the depth of reciprocal relationships.**
 
 A person is a member when they have sufficient **mutual recognition density**: the total strength of their mutual recognition relationships, proportional to the network's natural connectivity.
 

@@ -231,13 +231,13 @@ This framework is emerging through iterative refinement during informal coordina
 * **Support Expression from Member 1** \- Member 1 expresses full support (weight: 1.0) for the protocol proposal  
 * **Support Expression from Member 3** \- Member 3 expresses full support (weight: 1.0) for the protocol proposal  
 * **Support Expression from Member 2 (Proposer)** \- Member 2 (the proposer) expresses full support (weight: 1.0) for their own proposal  
-* **Decision Outcome — Protocol Adoption** \- The protocol is adopted via unanimous support (3.0 aggregate weight, early adoption path)  
+* **Decision Outcome  -  Protocol Adoption** \- The protocol is adopted via unanimous support (3.0 aggregate weight, early adoption path)  
 * **Protocol Adoption Record (Formal)** \- Formal record of the Iterative Consensus Protocol v1.0.0 adoption with content hash  
 * **Framework Version Record \-** Records Participation Framework version b0v0.43 as the initial bootstrap version  
 * **Invitation to Founding Assembly \-** Member 3 invites all members to the founding assembly  
-* **Assembly Response — Member 1** \- Member 1 accepts the assembly invitation  
-* **Assembly Response — Member 2** \- Member 2 accepts the assembly invitation  
-* **Assembly Response — Member 3** \- Member 3 accepts the assembly invitation  
+* **Assembly Response  -  Member 1** \- Member 1 accepts the assembly invitation  
+* **Assembly Response  -  Member 2** \- Member 2 accepts the assembly invitation  
+* **Assembly Response  -  Member 3** \- Member 3 accepts the assembly invitation  
 * **Founding Assembly Minutes \-** Official minutes from the founding assembly including decisions made, action items, and next assembly date
 
 ### Implications and Significance

@@ -91,7 +91,7 @@ Free Association v6 introduces a fourth type of economic relationship, moving be
 
 This new relationship, **Mutual Satisfaction**, forms the foundation of our DPI. Unlike systems based on subjective recognition or belief, v6 creates a **learning system** where resource allocation automatically adjusts based on measured outcomes. 
 
-**The Key Innovation:** Organizations don't just state who they recognize—they rate how well each allocation actually satisfied their needs. The system then uses this feedback to optimize future allocations, continuously learning which resources from which providers genuinely help.
+**The Key Innovation:** Organizations don't just state who they recognize - they rate how well each allocation actually satisfied their needs. The system then uses this feedback to optimize future allocations, continuously learning which resources from which providers genuinely help.
 
 It is a peer-to-peer system that allows any entity – from nation-states and UN agencies to philanthropic foundations, impact funds, grassroots organizations, and frontline communities – to express its priorities and then allocate its resources based on who actually helps achieve those priorities. It translates the social practice of gratitude and accountability into a powerful, transparent, efficient, and **empirically grounded** engine for global coordination.
 
@@ -166,7 +166,7 @@ This transforms crisis response from a months-long political process into real-t
 
 2.1 What Makes v6 Different
 
-Previous versions of Free Association (v4, v5) operated on **recognition**: organizations stated who they believed contributed to their goals, and the system allocated accordingly. This was already transformative—fast, fair, and decentralized.
+Previous versions of Free Association (v4, v5) operated on **recognition**: organizations stated who they believed contributed to their goals, and the system allocated accordingly. This was already transformative - fast, fair, and decentralized.
 
 **v6 adds a learning layer:** Now the system doesn't just respond to beliefs about contribution, it responds to **measured evidence of actual utility**.
 
@@ -178,7 +178,7 @@ Allocation: X receives resources based on this belief
   ↓
 Outcome: Resources deployed
   ↓
-Learning: None (automatic)—recognition only changes if manually updated
+Learning: None (automatic) - recognition only changes if manually updated
 ```
 
 **Satisfaction-Based (v6):**
@@ -202,7 +202,7 @@ This creates four transformative capabilities:
 
 **1. Self-Correcting Resource Flows**
 - Resources automatically shift toward providers who deliver what recipients actually need
-- No manual reallocation required—the math adjusts based on satisfaction data
+- No manual reallocation required - the math adjusts based on satisfaction data
 - System optimizes toward utility, not beliefs
 
 **2. Quality Signals for All Participants**
@@ -214,7 +214,7 @@ This creates four transformative capabilities:
 - New partnerships can start with small trust (low initial recognition)
 - If resources prove helpful (high satisfaction), trust automatically grows
 - If resources prove unhelpful (low satisfaction), trust automatically shrinks
-- No need for perfect initial judgment—the system learns
+- No need for perfect initial judgment - the system learns
 
 **4. Gaming Resistance Through Outcome Accountability**
 - Can't inflate needs and hoard: declining resources reduces credibility
@@ -269,7 +269,7 @@ Refugee Response Organization Overall:
   Emergency Response Goal: 0.75 satisfaction (needs improvement)
     ├─ Medical Supplies: 0.78 satisfaction
     ├─ Food Aid: 0.85 satisfaction
-    └─ Shelter: 0.62 satisfaction (major gap—need better providers)
+    └─ Shelter: 0.62 satisfaction (major gap - need better providers)
   
   Long-term Integration Goal: 0.88 satisfaction (working well)
     ├─ Education Resources: 0.92 satisfaction
@@ -288,7 +288,7 @@ Across 50 organizations in network:
 
 2.3 Quality Signals for Providers
 
-One of v6's most powerful features is **bidirectional learning**. It's not just a one-way rating system—both recipients and providers gain actionable insights.
+One of v6's most powerful features is **bidirectional learning**. It's not just a one-way rating system - both recipients and providers gain actionable insights.
 
 **For Recipients (Traditional):**
 - See which providers deliver resources that actually help
@@ -322,7 +322,7 @@ Low-Satisfaction Partners (Urgent Adjustment):
     → Recommend redirecting to cash transfers instead
 ```
 
-**The Insight:** This isn't just accountability—it's **market research built into the protocol**. You learn what works without surveys, focus groups, or expensive evaluations. The satisfaction data tells you directly.
+**The Insight:** This isn't just accountability - it's **market research built into the protocol**. You learn what works without surveys, focus groups, or expensive evaluations. The satisfaction data tells you directly.
 
 **Collective Capacity Quality Signals:**
 
@@ -493,13 +493,13 @@ The system is built on mathematically proven principles that ensure its integrit
 
 **Accountability Without Bureaucracy:**
 - **NEW:** Satisfaction ratings create accountability to recipients
-- **NEW:** No compliance bureaucracy—quality signals emerge from the math
+- **NEW:** No compliance bureaucracy - quality signals emerge from the math
 - **NEW:** Poor performance automatically reduces allocation share
 
 **Learning Without Centralization:**
 - **NEW:** Each entity learns independently (your satisfaction data → your decisions)
 - **NEW:** Network learns collectively (aggregated patterns visible to all)
-- **NEW:** No central planner—optimization emerges from distributed feedback
+- **NEW:** No central planner - optimization emerges from distributed feedback
 
 3.4 The Invitation
 
@@ -540,7 +540,7 @@ Gain insights impossible in traditional systems:
 
 Whether you represent a government, UN agency and members, philanthropic foundation, impact fund, or grassroots organization, this infrastructure is designed to serve your coordination needs while maintaining your autonomy and values. Your organization doesn't need to change its mission, governance, or existing processes – you simply gain a new coordination layer that makes your resources more effective through better alignment with partners who share your goals.
 
-**The v6 Difference:** This isn't just digital infrastructure. It's a learning system that helps you discover what actually works—not through expensive evaluation projects years later, but through real-time feedback built into every allocation.
+**The v6 Difference:** This isn't just digital infrastructure. It's a learning system that helps you discover what actually works - not through expensive evaluation projects years later, but through real-time feedback built into every allocation.
 
 We're not asking you to trust our judgment about how resources should flow. We're offering you infrastructure that learns from reality about what helps you achieve your mission.
 
@@ -564,5 +564,5 @@ v6 answers: Yes.
 
 *"The best coordination system isn't the one with the best theory. It's the one that learns what actually works."*
 
-— Free Association Coalition, November 2025
+ -  Free Association Coalition, November 2025
 

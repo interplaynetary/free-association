@@ -6,7 +6,7 @@
 Traditional resource coordination operates slower than modern challenges require. Crisis response takes months when days would serve better.
 
 ### The Solution
-Free Association enables automatic resource allocation proportional to recognition—no bureaucracy, no gatekeepers.
+Free Association enables automatic resource allocation proportional to recognition - no bureaucracy, no gatekeepers.
 
 ### Key Benefits
 - **<48 hours** from need to commitment (vs. 90+ days typical)
@@ -75,7 +75,7 @@ System calculates optimal distribution through two-sided optimization:
 - **Updates**: Real-time recalculation as network evolves
 
 ### Result
-Resources flow automatically to recognized partners based on actual need and contribution—no meetings, no applications, no bureaucracy.
+Resources flow automatically to recognized partners based on actual need and contribution - no meetings, no applications, no bureaucracy.
 
 ---
 

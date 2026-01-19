@@ -126,7 +126,7 @@ Then A's available capital is distributed:
 
 **The Multiplier:**
 
-Each new participant doesn't just add their own capital—they increase the *effectiveness* of existing capital by creating new alignment pathways.
+Each new participant doesn't just add their own capital - they increase the *effectiveness* of existing capital by creating new alignment pathways.
 
 ---
 
@@ -318,7 +318,7 @@ The Network Alignment Coefficient grows with:
 * How would network transparency change your due diligence requirements?
 * What impact multiplier would justify transitioning capital to this approach?
 
-**The opportunity is not just to distribute capital more efficiently, but to create a system where capital's impact automatically multiplies as the network grows—while maintaining perfect alignment with your priorities.**
+**The opportunity is not just to distribute capital more efficiently, but to create a system where capital's impact automatically multiplies as the network grows - while maintaining perfect alignment with your priorities.**
 
 ---
 
@@ -335,5 +335,5 @@ The Network Alignment Coefficient grows with:
 
 ---
 
-*This document is part of the Free Association Coalition framework being developed collaboratively at COP30 2025. The system is offered as a Digital Public Good (DPG)—free, open-source, and optionally white-label. Participation is entirely voluntary. Input from capital providers will directly shape the technical design and participation protocols.*
+*This document is part of the Free Association Coalition framework being developed collaboratively at COP30 2025. The system is offered as a Digital Public Good (DPG) - free, open-source, and optionally white-label. Participation is entirely voluntary. Input from capital providers will directly shape the technical design and participation protocols.*
 

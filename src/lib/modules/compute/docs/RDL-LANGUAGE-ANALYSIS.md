@@ -629,7 +629,7 @@ RDL represents a **novel and valuable point in the language design space**. It s
 - Distributed capability
 - Formal verification
 
-While not perfect, it provides a **solid foundation** for building verifiable, composable, reactive coordination systems in a P2P context. The language design choices prioritize **correctness**, **verifiability**, and **simplicity** over maximum expressiveness—an appropriate trade-off for infrastructure that coordinates economic value.
+While not perfect, it provides a **solid foundation** for building verifiable, composable, reactive coordination systems in a P2P context. The language design choices prioritize **correctness**, **verifiability**, and **simplicity** over maximum expressiveness - an appropriate trade-off for infrastructure that coordinates economic value.
 
 **Recommendation**: Continue development, prioritize tooling and composition mechanisms, consider the suggested extensions carefully to maintain the language's elegant simplicity while addressing real-world needs.
 

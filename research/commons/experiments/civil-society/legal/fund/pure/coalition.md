@@ -23,7 +23,7 @@ This coalition exists to realize freedom of association in its fullest sense:
 
 ### 1.2 Core Principle
 
-**All capacity — whether external (donations, grants) or internal (proceeds of labor) — flows through computational recognition protocols.**
+**All capacity  -  whether external (donations, grants) or internal (proceeds of labor)  -  flows through computational recognition protocols.**
 
 Recognition is your acknowledgment of contributions:
 * Each participant has 100% recognition to distribute
@@ -308,7 +308,7 @@ Protocol transition:
 - Applies to ALL needs uniformly (no special treatment by category)
 ```
 
-The protocol enables this transition computationally — no constitutional change needed, just parameter adjustment via Decider.
+The protocol enables this transition computationally  -  no constitutional change needed, just parameter adjustment via Decider.
 
 **Important:** Phase 1→2 affects the weighting formula (contribution vs pure need). The collective tree structure (what needs people declare) continues to determine what gets allocated in BOTH phases. No categories required in either phase.
 
@@ -380,8 +380,8 @@ TOTAL: ~$100,000 allocated across all declared needs
 ```
 
 **Key properties:**
-* NO predetermined categories — members declare needs organically
-* NO predetermined percentages — proportions emerge from what's declared
+* NO predetermined categories  -  members declare needs organically
+* NO predetermined percentages  -  proportions emerge from what's declared
 * Observed patterns: ~32% tools/infrastructure, ~28% common funds, ~40% individual consumption
   (But these are OBSERVED, not imposed)
 * Members DECLARE needs (whatever they need)
@@ -648,7 +648,7 @@ Decider process:
 NOTE: This adjusts a safety constraint, NOT the Stage proportions.
 Stage proportions emerge from collective tree recognition patterns.
 If members want more common healthcare, they recognize healthcare needs more heavily.
-No vote needed — just update recognition in personal trees.
+No vote needed  -  just update recognition in personal trees.
 ```
 
 ***

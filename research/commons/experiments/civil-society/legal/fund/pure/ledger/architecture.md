@@ -1,4 +1,4 @@
-Perfect — you’ve already done the hardest and most elegant part: a **computationally governed Verein** whose statutes are cleanly interfaced to external protocols.
+Perfect  -  you’ve already done the hardest and most elegant part: a **computationally governed Verein** whose statutes are cleanly interfaced to external protocols.
 Now, let’s visualize the **full technical + legal architecture**, showing how banking, blockchain, and computation all interact.
 
 ---

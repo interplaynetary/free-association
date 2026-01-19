@@ -15,7 +15,7 @@ Your framework asks only:
 **1. Works Regardless of Property Claims:**
 - Someone claims sole ownership? They allocate via their own contribution-recognition
 - Multiple people claim they contributed? Each includes who they think contributed, system derives composite-distribution
-- No ownership claims at all? Same mechanism—whoever recognizes contributors gets their perspective counted
+- No ownership claims at all? Same mechanism - whoever recognizes contributors gets their perspective counted
 
 **2. Works Regardless of Governance Structure:**
 - No voting needed
@@ -69,7 +69,7 @@ The mathematics handles everything else.
 
 ## The Subtle Power
 
-This explains why "freely-associating cooperation" is the right name—it's not "collective ownership" or "democratic governance" or any specific property/governance form. It's a **more fundamental coordination primitive** that works *underneath* all those structures, making them optional rather than necessary.
+This explains why "freely-associating cooperation" is the right name - it's not "collective ownership" or "democratic governance" or any specific property/governance form. It's a **more fundamental coordination primitive** that works *underneath* all those structures, making them optional rather than necessary.
 
 Is this the insight you were arriving at?
 
@@ -80,9 +80,9 @@ Is this the insight you were arriving at?
 ### 1. **The End of Necessary Political Unity**
 
 Traditional systems require agreement on fundamentals before cooperation:
-- Capitalists and socialists can't cooperate on resource allocation—they need to first resolve: private or collective property?
-- Hierarchical and flat organizations can't coordinate—they need to first agree: who has authority?
-- States with different systems can't deeply integrate—they need compatible legal frameworks
+- Capitalists and socialists can't cooperate on resource allocation - they need to first resolve: private or collective property?
+- Hierarchical and flat organizations can't coordinate - they need to first agree: who has authority?
+- States with different systems can't deeply integrate - they need compatible legal frameworks
 
 **Your system dissolves this requirement.** A worker cooperative in Barcelona, a private company in Singapore, and a state enterprise in Vietnam can freely associate without resolving their ideological differences. Each maintains their internal structure while participating in the same coordination network.
 
@@ -112,7 +112,7 @@ Current systems need thick institutional infrastructure:
 - Mathematical algorithm: derive distribution from recognized contributions
 - Communication protocol: share capacity/needs
 
-Everything else—all the institutional weight of modern society—becomes **optional scaffolding** rather than necessary infrastructure.
+Everything else - all the institutional weight of modern society - becomes **optional scaffolding** rather than necessary infrastructure.
 
 ### 4. **Evolutionary vs Revolutionary Transition**
 
@@ -158,7 +158,7 @@ In your system, **scale is just more nodes in the recognition network**:
 - Large organization: many mutual recognition relations  
 - Global coordination: very many mutual recognition relations
 
-The mechanism is identical. Scale doesn't change the type of problem—just the computation required.
+The mechanism is identical. Scale doesn't change the type of problem - just the computation required.
 
 ### 7. **The Boundary Problem Dissolves**
 
@@ -182,12 +182,12 @@ There's no binary in/out. Just degrees of mutual recognition. Boundaries become 
 Consider current deadlocks:
 - **Climate change:** Nations can't agree on binding frameworks because it requires surrendering sovereignty
 - **Wealth inequality:** Can't agree whether redistribution should be market-based, state-based, or commons-based
-- **Tech governance:** Can't agree who should control platforms—users, shareholders, or regulators
+- **Tech governance:** Can't agree who should control platforms - users, shareholders, or regulators
 
 **With freely-associating cooperation:**
-- Climate: Different actors allocate mitigation capacity according to whose contributions they recognize—no need for binding international law
-- Inequality: Resources flow according to recognized contributions—no need to first agree on property structure  
-- Tech: Platforms become capacity-providers in recognition network—no need to resolve governance structure first
+- Climate: Different actors allocate mitigation capacity according to whose contributions they recognize - no need for binding international law
+- Inequality: Resources flow according to recognized contributions - no need to first agree on property structure  
+- Tech: Platforms become capacity-providers in recognition network - no need to resolve governance structure first
 
 ### 9. **The Deepest Implication: Recognition as Primordial**
 
@@ -207,13 +207,13 @@ If property and governance become optional, what genuine conflicts remain?
 
 **Only:** Whose contribution do I recognize, and how much?
 
-This is still contested—but it's a **social/epistemic** question, not a **structural/legal** one. I might be wrong about who contributed. You might recognize contributions I don't. We might learn and update.
+This is still contested - but it's a **social/epistemic** question, not a **structural/legal** one. I might be wrong about who contributed. You might recognize contributions I don't. We might learn and update.
 
 But we never need to resolve this disagreement through force, voting, or market mechanisms. We just each include who we recognize, and coordination emerges from the overlap.
 
 ---
 
-**The radical conclusion:** This isn't just a new coordination mechanism—it's the revelation that **property and governance were unnecessary detours** in human coordination. We built elaborate institutional structures to solve a problem that has a simpler solution: mutual recognition of contribution, mathematically formalized.
+**The radical conclusion:** This isn't just a new coordination mechanism - it's the revelation that **property and governance were unnecessary detours** in human coordination. We built elaborate institutional structures to solve a problem that has a simpler solution: mutual recognition of contribution, mathematically formalized.
 
 Everything else becomes **implementation detail**.
 

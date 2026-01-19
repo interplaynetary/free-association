@@ -50,20 +50,20 @@ When gifts flow based on mutual care rather than negotiated exchange, artificial
 
 **"What if the most radical political act was simply recognizing who genuinely contributes to your joy?"**
 
-This frames the entire endeavor not as complex economic theory, but as **applied appreciation**. Not as obligation or activism, but as **enlightened selfishness**—the recognition that your own flourishing is inextricably connected to others' flourishing.
+This frames the entire endeavor not as complex economic theory, but as **applied appreciation**. Not as obligation or activism, but as **enlightened selfishness** - the recognition that your own flourishing is inextricably connected to others' flourishing.
 
 ### The Elegant Paradox
 
 **"The most distributed system creates the most intimate connections."**
 
-By removing artificial boundaries (money, membership, location), we create conditions for **authentic encounter**. The network becomes a **technology of intimacy**—helping people find their genuine collaborators across space and community.
+By removing artificial boundaries (money, membership, location), we create conditions for **authentic encounter**. The network becomes a **technology of intimacy** - helping people find their genuine collaborators across space and community.
 
 ### Invitation Through Mystery
 
 **"Experience the festival that organizes itself."**
 **"Join the camp that exists in the spaces between camps."**
 
-The language itself should feel like **mystical pragmatism**—grounded in beautiful mathematics but experienced as **participatory magic**. We invite people not to understand free-association intellectually, but to **step into the field** and discover what emerges when love becomes algorithmic and algorithms become loving.
+The language itself should feel like **mystical pragmatism** - grounded in beautiful mathematics but experienced as **participatory magic**. We invite people not to understand free-association intellectually, but to **step into the field** and discover what emerges when love becomes algorithmic and algorithms become loving.
 
 ## Terms That Spark Curiosity (Expanded)
 

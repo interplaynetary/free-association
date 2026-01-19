@@ -273,7 +273,7 @@ The computational commons is **a different model entirely**:
 ### How Can This Possibly Work?
 
 **Q: Who pays for computation?**
-**A: Nobody.** It runs on participants' devices (browsers, phones, computers). Like BitTorrent—the network is the infrastructure.
+**A: Nobody.** It runs on participants' devices (browsers, phones, computers). Like BitTorrent - the network is the infrastructure.
 
 **Q: How do you trust the results?**
 **A: Cryptographic provenance.** Every computation creates an immutable record:
@@ -315,7 +315,7 @@ If provenance doesn't match, the fraud is mathematically provable.
 - It's your device, your data, your choice
 
 **Q: How does it scale?**
-**A: Peer-to-peer.** Every participant adds capacity (storage + computation). Like the web—adding users adds infrastructure.
+**A: Peer-to-peer.** Every participant adds capacity (storage + computation). Like the web - adding users adds infrastructure.
 
 ---
 
@@ -455,7 +455,7 @@ A **planetary-scale computational commons**.
 
 This isn't "build a time bank app" or "build an allocation app." 
 
-This is: **Build infrastructure where anyone can create time banks, allocation systems, or anything else requiring coordination—without servers, without companies, without permission.**
+This is: **Build infrastructure where anyone can create time banks, allocation systems, or anything else requiring coordination - without servers, without companies, without permission.**
 
 ### The Shift
 
@@ -540,9 +540,9 @@ Because everything is open, everything can compose.
 ### Computational Commons (This System)
 
 **Digital commons** (new):
-- Common storage (Holster—everyone stores data)
-- Common computation (RDL—everyone runs programs)
-- Common verification (Provenance—everyone checks work)
+- Common storage (Holster - everyone stores data)
+- Common computation (RDL - everyone runs programs)
+- Common verification (Provenance - everyone checks work)
 
 **Advantages:**
 - **Non-rivalrous**: Your use doesn't diminish mine (infinite copies)
@@ -580,7 +580,7 @@ Apps train us to think:
 ### The Commons Model Freedom
 
 This system trains us to think:
-- "There's a program for that—or write one" (composable tools)
+- "There's a program for that - or write one" (composable tools)
 - "Subscribe and compute" (open, connected)
 - "Free infrastructure" (cooperation, not extraction)
 - "Fork and modify" (remixable)
@@ -602,7 +602,7 @@ You own data → You choose to share → You're autonomous
 Network enables access → Everything's open → You can fork
 ```
 
-This is **post-capitalism for computation**—moving from private property to commons, from extraction to collaboration, from scarcity to abundance.
+This is **post-capitalism for computation** - moving from private property to commons, from extraction to collaboration, from scarcity to abundance.
 
 ---
 
@@ -716,9 +716,9 @@ We get verification without consensus, provenance without blockchain.
 
 ### "How is this different from IPFS?"
 
-IPFS is **content-addressed storage**—like a distributed hard drive.
+IPFS is **content-addressed storage** - like a distributed hard drive.
 
-This is **content-addressed storage + verified computation**—like a distributed computer.
+This is **content-addressed storage + verified computation** - like a distributed computer.
 
 IPFS stores files. This runs programs.
 
@@ -730,11 +730,11 @@ This is **what code to run and how to coordinate it** across millions of browser
 
 WASM is execution. This is coordination + verification + composition.
 
-They could work together—RDL programs could run WASM modules!
+They could work together - RDL programs could run WASM modules!
 
 ### "Isn't this too complex for non-programmers?"
 
-**Right now, yes.** Like Excel in 1987—powerful but rough.
+**Right now, yes.** Like Excel in 1987 - powerful but rough.
 
 **Future:** Visual builders, templates, marketplaces of programs. Fill in forms, not write code.
 
@@ -749,13 +749,13 @@ They could work together—RDL programs could run WASM modules!
 - Network effects haven't kicked in yet
 - Documentation is technical (we're fixing this!)
 
-It's like the web in 1992—foundation solid, but needs time to grow.
+It's like the web in 1992 - foundation solid, but needs time to grow.
 
 ---
 
 ## What's In This Folder
 
-This is the **RDL runtime**—the distributed computation layer:
+This is the **RDL runtime** - the distributed computation layer:
 
 ### Core Files
 
@@ -826,7 +826,7 @@ It's **computational infrastructure for planetary-scale collaboration**.
 
 It's **breaking the app prison** and revealing what computing could be if it weren't trapped in the extractive, siloed, proprietary model.
 
-It's **post-app-italism**—moving from computation-as-private-property to computation-as-commons.
+It's **post-app-italism** - moving from computation-as-private-property to computation-as-commons.
 
 The code in this folder doesn't just enable decentralized coordination.
 

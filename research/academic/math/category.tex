@@ -57,7 +57,7 @@
 \maketitle
 
 \begin{abstract}
-We present a category-theoretic foundation for coordination systems that preserve individual sovereignty while enabling cooperation. The category $\SovCoord$ of sovereign coordination systems is defined by a universal property: objects are coordination mechanisms satisfying three axioms (sovereignty, conservation, monotonicity), and morphisms are structure-preserving maps. We prove this category has all limits and colimits, admits free and forgetful functors, and possesses universal constructions characterizing optimal coordination. Properties like anti-gaming, sybil resistance, and velocity maximization emerge as categorical consequences. The framework unifies recognition-based, vote-based, attention-based, and prediction-based coordination as objects in a single category, with natural transformations defining systematic translations between them. This categorical perspective reveals coordination not as designed systems but as discovered structure—the unique completion of partial coordination data satisfying the universal property.
+We present a category-theoretic foundation for coordination systems that preserve individual sovereignty while enabling cooperation. The category $\SovCoord$ of sovereign coordination systems is defined by a universal property: objects are coordination mechanisms satisfying three axioms (sovereignty, conservation, monotonicity), and morphisms are structure-preserving maps. We prove this category has all limits and colimits, admits free and forgetful functors, and possesses universal constructions characterizing optimal coordination. Properties like anti-gaming, sybil resistance, and velocity maximization emerge as categorical consequences. The framework unifies recognition-based, vote-based, attention-based, and prediction-based coordination as objects in a single category, with natural transformations defining systematic translations between them. This categorical perspective reveals coordination not as designed systems but as discovered structure - the unique completion of partial coordination data satisfying the universal property.
 
 \medskip
 
@@ -220,7 +220,7 @@ is initial for $\E$: for any $\mathcal{S}$ with entity set $\E$, there exists un
 \item $\A(e,f) = \kappa(e) \cdot \sigma_e(f)$ (direct allocation)
 \end{itemize}
 
-\textbf{Interpretation}: Most general coordination on $\E$—adds only axiom-required structure.
+\textbf{Interpretation}: Most general coordination on $\E$ - adds only axiom-required structure.
 \end{theorem}
 
 \begin{theorem}[Terminal Object]
@@ -228,7 +228,7 @@ The single-entity system:
 \[ \mathcal{T} = (\{*\}, \sigma_*, \phi_*, \A_*, \C_*, 0) \]
 is terminal: for any $\mathcal{S}$, exists unique $! : \mathcal{S} \to \mathcal{T}$.
 
-\textbf{Interpretation}: Degenerate coordination—all systems collapse to it.
+\textbf{Interpretation}: Degenerate coordination - all systems collapse to it.
 \end{theorem}
 
 \subsection{Products and Coproducts}
@@ -509,7 +509,7 @@ for $\C_1 \subseteq \C_2$ (constraint relaxation).
 
 \subsection{The Missing Piece: Update Rules}
 
-Objects in $\SovCoord$ are static. But coordination requires \textbf{dynamics}—entities update signals based on received allocations. We formalize this using coalgebras.
+Objects in $\SovCoord$ are static. But coordination requires \textbf{dynamics} - entities update signals based on received allocations. We formalize this using coalgebras.
 
 \begin{definition}[Dynamics Endofunctor]
 Define $T: \SovCoord \to \SovCoord$ by:
@@ -647,7 +647,7 @@ where $\mathbf{A}_1 = F^*(\mathbf{A}_2)$ (pullback of allocation).
 
 \textbf{Step 4}: By Theorem \ref{thm:terminal-coalgebra}, this means anti-gaming (gradient ascent) is preserved. \qed
 
-\textbf{Interpretation}: Anti-gaming is not a property to verify—it's \textbf{inherent to the morphisms} in $\SovCoord$. All structure-preserving maps preserve anti-gaming automatically.
+\textbf{Interpretation}: Anti-gaming is not a property to verify - it's \textbf{inherent to the morphisms} in $\SovCoord$. All structure-preserving maps preserve anti-gaming automatically.
 \end{theorem}
 
 \subsection{Sybil Resistance}
@@ -728,7 +728,7 @@ As an object in $\SovCoord$, $\mathcal{S}_R$ inherits:
 \item Velocity maximization (universal property)
 \end{itemize}
 
-\textbf{No separate proofs needed}—properties follow categorically.
+\textbf{No separate proofs needed} - properties follow categorically.
 \end{proposition}
 
 \subsection{Vote-Based Coordination}
@@ -793,7 +793,7 @@ Where:
 \textbf{Universal property}: For any $\mathcal{P} \in \mathbf{PreCoord}$ and $\mathcal{S} \in \SovCoord$ with map $f: \mathcal{P} \to U(\mathcal{S})$, exists unique:
 \[ \tilde{f}: \text{Complete}(\mathcal{P}) \to \mathcal{S} \]
 
-\textbf{Interpretation}: The three axioms constitute the \textbf{universal completion property}—they characterize the unique way to complete partial coordination data into full sovereign coordination.
+\textbf{Interpretation}: The three axioms constitute the \textbf{universal completion property} - they characterize the unique way to complete partial coordination data into full sovereign coordination.
 \end{theorem}
 
 \begin{proof}[Detailed Proof of Adjunction]
@@ -893,7 +893,7 @@ Therefore $\text{Complete} \dashv U$. \qed
 
 \begin{center}
 \fbox{\parbox{0.9\textwidth}{
-\textbf{The Axioms Are Not Chosen—They Are Discovered}
+\textbf{The Axioms Are Not Chosen - They Are Discovered}
 
 The three axioms (sovereignty, conservation, monotonicity) are not arbitrary design constraints. They are the \textbf{unique universal property} that characterizes the completion functor from partial to full coordination.
 
@@ -903,7 +903,7 @@ Given any partial coordination data (entities, capacities, partial signals), the
 
 \medskip
 
-\textbf{This is why the framework works}: It's not one coordination system among many—it's the \textbf{categorical completion} of coordination itself.
+\textbf{This is why the framework works}: It's not one coordination system among many - it's the \textbf{categorical completion} of coordination itself.
 }}
 \end{center}
 
@@ -974,7 +974,7 @@ Length & $\sim$2900 lines & $\sim$1200 lines \\
 \end{tabular}
 \end{center}
 
-\textbf{Key insight}: Category theory doesn't add complexity—it \textbf{reveals simplicity} by showing the framework as inevitable mathematical structure.
+\textbf{Key insight}: Category theory doesn't add complexity - it \textbf{reveals simplicity} by showing the framework as inevitable mathematical structure.
 
 \section{Conclusion}
 
@@ -1004,7 +1004,7 @@ Sovereign coordination works because:
 
 \begin{center}
 \Large
-\textit{Sovereign coordination is not invented—it is discovered.}
+\textit{Sovereign coordination is not invented - it is discovered.}
 
 \medskip
 

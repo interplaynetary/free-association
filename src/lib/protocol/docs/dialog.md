@@ -7,21 +7,21 @@
 
 **KONRAD**: RUZGAR, I've heard you speak of a system without money or markets. But how do people coordinate who gets what?
 
-**RUZGAR**: Through recognition, Konrad. Tell me—who in your life contributes to your well-being?
+**RUZGAR**: Through recognition, Konrad. Tell me - who in your life contributes to your well-being?
 
 **KONRAD**: Well, there's my doctor, Corvin. My neighbor Maya brings me meals sometimes. And there's Jordan at the community workshop who helps me fix things.
 
 **RUZGAR**: Good. Now imagine you have 100 points to distribute among everyone who helps you. How would you divide them?
 
-**KONRAD**: Hmm... Corvin keeps me healthy, that's quite important. Maybe 50 points? Maya's meals are wonderful—30 points. Jordan's help is valuable too—20 points.
+**KONRAD**: Hmm... Corvin keeps me healthy, that's quite important. Maybe 50 points? Maya's meals are wonderful - 30 points. Jordan's help is valuable too - 20 points.
 
 **RUZGAR**: Excellent! You've just created your **recognition network**. Corvin receives 50% of your recognition, Maya 30%, Jordan 20%. These add to 100%.
 
 **KONRAD**: But this seems arbitrary. Why percentages?
 
-**RUZGAR**: Because we need a way to measure relationships without money. Your recognition says: "Of all the people contributing to my life, here's how much each one matters." It's not arbitrary—it reflects real contribution.
+**RUZGAR**: Because we need a way to measure relationships without money. Your recognition says: "Of all the people contributing to my life, here's how much each one matters." It's not arbitrary - it reflects real contribution.
 
-**KONRAD**: Alright. But what if Corvin doesn't recognize me back? Unrequited recognition—tragic.
+**KONRAD**: Alright. But what if Corvin doesn't recognize me back? Unrequited recognition - tragic.
 
 **RUZGAR**: An excellent question! This brings us to **mutual recognition**. Tell me Konrad, suppose Corvin gives you 50% of their recognition, but you give them only 20% of yours. What's the mutual part?
 
@@ -35,7 +35,7 @@
 
 **KONRAD**: But what about people who don't recognize me at all?
 
-**RUZGAR**: Then you have zero mutual recognition with them. But you might still recognize them—we call this one-way recognition. It allows for solidarity and generosity, but mutual relationships come first.
+**RUZGAR**: Then you have zero mutual recognition with them. But you might still recognize them - we call this one-way recognition. It allows for solidarity and generosity, but mutual relationships come first.
 
 ---
 
@@ -70,7 +70,7 @@
 
 **KONRAD**: How do my needs update?
 
-**RUZGAR**: We need to distinguish two things: your **declared need**—what you state you need—and your **remaining need**—what's left after receiving allocations.
+**RUZGAR**: We need to distinguish two things: your **declared need** - what you state you need - and your **remaining need** - what's left after receiving allocations.
 
 **KONRAD**: So if I declare I need 40 meals and receive 30...?
 
@@ -92,7 +92,7 @@
 
 ## Part III: On the Two Tiers
 
-**KONRAD**: Wait—you said mutual relationships come first. What happens to people I recognize but who don't recognize me back?
+**KONRAD**: Wait - you said mutual relationships come first. What happens to people I recognize but who don't recognize me back?
 
 **RUZGAR**: They receive from a second tier. Imagine you have capacity to give 100 hours of tutoring. You divide this in two tiers:
 
@@ -102,7 +102,7 @@
 
 **KONRAD**: So mutual aid comes before solidarity?
 
-**RUZGAR**: Yes. Those who recognize each other take care of each other first. But generosity still happens—from the surplus.
+**RUZGAR**: Yes. Those who recognize each other take care of each other first. But generosity still happens - from the surplus.
 
 **KONRAD**: And if there's no surplus?
 
@@ -130,15 +130,15 @@
 
 **KONRAD**: And the recognition? Is that also separated by type?
 
-**RUZGAR**: Ah—no! This is crucial. Your recognition of Corvin is *global*. It's the same whether you're allocating food, healthcare, or housing.
+**RUZGAR**: Ah - no! This is crucial. Your recognition of Corvin is *global*. It's the same whether you're allocating food, healthcare, or housing.
 
 **KONRAD**: Why? Corvin helps me with healthcare, not food.
 
-**RUZGAR**: True. But your recognition measures your overall relationship—how much Corvin contributes to your well-being in total. When you're allocating food, Corvin still has that high recognition because that's your social relationship.
+**RUZGAR**: True. But your recognition measures your overall relationship - how much Corvin contributes to your well-being in total. When you're allocating food, Corvin still has that high recognition because that's your social relationship.
 
 **KONRAD**: But won't Corvin get food they don't need?
 
-**RUZGAR**: No! The formula caps allocation at actual need. If Corvin doesn't need food that day, they receive zero food—even with high mutual recognition.
+**RUZGAR**: No! The formula caps allocation at actual need. If Corvin doesn't need food that day, they receive zero food - even with high mutual recognition.
 
 **KONRAD**: Oh, I see. The recognition determines priority, but need determines amount.
 
@@ -154,7 +154,7 @@
 
 **KONRAD**: But how do I arrive at these recognition percentages in the first place? It seems difficult to assess.
 
-**RUZGAR**: You don't calculate them directly. You build a **contribution tree**—a structure that tracks who helps you with what.
+**RUZGAR**: You don't calculate them directly. You build a **contribution tree** - a structure that tracks who helps you with what.
 
 **KONRAD**: Can you show me an example?
 
@@ -172,7 +172,7 @@ My Well-Being (100 total points)
 
 **KONRAD**: So healthcare is more important to me than food?
 
-**RUZGAR**: In your current situation, yes—you've allocated 70 points to healthcare contributions and 30 to food. Now, within healthcare, Corvin contributes 80% and Nurse Chen 20%.
+**RUZGAR**: In your current situation, yes - you've allocated 70 points to healthcare contributions and 30 to food. Now, within healthcare, Corvin contributes 80% and Nurse Chen 20%.
 
 **KONRAD**: How does this become recognition percentages?
 
@@ -213,7 +213,7 @@ My Well-Being (100 total points)
 
 **KONRAD**: Our time windows overlap! Tuesday 3-4pm.
 
-**RUZGAR**: Exactly. Your slot is **compatible** with the kitchen's slot. But if you needed Wednesday meals, there's no compatibility—no allocation happens.
+**RUZGAR**: Exactly. Your slot is **compatible** with the kitchen's slot. But if you needed Wednesday meals, there's no compatibility - no allocation happens.
 
 **KONRAD**: Even though we both deal with "food"?
 
@@ -231,11 +231,11 @@ My Well-Being (100 total points)
 
 **KONRAD**: So Jordan's mutual recognition with the kitchen doesn't matter for Tuesday's allocation?
 
-**RUZGAR**: Correct. Jordan will be considered when the kitchen offers Wednesday meals—if the kitchen has a Wednesday slot.
+**RUZGAR**: Correct. Jordan will be considered when the kitchen offers Wednesday meals - if the kitchen has a Wednesday slot.
 
 **KONRAD**: What about more complex time patterns? Like "every Monday in February"?
 
-**RUZGAR**: The system handles any pattern: yearly, monthly, weekly, daily, or combinations. "Every February, Mon-Fri 9-5, plus first week of September"—all of this is computable.
+**RUZGAR**: The system handles any pattern: yearly, monthly, weekly, daily, or combinations. "Every February, Mon-Fri 9-5, plus first week of September" - all of this is computable.
 
 **KONRAD**: And compatibility just means the time windows overlap somewhere?
 
@@ -247,7 +247,7 @@ My Well-Being (100 total points)
 
 **KONRAD**: You mentioned the system runs continuously, updating needs. Does it ever overshoot?
 
-**RUZGAR**: Sometimes, yes. Imagine you need 100 hours of tutoring. The first round, you receive 120 hours—more than you need.
+**RUZGAR**: Sometimes, yes. Imagine you need 100 hours of tutoring. The first round, you receive 120 hours - more than you need.
 
 **KONRAD**: But you said allocations are capped at need!
 
@@ -255,7 +255,7 @@ My Well-Being (100 total points)
 
 **KONRAD**: I see. So my need drops to zero, but I received excess?
 
-**RUZGAR**: Yes. Next round, you state you need zero. But then the next round after that, you might need 80 hours again. Back and forth—oscillation.
+**RUZGAR**: Yes. Next round, you state you need zero. But then the next round after that, you might need 80 hours again. Back and forth - oscillation.
 
 **KONRAD**: This sounds unstable. Like everything else.
 
@@ -269,13 +269,13 @@ My Well-Being (100 total points)
 
 **RUZGAR**: Exactly. The system learns to be cautious when allocations are unstable.
 
-**KONRAD**: What if allocations are smooth—no problems?
+**KONRAD**: What if allocations are smooth - no problems?
 
-**RUZGAR**: Then the damping factor is 1.0—your active need equals your stated need. Full speed.
+**RUZGAR**: Then the damping factor is 1.0 - your active need equals your stated need. Full speed.
 
 **KONRAD**: And between these extremes?
 
-**RUZGAR**: A default factor of 0.8—medium speed—when neither oscillating nor perfectly smooth.
+**RUZGAR**: A default factor of 0.8 - medium speed - when neither oscillating nor perfectly smooth.
 
 **KONRAD**: So the system has three speeds: full (1.0), medium (0.8), and slow (0.5)?
 
@@ -297,7 +297,7 @@ My Well-Being (100 total points)
 
 **KONRAD**: Well... allocations are capped at my declared need. So I receive at most what I declare I need, never more. Therefore: Remaining-Need = Declared-Need - Received, which is less than or equal to Declared-Need.
 
-**RUZGAR**: Correct. And if we assume people don't increase their declarations arbitrarily—they declare what they actually need—then across the whole network?
+**RUZGAR**: Correct. And if we assume people don't increase their declarations arbitrarily - they declare what they actually need - then across the whole network?
 
 **KONRAD**: Total-Remaining-Needs(tomorrow) ≤ Total-Remaining-Needs(today). The sum of all remaining needs can never increase, assuming honest declarations.
 
@@ -305,7 +305,7 @@ My Well-Being (100 total points)
 
 **KONRAD**: But does it actually reach zero?
 
-**RUZGAR**: That's the **second proof**. Suppose the system reaches a stable point—a fixed point where remaining needs stop changing and no one is changing their declarations.
+**RUZGAR**: That's the **second proof**. Suppose the system reaches a stable point - a fixed point where remaining needs stop changing and no one is changing their declarations.
 
 **KONRAD**: So Remaining-Need(tomorrow) = Remaining-Need(today).
 
@@ -313,7 +313,7 @@ My Well-Being (100 total points)
 
 **KONRAD**: You received nothing.
 
-**RUZGAR**: Right. But if you still have a remaining need—Remaining-Need > 0—and there's capacity in the network, and people recognize you, then you *must* receive something. Received cannot be zero.
+**RUZGAR**: Right. But if you still have a remaining need - Remaining-Need > 0 - and there's capacity in the network, and people recognize you, then you *must* receive something. Received cannot be zero.
 
 **KONRAD**: Contradiction!
 
@@ -329,7 +329,7 @@ My Well-Being (100 total points)
 
 **KONRAD**: Finally, the real question.
 
-**RUZGAR**: The contraction property still holds—needs always decrease or stay the same, never increase. But they converge to a different equilibrium.
+**RUZGAR**: The contraction property still holds - needs always decrease or stay the same, never increase. But they converge to a different equilibrium.
 
 **KONRAD**: Meaning?
 
@@ -349,11 +349,11 @@ My Well-Being (100 total points)
 
 **KONRAD**: So the recognition network determines who starves?
 
-**RUZGAR**: In a scarcity scenario, yes. Those with zero mutual recognition—Tier 2 recipients or the completely isolated—would receive nothing. Those with low mutual recognition would have persistent unmet needs.
+**RUZGAR**: In a scarcity scenario, yes. Those with zero mutual recognition - Tier 2 recipients or the completely isolated - would receive nothing. Those with low mutual recognition would have persistent unmet needs.
 
 **KONRAD**: This sounds like we've just reinvented class through the back door.
 
-**RUZGAR**: Not quite. There's a crucial difference: recognition is non-transferable and dynamically adjustable. You can't inherit it, buy it, or sell it. And here's what's different from markets or states—
+**RUZGAR**: Not quite. There's a crucial difference: recognition is non-transferable and dynamically adjustable. You can't inherit it, buy it, or sell it. And here's what's different from markets or states - 
 
 **KONRAD**: Go on.
 
@@ -367,9 +367,9 @@ My Well-Being (100 total points)
 
 **RUZGAR**: Yes. Or the network needs to increase capacity. Or existing providers need to redistribute their recognition. The system makes the problem transparent: either insufficient total capacity, or insufficient recognition distribution.
 
-**KONRAD**: What stops this from creating permanent underclasses? People with weak recognition networks can't meet needs, can't contribute, get even less recognition—downward spiral.
+**KONRAD**: What stops this from creating permanent underclasses? People with weak recognition networks can't meet needs, can't contribute, get even less recognition - downward spiral.
 
-**RUZGAR**: That's a genuine risk. The system doesn't magically solve scarcity—it just makes the allocation mechanism transparent and non-accumulative. There are three responses:
+**RUZGAR**: That's a genuine risk. The system doesn't magically solve scarcity - it just makes the allocation mechanism transparent and non-accumulative. There are three responses:
 
 **KONRAD**: Which are?
 
@@ -377,11 +377,11 @@ My Well-Being (100 total points)
 
 **KONRAD**: If there's surplus.
 
-**RUZGAR**: Right. Second, recognition can be adjusted. If you see someone persistently unmet, you can increase your recognition of them—especially if you value what they could contribute but they lack recognition from providers.
+**RUZGAR**: Right. Second, recognition can be adjusted. If you see someone persistently unmet, you can increase your recognition of them - especially if you value what they could contribute but they lack recognition from providers.
 
 **KONRAD**: And third?
 
-**RUZGAR**: The most important: increase total capacity. The system makes scarcity visible—you can measure exactly how much capacity is needed. This creates collective incentive to increase production, bring in new providers, or improve efficiency.
+**RUZGAR**: The most important: increase total capacity. The system makes scarcity visible - you can measure exactly how much capacity is needed. This creates collective incentive to increase production, bring in new providers, or improve efficiency.
 
 **KONRAD**: Unlike markets where scarcity is profitable?
 
@@ -397,7 +397,7 @@ My Well-Being (100 total points)
 
 **KONRAD**: So if I'm stingy with recognition, others will be stingy with me?
 
-**RUZGAR**: Precisely. Your total recognition is 100%. If you concentrate it on very few people, you have high mutual recognition with them—but only them. You're vulnerable if they can't meet your needs or if your needs are diverse.
+**RUZGAR**: Precisely. Your total recognition is 100%. If you concentrate it on very few people, you have high mutual recognition with them - but only them. You're vulnerable if they can't meet your needs or if your needs are diverse.
 
 **KONRAD**: And if I spread recognition widely?
 
@@ -431,7 +431,7 @@ Total-Needs(after t iterations) ≤ k^t × Total-Needs(initially)
 
 **KONRAD**: Exponential decay.
 
-**RUZGAR**: Yes. If k = 0.8—meaning 20% of needs are satisfied each round—then after 10 rounds, only 10.7% of original needs remain. After 20 rounds, only 1.2%.
+**RUZGAR**: Yes. If k = 0.8 - meaning 20% of needs are satisfied each round - then after 10 rounds, only 10.7% of original needs remain. After 20 rounds, only 1.2%.
 
 **KONRAD**: How long does each round take?
 
@@ -459,7 +459,7 @@ Total-Needs(after t iterations) ≤ k^t × Total-Needs(initially)
 
 **KONRAD**: Receiving help doesn't enrich me?
 
-**RUZGAR**: No. It only satisfies your need. Once your need reaches zero, you receive nothing more—the formula caps allocation at need.
+**RUZGAR**: No. It only satisfies your need. Once your need reaches zero, you receive nothing more - the formula caps allocation at need.
 
 **KONRAD**: So at equilibrium, everyone's need is zero and everyone receives exactly their stated need?
 
@@ -473,7 +473,7 @@ Total-Needs(after t iterations) ≤ k^t × Total-Needs(initially)
 
 ## Part X: On Self-Recognition
 
-**KONRAD**: One odd thought—can I recognize myself?
+**KONRAD**: One odd thought - can I recognize myself?
 
 **RUZGAR**: Absolutely! This is **self-recognition**, and it's quite important.
 
@@ -490,13 +490,13 @@ Total-Needs(after t iterations) ≤ k^t × Total-Needs(initially)
 
 **RUZGAR**: Exactly. This enables personal planning within the mutual aid network.
 
-**KONRAD**: Wait—is this separate from my 100% recognition total, or part of it?
+**KONRAD**: Wait - is this separate from my 100% recognition total, or part of it?
 
 **RUZGAR**: Part of it. If you give yourself 30%, you have 70% left for others. Self-recognition comes from the same pool.
 
 **KONRAD**: So it's a trade-off between self-sufficiency and mutual aid?
 
-**RUZGAR**: In a sense, yes. Though most people find high self-recognition impractical—you can't provide everything for yourself. Diversifying your recognition across many contributors is usually more resilient.
+**RUZGAR**: In a sense, yes. Though most people find high self-recognition impractical - you can't provide everything for yourself. Diversifying your recognition across many contributors is usually more resilient.
 
 **KONRAD**: Fascinating. Self-recognition is valid mutual recognition.
 
@@ -529,11 +529,11 @@ Total-Needs(after t iterations) ≤ k^t × Total-Needs(initially)
 
 **KONRAD**: It undermines my own well-being!
 
-**RUZGAR**: Yes. The system mathematically punishes false recognition—not through authority, but through the logic of allocation itself.
+**RUZGAR**: Yes. The system mathematically punishes false recognition - not through authority, but through the logic of allocation itself.
 
 **KONRAD**: And true recognition?
 
-**RUZGAR**: True recognition—recognition that reliably connects you with capacities that enhance your self-actualization—is rewarded. Higher mutual recognition, better access to beneficial resources, improved well-being.
+**RUZGAR**: True recognition - recognition that reliably connects you with capacities that enhance your self-actualization - is rewarded. Higher mutual recognition, better access to beneficial resources, improved well-being.
 
 **KONRAD**: So the system self-corrects toward truth?
 
@@ -572,7 +572,7 @@ Therefore:
 
 **KONRAD**: But what if we see different states?
 
-**RUZGAR**: Information spreads through a **gossip protocol**—peers share updates with each other. Eventually, everyone sees everything.
+**RUZGAR**: Information spreads through a **gossip protocol** - peers share updates with each other. Eventually, everyone sees everything.
 
 **KONRAD**: Eventually? What about timing?
 
@@ -600,7 +600,7 @@ Therefore:
 
 **KONRAD**: Well, I'm not sure. The absence of coercion?
 
-**RUZGAR**: That's negative freedom—freedom *from*. But consider: can you be free if you're hungry?
+**RUZGAR**: That's negative freedom - freedom *from*. But consider: can you be free if you're hungry?
 
 **KONRAD**: No, I suppose not. Hunger constrains my choices.
 
@@ -618,7 +618,7 @@ Therefore:
 
 **KONRAD**: Because unmet needs constrain your agency?
 
-**RUZGAR**: Exactly. Freedom is not abstract—it's concrete, measurable, and directly tied to material satisfaction.
+**RUZGAR**: Exactly. Freedom is not abstract - it's concrete, measurable, and directly tied to material satisfaction.
 
 **KONRAD**: And since the system guarantees needs converge to zero...
 
@@ -646,7 +646,7 @@ Therefore:
 
 **KONRAD**: And not by proximity alone?
 
-**RUZGAR**: No. You might have strong mutual recognition with someone far away—online collaboration, shared interests, mutual aid across distance.
+**RUZGAR**: No. You might have strong mutual recognition with someone far away - online collaboration, shared interests, mutual aid across distance.
 
 **KONRAD**: So community is inherently plural? I can be part of many communities?
 
@@ -654,11 +654,11 @@ Therefore:
 
 **KONRAD**: And community boundaries are fluid?
 
-**RUZGAR**: Very. As recognition changes—new relationships form, old ones fade—your community evolves.
+**RUZGAR**: Very. As recognition changes - new relationships form, old ones fade - your community evolves.
 
 **KONRAD**: No one can be excluded by property claims?
 
-**RUZGAR**: Correct. If you recognize someone and they recognize you, mutual recognition exists—that's community. No permission needed, no membership fees.
+**RUZGAR**: Correct. If you recognize someone and they recognize you, mutual recognition exists - that's community. No permission needed, no membership fees.
 
 **KONRAD**: This is quite different from traditional notions of community.
 
@@ -674,11 +674,11 @@ Therefore:
 
 **KONRAD**: Tested how?
 
-**RUZGAR**: Simulations with thousands of participants, millions of transactions. Edge cases, oscillations, network partitions—all tested.
+**RUZGAR**: Simulations with thousands of participants, millions of transactions. Edge cases, oscillations, network partitions - all tested.
 
 **KONRAD**: And the mathematics?
 
-**RUZGAR**: Formally proven. Contraction, convergence, fixed points—rigorous proofs.
+**RUZGAR**: Formally proven. Contraction, convergence, fixed points - rigorous proofs.
 
 **KONRAD**: Convergence time?
 
@@ -690,7 +690,7 @@ Therefore:
 
 **KONRAD**: What about scale? Could this work for millions of people?
 
-**RUZGAR**: The algorithm is local—each person computes only their own allocations. It scales horizontally. Add more participants, and each one runs the same simple computation.
+**RUZGAR**: The algorithm is local - each person computes only their own allocations. It scales horizontally. Add more participants, and each one runs the same simple computation.
 
 **KONRAD**: No central bottleneck?
 
@@ -714,31 +714,31 @@ Therefore:
 
 **RUZGAR**: Please.
 
-**KONRAD**: **No wealth accumulation**—the formula caps allocation at need. Helping others doesn't enrich you. Everyone converges to the same satisfied state.
+**KONRAD**: **No wealth accumulation** - the formula caps allocation at need. Helping others doesn't enrich you. Everyone converges to the same satisfied state.
 
 **RUZGAR**: Yes.
 
-**KONRAD**: **No market mechanism**—no prices, no profit motive, no competition. Allocation is based on recognition and need, not purchasing power.
+**KONRAD**: **No market mechanism** - no prices, no profit motive, no competition. Allocation is based on recognition and need, not purchasing power.
 
 **RUZGAR**: Correct.
 
-**KONRAD**: **No central authority**—peer-to-peer computation, consensus emerging from mathematics rather than hierarchy.
+**KONRAD**: **No central authority** - peer-to-peer computation, consensus emerging from mathematics rather than hierarchy.
 
 **RUZGAR**: Yes.
 
-**KONRAD**: **No property as we know it**—access to resources is based on need and recognition, not ownership claims.
+**KONRAD**: **No property as we know it** - access to resources is based on need and recognition, not ownership claims.
 
 **RUZGAR**: Indeed.
 
 **KONRAD**: And what gets created?
 
-**RUZGAR**: **Universal satisfaction**—everyone's needs met, in all dimensions, guaranteed by mathematics.
+**RUZGAR**: **Universal satisfaction** - everyone's needs met, in all dimensions, guaranteed by mathematics.
 
-**KONRAD**: **Freedom as realized capacity**—not abstract rights but concrete access to material conditions for self-actualization.
+**KONRAD**: **Freedom as realized capacity** - not abstract rights but concrete access to material conditions for self-actualization.
 
 **RUZGAR**: Yes.
 
-**KONRAD**: **Community as recognition network**—relationships based on contribution rather than property, naturally plural and fluid.
+**KONRAD**: **Community as recognition network** - relationships based on contribution rather than property, naturally plural and fluid.
 
 **RUZGAR**: All of this, yes.
 
@@ -768,7 +768,7 @@ Therefore:
 
 **KONRAD**: So it requires collective will?
 
-**RUZGAR**: It requires people to recognize each other—to see who contributes to whom, to acknowledge mutual aid that already exists. That recognition, formalized in this system, becomes the basis for allocation.
+**RUZGAR**: It requires people to recognize each other - to see who contributes to whom, to acknowledge mutual aid that already exists. That recognition, formalized in this system, becomes the basis for allocation.
 
 **KONRAD**: The revolution is in the recognition?
 

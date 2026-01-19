@@ -109,7 +109,7 @@ Four fundamental dimensions:
 ## Hierarchical Structure Visualized
 
 ```
-𝓟(G) — Goal Achievement
+𝓟(G)  -  Goal Achievement
 │
 ├─ FIRST ORDER (Responses)
 │  ├─ Allocation Response (Δ)

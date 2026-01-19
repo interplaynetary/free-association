@@ -168,7 +168,7 @@ If they each provide FULL benefit of original e:
 - Now f has 3x the beneficial partners!
 - f should allocate MORE than 0.5 total
 - But f's budget is still 1, so dilutes other allocations
-- This doesn't help e (now split)—actually hurts
+- This doesn't help e (now split) - actually hurts
 
 ---
 
@@ -338,7 +338,7 @@ This violates the independence assumption. If f and e collude, this is not a syb
 
 **Verdict**: **Not actually a flaw** ✅
 
-The original proof is correct. The "gap" is actually not a gap—it's a misunderstanding of what the proof claims.
+The original proof is correct. The "gap" is actually not a gap - it's a misunderstanding of what the proof claims.
 
 ---
 
@@ -454,7 +454,7 @@ This is actually a REAL issue. If collective has 10 members and each demands flo
 
 **Analysis**:
 
-This is a REAL consideration, but it's NOT a flaw in the framework—it's a **deployment consideration**.
+This is a REAL consideration, but it's NOT a flaw in the framework - it's a **deployment consideration**.
 
 **The framework provides**:
 - Mathematical guarantee: IF e allocates more to beneficial partners, THEN goal achievement increases
@@ -566,7 +566,7 @@ This is a REAL practical problem:
 
 **YES!** The anti-gaming theorem (maximize T(e,B)) combined with sovereignty (f controls R(f,·)) DOES guarantee sybil resistance.
 
-The "gap" flagged in RIGOROUS-ANALYSIS was not actually a gap—it was misunderstanding what the proof guarantees. The proof shows equality is mathematically possible but incentive-incompatible under the framework's assumptions.
+The "gap" flagged in RIGOROUS-ANALYSIS was not actually a gap - it was misunderstanding what the proof guarantees. The proof shows equality is mathematically possible but incentive-incompatible under the framework's assumptions.
 
 ### Recommended Action
 

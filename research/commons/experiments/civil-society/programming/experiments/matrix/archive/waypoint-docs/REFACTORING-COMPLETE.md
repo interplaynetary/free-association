@@ -245,7 +245,7 @@ But the elegant refactoring is **complete and working** now! 🎉
 
 > "Perfection is achieved, not when there is nothing more to add,  
 > but when there is nothing left to take away."  
-> — Antoine de Saint-Exupéry
+>  -  Antoine de Saint-Exupéry
 
 This refactoring embodies that philosophy:
 - Each module does ONE thing well

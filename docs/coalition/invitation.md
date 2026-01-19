@@ -60,7 +60,7 @@ If you're interested in exploring further:
 
 We're happy to arrange a preliminary call to answer questions or to discuss specific applications to your priorities.
 
-**The framework is being developed collaboratively — your input will shape its design.**
+**The framework is being developed collaboratively  -  your input will shape its design.**
 
 *Note: This coalition is being established through informal coordination sessions at COP30. It does not represent any government, UN body, or existing institution. Participation is open to all interested parties on a voluntary basis. This Digital Public Goods is being offered for free, open-source and optionally white-label. Implementation support can be provided by coalition-members at their own discretion.*
 

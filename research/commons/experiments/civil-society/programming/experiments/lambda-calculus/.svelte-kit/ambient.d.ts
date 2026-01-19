@@ -1,5 +1,5 @@
 
-// this file is generated — do not edit it
+// this file is generated  -  do not edit it
 
 
 /// <reference types="@sveltejs/kit" />
@@ -146,7 +146,7 @@ declare module '$env/static/private' {
  * ```
  */
 declare module '$env/static/public' {
-	
+
 }
 
 /**
@@ -281,7 +281,7 @@ declare module '$env/dynamic/private' {
 /**
  * Similar to [`$env/dynamic/private`](https://svelte.dev/docs/kit/$env-dynamic-private), but only includes variables that begin with [`config.kit.env.publicPrefix`](https://svelte.dev/docs/kit/configuration#env) (which defaults to `PUBLIC_`), and can therefore safely be exposed to client-side code.
  * 
- * Note that public dynamic environment variables must all be sent from the server to the client, causing larger network requests — when possible, use `$env/static/public` instead.
+ * Note that public dynamic environment variables must all be sent from the server to the client, causing larger network requests  -  when possible, use `$env/static/public` instead.
  * 
  * Dynamic environment variables cannot be used during prerendering.
  * 

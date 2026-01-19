@@ -671,7 +671,7 @@ See `rpc/examples/apps/simple-chat.ts` for a complete working example!
 - ✅ Implements capability-based security
 - ✅ **Production-ready with examples and docs**
 
-**In short:** A mathematically-grounded, peer-to-peer system for decentralized coordination based on mutual trust and recognition—with full Cap'n Web parity! 🚀
+**In short:** A mathematically-grounded, peer-to-peer system for decentralized coordination based on mutual trust and recognition - with full Cap'n Web parity! 🚀
 
 **Current Status:** Production-ready with complete implementation, servers, examples, and documentation!
 

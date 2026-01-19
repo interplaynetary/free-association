@@ -2,11 +2,11 @@
 
 ## Foundation Deed of Playnet Foundation
 
-### Article 1 — Name, Seat, and Form
+### Article 1  -  Name, Seat, and Form
 
 The Foundation "Playnet" (the "Foundation") is established under Articles 80 et seq. of the Swiss Civil Code as an independent legal entity. Its seat is in Zurich, Switzerland.
 
-### Article 2 — Purpose
+### Article 2  -  Purpose
 
 The Foundation exists to support and experiment with games/organizations that enable societal flourishing, particularly through:
 
@@ -17,7 +17,7 @@ The Foundation exists to support and experiment with games/organizations that en
 
 The Foundation pursues exclusively charitable and public benefit purposes.
 
-### Article 3 — Powers
+### Article 3  -  Powers
 
 In furtherance of its purpose, the Foundation may:
 
@@ -29,7 +29,7 @@ In furtherance of its purpose, the Foundation may:
 * Delegate operational authority to designated persons, services, or systems
 * Employ any other lawful means consistent with its charitable purpose
 
-### Article 4 — Participants and Beneficiaries
+### Article 4  -  Participants and Beneficiaries
 
 **4.1 Determination**\
 Participants (potential beneficiaries) are determined computationally. A person qualifies as a participant when their Mutual Recognition Density (MRD) equals or exceeds the threshold value (currently 0.5).
@@ -46,7 +46,7 @@ Participant status ends automatically when MRD falls below threshold. Persons ma
 **4.5 Legal Nature**\
 Participants are not members in the legal sense and have no membership rights, voting rights, or claims on Foundation assets. Participant status indicates eligibility to be considered for Foundation support according to computational protocols.
 
-### Article 5 — Organ
+### Article 5  -  Organ
 
 The Foundation has one organ:
 
@@ -64,7 +64,7 @@ Board composition updates when:
 * Current Board member declines to continue, OR
 * Higher-ranked participant accepts position
 
-### Article 6 — Foundation Board
+### Article 6  -  Foundation Board
 
 **6.1 Minimal Responsibilities**\
 Board members have only these duties:
@@ -96,7 +96,7 @@ Board members execute protocol instructions mechanically. They are not personall
 **6.6 Supervisory Compliance**\
 The Board ensures compliance with supervisory authority requirements and Swiss foundation law.
 
-### Article 7 — Compliance Services
+### Article 7  -  Compliance Services
 
 **7.1 Compliance Requirement**\
 The Foundation must comply with Swiss AML (Anti-Money Laundering) and KYC (Know Your Customer) laws.
@@ -123,7 +123,7 @@ The protocol applies compliance filters computationally. The Board does not over
 **7.5 Compliance Service Selection**\
 The Board may designate a compliance service provider. The service must be independent of the Board.
 
-### Article 8 — Resources
+### Article 8  -  Resources
 
 **8.1 Resource Allocation**\
 Resources are allocated according to the Resource Allocation Protocol specification at [playnet.gitbook.io/docs/collective-recognition](https://playnet.gitbook.io/docs/collective-recognition).
@@ -137,7 +137,7 @@ All flows are recorded in a transparent ledger maintained per the protocol speci
 **8.4 Asset Management**\
 Foundation assets are permanently dedicated to the Foundation's charitable purpose. All allocations must serve the Foundation's purpose as defined in Article 2.
 
-### Article 9 — Computational Protocols
+### Article 9  -  Computational Protocols
 
 **9.1 Protocol Specifications**\
 The Foundation operates through three computational protocols:
@@ -155,7 +155,7 @@ The Board implements protocol outputs. Protocol computations are authoritative f
 **9.4 Purpose Alignment**\
 All protocol operations must serve the Foundation's charitable purpose. The Board ensures allocations are consistent with Article 2.
 
-### Article 10 — Amendments
+### Article 10  -  Amendments
 
 **10.1 Purpose Amendments**\
 Amendments to Article 2 (Purpose) require approval by the supervisory authority and are subject to restrictions under Swiss foundation law.
@@ -169,7 +169,7 @@ Other amendments to this Foundation Deed may be made via Decider process with we
 **10.4 Founder Reserved Rights**\
 [Optional: The Founder reserves the right to amend Articles [specify] during the Founder's lifetime.]
 
-### Article 11 — Dissolution
+### Article 11  -  Dissolution
 
 **11.1 Decision**\
 Dissolution requires Decider process with supermajority (75% weighted support) and approval by the supervisory authority.
@@ -180,7 +180,7 @@ Upon dissolution, assets must be transferred to one or more organizations with s
 **11.3 Prohibition**\
 Foundation assets may not be distributed to private individuals or for private benefit.
 
-### Article 12 — Supervisory Authority
+### Article 12  -  Supervisory Authority
 
 **12.1 Authority**\
 The Foundation is subject to supervision by the Foundation Supervisory Authority of the Canton of Zurich.
@@ -191,7 +191,7 @@ The Board submits annual reports and financial statements to the supervisory aut
 **12.3 Compliance**\
 The Foundation operates in compliance with all requirements of the supervisory authority.
 
-### Article 13 — Entry into Force
+### Article 13  -  Entry into Force
 
 This Foundation Deed enters into force upon:
 
