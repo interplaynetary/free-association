@@ -24,6 +24,11 @@
 	import LocationEditor, { type LocationData } from '$lib/components/slots/LocationEditor.svelte';
 	import EmojiPicker from '$lib/components/EmojiPicker.svelte';
     import { slide } from 'svelte/transition';
+	import { 
+		computeH3Index, 
+		DEFAULT_H3_RESOLUTION, 
+		DEFAULT_SEARCH_RADIUS_KM 
+	} from '$lib/protocol/spatial';
 	
 	// V5: Wrap Commitment with id for collection storage
 	type CommitmentWithId = Commitment & { id: string };
@@ -727,8 +732,28 @@
         showExpandedDraft = false;
     }
 
+
     function handleInventoryAdd() {
         if (!draftSlot.name.trim()) return;
+
+        // Auto-compute H3 index for new slot if coordinates are present
+        let h3Index = undefined;
+        let h3Resolution = undefined;
+        let searchRadiusKm = undefined;
+
+        if (draftSlot.latitude !== undefined && draftSlot.longitude !== undefined) {
+            try {
+                h3Resolution = DEFAULT_H3_RESOLUTION;
+                h3Index = computeH3Index(
+                    { latitude: draftSlot.latitude, longitude: draftSlot.longitude },
+                    h3Resolution
+                );
+                searchRadiusKm = DEFAULT_SEARCH_RADIUS_KM;
+                console.log('[ToolBar] Computed H3 index for new slot:', h3Index);
+            } catch (err) {
+                console.warn('[ToolBar] Failed to compute H3 index:', err);
+            }
+        }
 
         if (globalState.inventoryTab === 'needs') {
              const current = get(myNeedSlotsStore) || [];
@@ -752,7 +777,11 @@
                 state_province: draftSlot.state_province,
                 postal_code: draftSlot.postal_code,
                 country: draftSlot.country,
-                online_link: draftSlot.online_link
+                online_link: draftSlot.online_link,
+                // H3 fields
+                h3_index: h3Index,
+                h3_resolution: h3Resolution,
+                search_radius_km: searchRadiusKm
              } as NeedSlot;
              setMyNeedSlots([...current, newSlot]);
              globalState.showToast(`Added need: ${draftSlot.name}`, 'success');
@@ -778,7 +807,11 @@
                 state_province: draftSlot.state_province,
                 postal_code: draftSlot.postal_code,
                 country: draftSlot.country,
-                online_link: draftSlot.online_link
+                online_link: draftSlot.online_link,
+                // H3 fields
+                h3_index: h3Index,
+                h3_resolution: h3Resolution,
+                search_radius_km: searchRadiusKm
              } as AvailabilitySlot;
              setMyCapacitySlots([...current, newSlot]);
              globalState.showToast(`Added capacity: ${draftSlot.name}`, 'success');

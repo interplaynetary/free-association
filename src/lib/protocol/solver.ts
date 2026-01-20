@@ -33,6 +33,8 @@ import {
     type RecognitionSource
 } from './ipf-core.js';
 
+import { buildSlotIndex } from './slot-index.js';
+
 // ═══════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════
@@ -91,7 +93,10 @@ export interface FlowProposal {
  * Given my capacities and the latest signals (y_r) from recipients,
  * update my row scaling factors (x_p).
  * 
- * x_p = C_p / Σ_r (K_pr * y_r)
+ * x_p = min(
+ *    Capacity / Σ_r (K_pr * y_r),
+ *    min_r ( FairShare_pr / (K_pr * y_r) )  <-- Fair Share Capping
+ * )
  */
 export function updateProviderState(
     capacitySlots: AvailabilitySlot[],
@@ -103,32 +108,59 @@ export function updateProviderState(
 ): DistributedIPFState {
     const nextState = { ...state, rowScalings: {} as Record<string, number> }; // Start fresh - only add scalings for current capacity slots
 
+    // INDEX: Build Demand Index from knownNeeds for efficient lookup (O(N))
+    const demandIndex = buildSlotIndex(knownNeeds);
+
     for (const cs of capacitySlots) {
         if (!cs.id) continue;
 
-        // Standard IPF Row Scaling: x_p = C_p / Σ_r (K_pr × y_r)
-        // 
-        // IPF/Sinkhorn converges to the unique matrix that:
-        // 1. Satisfies row constraints: Σ_r A_pr = C_p (full capacity utilization)
-        // 2. Satisfies column constraints: Σ_p A_pr ≤ N_r (need limits via y_r)
-        // 3. Minimizes KL-divergence from seed matrix (respects priorities)
-        //
-        // The "fair-share" concept belongs in market equilibrium models, not IPF.
-        // IPF naturally handles competition through the seed matrix and column scaling (y_r).
-
+        // 1. Calculate Denominator for Capacity Constraint
+        // Denominator = Σ_r (K_pr * y_r)
+        // x_p_capacity = Capacity / Denominator
+        
         let denominator = 0;
-        for (const ns of knownNeeds) {
+        let minXpForFairShare = Number.POSITIVE_INFINITY;
+
+        // QUERY: Use index to find ONLY compatible needs (O(k))
+        const candidates = demandIndex.query(cs) as NeedSlot[];
+
+        for (const ns of candidates) {
             if (!ns.id) continue;
 
             const k_pr = calculateSeedValue(cs, ns, context, epsilon, gamma);
             if (k_pr <= 0) continue;
 
             const y_r = state.cachedRemoteScalings[ns.id] ?? 1.0;
-            denominator += k_pr * y_r;
+            const term = k_pr * y_r;
+            denominator += term;
+
+            // 2. Calculate Fair Share Constraint
+            // FairShare_pr = (K_pr / ΣK_all) * NeedQuantity
+            // x_p_fairshare <= FairShare_pr / (K_pr * y_r)
+            const totalSeed = state.totalSeedsByNeed[ns.id];
+            
+            // Only apply fair share if we have info about competition (totalSeed)
+            if (totalSeed && totalSeed > 0 && ns.quantity) {
+                const fairShare = (k_pr / totalSeed) * ns.quantity;
+                
+                // Avoid division by zero
+                if (term > epsilon) {
+                    const xpLimit = fairShare / term;
+                    if (xpLimit < minXpForFairShare) {
+                        minXpForFairShare = xpLimit;
+                    }
+                }
+            }
         }
 
-        // Scale to actual capacity (not artificial "fair share")
-        nextState.rowScalings[cs.id] = calculateScalingFactor(cs.quantity || 0, denominator, epsilon);
+        // Calculate base x_p from capacity
+        const xpCapacity = calculateScalingFactor(cs.quantity || 0, denominator, epsilon);
+
+        // Apply Fair Share Cap
+        // We take the minimum of Capacity-based scaling and FairShare-based scaling
+        const finalXp = Math.min(xpCapacity, minXpForFairShare);
+
+        nextState.rowScalings[cs.id] = finalXp;
     }
 
     return nextState;
@@ -150,7 +182,9 @@ export function generateFlowProposals(
 ): FlowProposal[] {
     const proposals: FlowProposal[] = [];
 
-    console.log(`[GENERATE-PROPOSALS] Starting with ${capacitySlots.length} capacity slots, ${knownNeeds.length} needs`);
+    // INDEX: Build Demand Index from knownNeeds (O(N))
+    const demandIndex = buildSlotIndex(knownNeeds);
+    const knownNeedsCount = knownNeeds.length;
 
     for (const cs of capacitySlots) {
         if (!cs.id) continue;
@@ -159,26 +193,23 @@ export function generateFlowProposals(
 
         const providerPubkey = findOwner(cs.id, context) || 'unknown';
 
-        console.log(`[GENERATE-PROPOSALS] Processing capacity slot ${cs.id.slice(0, 10)}... (x_p=${x_p.toFixed(4)})`);
+        // QUERY: Use index to find ONLY compatible needs
+        const candidates = demandIndex.query(cs) as NeedSlot[];
+        
+        // Log optimization metric if debugging (optional)
+        // const candidateCount = candidates.length;
+        // console.log(`[GENERATE-PROPOSALS] Index pruned ${knownNeedsCount} needs -> ${candidateCount} candidates`);
 
-        for (const ns of knownNeeds) {
+        for (const ns of candidates) {
             if (!ns.id) continue;
 
             const k_pr = calculateSeedValue(cs, ns, context, epsilon, gamma);
-            if (k_pr <= 0) {
-                console.log(`[GENERATE-PROPOSALS]   Need ${ns.id.slice(0, 10)}... - INCOMPATIBLE (k_pr=${k_pr})`);
-                continue;
-            }
+            if (k_pr <= 0) continue;
 
             const y_r = state.cachedRemoteScalings[ns.id] ?? 1.0;
             const rawQuantity = k_pr * x_p * y_r;
 
-            // Calculate allocation using IPF formula: A_pr = K_pr * x_p * y_r
-            // The y_r factor (from recipient) ensures Sum(A_pr) <= Need_r across all providers
-            // No per-provider clamping needed - trust the distributed coordination
-            const quantity = rawQuantity;
-
-            console.log(`[GENERATE-PROPOSALS]   Need ${ns.id.slice(0, 10)}... - k_pr=${k_pr.toFixed(4)}, y_r=${y_r.toFixed(4)}, raw=${rawQuantity.toFixed(2)}, final=${quantity.toFixed(2)}`);
+            const quantity = rawQuantity; // Trust distributed coordination
 
             if (quantity > epsilon) {
                 const recipientPubkey = findOwner(ns.id, context) || 'unknown';
@@ -194,8 +225,6 @@ export function generateFlowProposals(
         }
     }
 
-    console.log(`[GENERATE-PROPOSALS] Generated ${proposals.length} proposals`);
-
     return proposals;
 }
 
@@ -209,16 +238,6 @@ export function generateFlowProposals(
  * Calculate my constraint factor y_r based on incoming flow proposals.
  * 
  * y_r_new = min(1, Need / TotalProposed)
- * 
- * Note: Strictly speaking in Sinkhorn, y_r is updated iteratively.
- * But practically, we can just clamp the sum of incoming proposals.
- * If providers sent K*x*y_old, then TotalReceived = Sum(K*x*y_old).
- * We want TotalReceived_New <= Need.
- * So y_new = y_old * min(1, Need / TotalReceived).
- * 
- * However, to be robust to async, we can just publish "Saturation Level":
- * Saturation = TotalProposed / Need
- * y_target = 1 / Saturation (clamped at 1)
  */
 export function updateRecipientState(
     needSlots: NeedSlot[],
@@ -237,9 +256,6 @@ export function updateRecipientState(
     const seedsByNeed: Record<string, number> = {};
 
     // CRITICAL: Include ALL proposals (including self) in y_r calculation
-    // This is correct IPF behavior - clamping must account for total demand
-    // The "circular dependency" concern is invalid: y_r is a broadcast signal
-    // that affects all providers equally, enabling proper displacement
     for (const p of incomingProposals) {
         // Sum all proposals for clamping calculation
         const current = proposalsByNeed[p.need_slot_id] || 0;
@@ -260,15 +276,12 @@ export function updateRecipientState(
         const y_r = calculateConstraintFactor(needCap, totalProposed, epsilon);
         nextState.colScalings[ns.id] = y_r;
 
-        console.log(`[Y_R-CALC] Need ${ns.id.slice(0, 10)}... needCap=${needCap.toFixed(2)}, totalProposed=${totalProposed.toFixed(2)}, y_r=${y_r.toFixed(4)}`);
-
         // Store total seed for provider fair-share calculation
         nextState.totalSeedsByNeed[ns.id] = seedsByNeed[ns.id] || epsilon;
     }
 
     return nextState;
 }
-
 
 // ═══════════════════════════════════════════════════════════════════
 // HELPER FUNCTIONS 

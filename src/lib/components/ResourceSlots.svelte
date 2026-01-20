@@ -13,6 +13,12 @@
 	import { outsideClick } from '$lib/actions/outsideClick';
 	import { emojiPicker } from '$lib/actions/emojiPicker';
 	
+	import { 
+		computeH3Index, 
+		DEFAULT_H3_RESOLUTION, 
+		DEFAULT_SEARCH_RADIUS_KM 
+	} from '$lib/protocol/spatial';
+	
 	/**
 	 * Generalized resource slots component with need type selection
 	 * Default time: per month
@@ -164,9 +170,9 @@
 		deletePending = null;
 	}
 
+	
 
-
-
+	
 
 	
 	// Handle delete with confirmation
@@ -212,7 +218,29 @@
 	
 	// Location handler
 	function handleLocationUpdate(slot: SlotType, location: LocationData, isNeed: boolean) {
-		const updated = { ...slot, ...location };
+		let updated = { ...slot, ...location };
+		
+		// Auto-compute H3 index if coordinates are available
+		if (updated.latitude !== undefined && updated.longitude !== undefined) {
+			try {
+				const resolution = updated.h3_resolution ?? DEFAULT_H3_RESOLUTION;
+				const h3Index = computeH3Index(
+					{ latitude: updated.latitude, longitude: updated.longitude }, 
+					resolution
+				);
+				
+				updated = {
+					...updated,
+					h3_index: h3Index,
+					h3_resolution: resolution,
+					search_radius_km: updated.search_radius_km ?? DEFAULT_SEARCH_RADIUS_KM
+				};
+				console.log('[ResourceSlots] Computed H3 index:', h3Index);
+			} catch (err) {
+				console.warn('[ResourceSlots] Failed to compute H3 index:', err);
+			}
+		}
+		
 		isNeed ? onNeedUpdate(updated as NeedSlot) : onCapacityUpdate(updated as AvailabilitySlot);
 	}
 	

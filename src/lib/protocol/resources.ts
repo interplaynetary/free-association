@@ -137,12 +137,16 @@ export const BaseSlotSchema = z.object({
     postal_code: z.string().optional(),
     country: z.string().optional(),
     online_link: z.string().url().or(z.string().length(0)).optional(),
+    h3_index: z.string().optional(),
+    h3_resolution: z.number().int().min(0).max(15).optional(),
+    search_radius_km: z.number().gte(0).optional(),
     parent_slot_id: z.string().optional(),
     mutual_agreement_required: z.boolean().default(false).optional(),
     priority: z.number().optional(),
     members: z.array(z.string()).optional(),
-    priority_distribution: z.record(z.string(), z.number().min(0).max(1)).optional()
-});
+    priority_distribution: z.record(z.string(), z.number().min(0).max(1)).optional(),
+    // H3 Spatial Indexing Fields (Phase 1)
+   });
 
 export type BaseSlot = z.infer<typeof BaseSlotSchema>;
 
