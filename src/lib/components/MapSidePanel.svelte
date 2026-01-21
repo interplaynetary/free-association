@@ -353,7 +353,7 @@
 			// NeedSlot handling
 			return {
 				name: firstSlot.name, // Use the need slot's name (e.g., "Housing")
-				emoji: getResourceTypeEmoji(firstSlot.type_id) || '🚩', // Use type emoji or default flag
+				emoji: firstSlot.emoji || getResourceTypeEmoji(firstSlot.type_id) || '🚩', // Use slot emoji first, then type emoji, then default flag
 				unit: firstSlot.unit,
 				description: firstSlot.description
 			};
