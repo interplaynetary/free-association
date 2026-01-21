@@ -8,7 +8,7 @@ import {
 	setMyNeedSlots
 } from '$lib/protocol/stores/stores.svelte';
 import { get } from 'svelte/store';
-import { populateWithExampleData, createExampleCapacitySlots, createExampleNeedSlots } from '$lib/demo/capacities';
+import { populateWithExampleData, createExampleCapacitySlotsGenerator, createExampleNeedSlotsGenerator } from '$lib/demo/capacities';
 
 /**
  * V5: Populate recognition tree
@@ -22,23 +22,57 @@ export function populateRecognitionTree(): void {
 }
 
 /**
- * V5: Populate capacity slots
+ * V5: Populate capacity slots (Streaming)
  */
-export function populateCapacitySlots(): void {
-	const exampleCapacitySlots = createExampleCapacitySlots();
-	const currentCapacitySlots = get(myCapacitySlotsStore) || [];
-	const newCapacitySlots: AvailabilitySlot[] = [...currentCapacitySlots, ...exampleCapacitySlots];
-	setMyCapacitySlots(newCapacitySlots);
+export async function populateCapacitySlots(): Promise<void> {
+	const generator = createExampleCapacitySlotsGenerator();
+	let batch: AvailabilitySlot[] = [];
+	const BATCH_SIZE = 50;
+
+	for (const slot of generator) {
+		batch.push(slot);
+		if (batch.length >= BATCH_SIZE) {
+			const current = get(myCapacitySlotsStore) || [];
+			setMyCapacitySlots([...current, ...batch]);
+			batch = [];
+			if (typeof requestAnimationFrame !== 'undefined') {
+				await new Promise(resolve => requestAnimationFrame(resolve));
+			}
+		}
+	}
+
+	// Add remaining
+	if (batch.length > 0) {
+		const current = get(myCapacitySlotsStore) || [];
+		setMyCapacitySlots([...current, ...batch]);
+	}
 }
 
 /**
- * V5: Populate need slots
+ * V5: Populate need slots (Streaming)
  */
-export function populateNeedSlots(): void {
-	const exampleNeedSlots = createExampleNeedSlots();
-	const currentNeedSlots = get(myNeedSlotsStore) || [];
-	const newNeedSlots: NeedSlot[] = [...currentNeedSlots, ...exampleNeedSlots];
-	setMyNeedSlots(newNeedSlots);
+export async function populateNeedSlots(): Promise<void> {
+	const generator = createExampleNeedSlotsGenerator();
+	let batch: NeedSlot[] = [];
+	const BATCH_SIZE = 50;
+
+	for (const slot of generator) {
+		batch.push(slot);
+		if (batch.length >= BATCH_SIZE) {
+			const current = get(myNeedSlotsStore) || [];
+			setMyNeedSlots([...current, ...batch]);
+			batch = [];
+			if (typeof requestAnimationFrame !== 'undefined') {
+				await new Promise(resolve => requestAnimationFrame(resolve));
+			}
+		}
+	}
+
+	// Add remaining
+	if (batch.length > 0) {
+		const current = get(myNeedSlotsStore) || [];
+		setMyNeedSlots([...current, ...batch]);
+	}
 }
 
 /**

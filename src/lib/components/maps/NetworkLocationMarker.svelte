@@ -75,11 +75,15 @@
 
 	// Dynamic z-index based on latitude + altitude
 	let zIndex = $derived.by(() => {
-		if (markerEmoji === '🚀') return 2000;
-		if (markerEmoji === '🛰️') return 2100; // Satellites on top
-		if (markerEmoji === '✈️') return 1000;
-		if (markerEmoji === '🚁') return 900;
-		return 100 + Math.round((90 - location.latitude) * 10);
+		// Base z-index needs to be high enough to be above DeckGL overlay (which might be z-index 1 or higher)
+		// but MapLibre markers are DOM elements, so they usually sit above canvas if z-index is sufficient.
+		// Boosting all values significantly to ensure they pop over paths.
+		const BASE_Z = 100000;
+		if (markerEmoji === '🚀') return BASE_Z + 2000;
+		if (markerEmoji === '🛰️') return BASE_Z + 2100; // Satellites on top
+		if (markerEmoji === '✈️') return BASE_Z + 1000;
+		if (markerEmoji === '🚁') return BASE_Z + 900;
+		return BASE_Z + 100 + Math.round((90 - location.latitude) * 10);
 	});
 </script>
 
@@ -111,7 +115,7 @@
 
 	.network-marker:hover {
 		transform: scale(1.2);
-		z-index: 2000 !important;
+		z-index: 200000 !important;
 	}
 
 	.marker-icon {

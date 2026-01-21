@@ -712,7 +712,7 @@
 		if (!deckOverlay) {
 			console.log('[Map] Initializing DeckGL Overlay');
 			deckOverlay = new MapboxOverlay({
-				interleaved: false, // Force separate canvas to ensure "Always On Top" visibility
+				interleaved: true, // Render into the map's GL context so standard DOM markers sit on top
 				layers: []
 			});
 			map.addControl(deckOverlay as any);

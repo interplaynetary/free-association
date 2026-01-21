@@ -1038,58 +1038,51 @@
 							</div>
 
 							<!-- Draft Controls -->
-							<div class="inventory-draft-controls">
-								<!-- Type Selector (Hidden, merged into input) -->
-								<!-- <select bind:value={draftSlot.type_id} class="draft-select">
-									{#each types as t}
-										<option value={t.id}>{t.emoji} {t.label}</option>
-									{/each}
-								</select> -->
+							<!-- Draft Controls -->
+							<div class="draft-controls-wrapper">
+								<!-- Input Pill (Grey Background) -->
+								<div class="inventory-input-pill">
+									<!-- Name Input (Also acts as search) -->
+									<div class="draft-input-wrapper relative">
+										<input 
+											type="text" 
+											bind:value={draftSlot.name} 
+											oninput={(e) => globalState.inventorySearchQuery = (e.target as HTMLInputElement).value}
+											onfocus={handleInputFocus}
+											placeholder={globalState.inventoryTab === 'needs' ? "Advocate need..." : "Share capacity..."}
+											class="draft-input-name"
+											onkeydown={(e) => e.key === 'Enter' && handleInventoryAdd()}
+										/>
+									</div>
 
-								<!-- Name Input (Also acts as search) -->
-								<!-- Name Input (Also acts as search) -->
-								<div class="draft-input-wrapper relative">
-									<!-- Popover removed in favor of Expanded Panel 'type' tab -->
-									<input 
-										type="text" 
-										bind:value={draftSlot.name} 
-                                        oninput={(e) => globalState.inventorySearchQuery = (e.target as HTMLInputElement).value}
-										onfocus={handleInputFocus}
-										placeholder={globalState.inventoryTab === 'needs' ? "Advocate need..." : "Share capacity..."}
-										class="draft-input-name"
-										onkeydown={(e) => e.key === 'Enter' && handleInventoryAdd()}
-									/>
+									<!-- Quantity & Emoji -->
+									<div class="draft-qty-group">
+										<button 
+											class="emoji-display-btn" 
+											onclick={() => toggleExpandedDraft('emoji')}
+											title="Choose Emoji"
+										>
+											{draftSlot.emoji}
+										</button>
+										<input 
+											type="number" 
+											bind:value={draftSlot.quantity} 
+											min="0" 
+											class="draft-input-qty"
+										/>
+										<button
+											class="unit-btn"
+											onclick={() => toggleExpandedDraft('unit')}
+											title="Choose Unit"
+										>
+											{availableUnits.find(u => u.id === draftSlot.unit)?.label || draftSlot.unit || 'Units'}
+										</button>
+									</div>
 								</div>
 
-								<!-- Quantity & Emoji -->
-								<div class="draft-qty-group">
-									<button 
-										class="emoji-display-btn" 
-										onclick={() => toggleExpandedDraft('emoji')}
-										title="Choose Emoji"
-									>
-										{draftSlot.emoji}
-									</button>
-									<input 
-										type="number" 
-										bind:value={draftSlot.quantity} 
-										min="0" 
-										class="draft-input-qty"
-									/>
-                                    <button
-                                        class="unit-btn"
-                                        onclick={() => toggleExpandedDraft('unit')}
-                                        title="Choose Unit"
-                                    >
-                                        {availableUnits.find(u => u.id === draftSlot.unit)?.label || draftSlot.unit || 'Units'}
-                                    </button>
-								</div>
-
+								<!-- Buttons (Outside Pill) -->
 								<!-- Expanded Draft Toggles -->
 								<div class="draft-expander-group">
-
-									
-									<!-- Emoji button removed (moved to input group) -->
 									<button 
 										class="toolbar-button expand-btn"
 										class:active={showExpandedDraft && expandedDraftTab === 'time'}
@@ -1508,12 +1501,13 @@
 		position: relative;
 		display: flex;
 		align-items: center;
+		margin-right: 8px;
 	}
 
 	/* Absolutely positioned separator - always in same place */
 	.view-separator {
 		position: absolute;
-		left: 48px;
+		left: 36px;
 		top: 0;
 		bottom: 0;
 		width: 2px;
@@ -2217,14 +2211,21 @@
         background: rgba(33, 150, 243, 0.1);
 	}
 
-	.inventory-draft-controls {
+	.draft-controls-wrapper {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		height: 100%;
+	}
+
+	.inventory-input-pill {
 		display: flex;
 		align-items: center;
 		gap: 2px;
 		background: #f5f5f5;
 		padding: 0 4px;
 		border-radius: 20px;
-        height: 28px;
+		height: 28px;
 	}
 
 	.draft-select {
@@ -2393,10 +2394,12 @@
 
 	.draft-expander-group {
 		display: flex;
-		gap: 1px;
+		flex-direction: column;
+		gap: 2px;
 		margin-right: 4px;
-        border-left: 1px solid #e2e8f0;
-        padding-left: 4px;
+		margin-left: -4px; /* Pull slightly closer to pill if needed, or adjust gap in wrapper */
+        padding-left: 0;
+		border-left: none;
 	}
 
 	.expand-btn {
@@ -2421,10 +2424,7 @@
 		background: #e0f2fe;
 		opacity: 1;
 	}
-	.expand-btn.active {
-		background: #e0f2fe;
-		opacity: 1;
-	}
+
 
 	.type-grid {
 		display: grid;
