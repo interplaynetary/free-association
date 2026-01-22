@@ -1,5 +1,6 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "free-association",
@@ -96,6 +97,7 @@
         "@isomorphic-git/lightning-fs": "^4.6.2",
         "@neoconfetti/svelte": "^2.0.0",
         "@playwright/test": "^1.56.1",
+        "@rollup/rollup-darwin-arm64": "^4.56.0",
         "@sveltejs/adapter-auto": "^6.0.0",
         "@sveltejs/adapter-node": "^5.2.0",
         "@sveltejs/adapter-static": "^3.0.8",
@@ -784,6 +786,8 @@
     "@rollup/plugin-terser": ["@rollup/plugin-terser@0.4.4", "", { "dependencies": { "serialize-javascript": "^6.0.1", "smob": "^1.0.0", "terser": "^5.17.4" }, "peerDependencies": { "rollup": "^2.0.0||^3.0.0||^4.0.0" } }, ""],
 
     "@rollup/pluginutils": ["@rollup/pluginutils@5.3.0", "", { "dependencies": { "@types/estree": "^1.0.0", "estree-walker": "^2.0.2", "picomatch": "^4.0.2" }, "peerDependencies": { "rollup": "^1.20.0||^2.0.0||^3.0.0||^4.0.0" } }, ""],
+
+    "@rollup/rollup-darwin-arm64": ["@rollup/rollup-darwin-arm64@4.56.0", "", { "os": "darwin", "cpu": "arm64" }, "sha512-EgxD1ocWfhoD6xSOeEEwyE7tDvwTgZc8Bss7wCWe+uc7wO8G34HHCUH+Q6cHqJubxIAnQzAsyUsClt0yFLu06w=="],
 
     "@rollup/rollup-linux-x64-gnu": ["@rollup/rollup-linux-x64-gnu@4.54.0", "", { "os": "linux", "cpu": "x64" }, ""],
 
