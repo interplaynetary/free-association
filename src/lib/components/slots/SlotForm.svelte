@@ -43,7 +43,6 @@
     name: slot?.name || '',
     emoji: slot?.emoji,
     description: slot?.description,
-    resource_type: slot?.resource_type,
     quantity: slot?.quantity || 1,
     unit: slot?.unit,
     start_date: slot?.start_date,
@@ -173,7 +172,7 @@
         bind:name={formData.name}
         bind:emoji={formData.emoji}
         bind:description={formData.description}
-        bind:resourceType={formData.resource_type}
+        bind:resourceType={formData.type_id}
         onUpdate={updateField}
         {readonly}
       />

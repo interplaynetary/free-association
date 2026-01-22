@@ -201,7 +201,7 @@ export const globalState = $state({
 	initializationStarted: false,
 
 	// Main view state
-	currentView: 'map' as 'tree' | 'map' | 'inventory',
+	currentView: 'map' as 'tree' | 'map' | 'inventory' | 'skills',
 
 	// Inventory search and filter state (shared between toolbar and components)
 	// V5: Works with Commitments (which contain capacity_slots arrays)
@@ -210,6 +210,9 @@ export const globalState = $state({
 	inventorySortBy: 'name' as 'name' | 'allocated_slots' | 'total_slots' | 'provider',
 	inventorySortDirection: 'asc' as 'asc' | 'desc',
 	inventoryTab: 'needs' as 'needs' | 'capacity',
+
+	// Skills search state
+	skillsSearchQuery: '',
 
 	// Unified highlighting state for newly created items
 	// V5: capacityId = pubKey (for Commitment), slotId = AvailabilitySlot.id
@@ -867,7 +870,7 @@ export const globalState = $state({
 	/**
 	 * View Management
 	 */
-	setView: (view: 'map' | 'tree' | 'inventory') => {
+	setView: (view: 'map' | 'tree' | 'inventory' | 'skills') => {
 		globalState.currentView = view;
 	}
 });

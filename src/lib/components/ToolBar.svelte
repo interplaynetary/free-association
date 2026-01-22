@@ -417,7 +417,8 @@
 	const viewConfig = $derived({
 		map: { emoji: '🌍', name: $t('toolbar.map_view'), next: 'tree' as const },
 		tree: { emoji: '🌈', name: $t('toolbar.tree_view'), next: 'inventory' as const },
-		inventory: { emoji: '📊', name: $t('toolbar.inventory_view'), next: 'map' as const }
+		inventory: { emoji: '📊', name: $t('toolbar.inventory_view'), next: 'skills' as const },
+		skills: { emoji: '🌟', name: 'My Skills', next: 'map' as const }
 	});
 
 	const currentViewConfig = $derived(viewConfig[globalState.currentView]);
@@ -450,7 +451,7 @@
 		isLongPressing = false;
 	}
 
-	function selectView(view: 'tree' | 'map' | 'inventory') {
+	function selectView(view: 'tree' | 'map' | 'inventory' | 'skills') {
 		globalState.setView(view);
 		showViewMenu = false;
 	}
@@ -940,6 +941,14 @@
 									<span class="menu-emoji">📊</span>
 									<span class="menu-label">Inventory</span>
 								</button>
+								<button
+									class="view-menu-item"
+									class:active={globalState.currentView === 'skills'}
+									onclick={() => selectView('skills')}
+								>
+									<span class="menu-emoji">🌟</span>
+									<span class="menu-label">Skills</span>
+								</button>
 							</div>
 						{/if}
 					</div>
@@ -1218,6 +1227,34 @@
 							</div>
 						{/if}
 					{/if}
+				</div>
+			{/if}
+
+			<!-- Skills View Controls -->
+			{#if globalState.currentView === 'skills'}
+				<div class="action-controls skills-controls">
+					<div class="inventory-input-pill">
+						<div class="draft-input-wrapper relative">
+                            <div class="pill-icon search-icon" style="top: 50%; transform: translateY(-50%); left: 1rem; position: absolute; font-size: 0.9rem; opacity: 0.6;">🔍</div>
+							<input 
+								type="text" 
+								class="draft-input-name"
+                                style="padding-left: 2.5rem;"
+								placeholder="Filter skills..." 
+								bind:value={globalState.skillsSearchQuery}
+							/>
+                            {#if globalState.skillsSearchQuery}
+                                <button 
+                                    class="clear-search-btn" 
+                                    style="position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 0.8rem; opacity: 0.5; cursor: pointer;"
+                                    onclick={() => globalState.skillsSearchQuery = ''}
+                                    aria-label="Clear search"
+                                >
+                                    ✕
+                                </button>
+                            {/if}
+						</div>
+					</div>
 				</div>
 			{/if}
 
@@ -2461,6 +2498,52 @@
 		color: #334155;
 		text-align: center;
 	}
+
+	/* Skills View Controls */
+	.skills-controls {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        height: 100%;
+		display: flex;
+        justify-content: center;
+        align-items: center;
+        width: auto;
+        pointer-events: none; /* Let clicks pass through if empty */
+	}
+    
+    .skills-controls > * {
+        pointer-events: auto; /* Re-enable clicks on content */
+    }
+    
+    .skills-controls .draft-input-name {
+        width: 300px; /* Even wider input */
+        font-size: 14px;
+    }
+    
+    .skills-controls .inventory-input-pill {
+        height: 38px;
+        padding: 0 12px;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+        border-radius: 20px;
+    }
+    
+    @media (max-width: 600px) {
+        .skills-controls {
+            position: relative;
+            left: 0;
+            transform: none;
+            width: 100%;
+            justify-content: flex-start;
+            pointer-events: auto;
+            margin-left: 8px;
+        }
+        .skills-controls .draft-input-name {
+            width: 150px;
+        }
+    }
 
     .category-list {
         display: flex;

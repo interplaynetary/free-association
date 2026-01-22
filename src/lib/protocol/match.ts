@@ -13,8 +13,57 @@
  * - Pure multi-dimensional design
  */
 
-import type { AvailabilitySlot, NeedSlot, AvailabilityWindow, TimeRange, DayOfWeek, DaySchedule, WeekSchedule, MonthSchedule } from './resources.js';
+import type { AvailabilitySlot, NeedSlot, AvailabilityWindow, TimeRange, DayOfWeek, DaySchedule, WeekSchedule, MonthSchedule, Contact, Skill } from './resources.js';
 import { cellsCompatible, DEFAULT_SEARCH_RADIUS_KM, REMOTE_H3_INDEX } from './spatial.js';
+
+// ═══════════════════════════════════════════════════════════════════
+// SKILL MATCHING (Bi-directional)
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Check if skills are compatible between two parties in a transaction.
+ * 
+ * Verifies two directions:
+ * 1. FORWARD: Does the Provider have the skills required by the Need?
+ * 2. REVERSE: Does the Seeker have the skills required by the Capacity?
+ * 
+ * @param needSlot - The Need slot requesting service/goods
+ * @param provider - The Contact/Entity providing the capacity (from capacitySlot.offered_by)
+ * @param capacitySlot - The Capacity slot being offered
+ * @param seeker - The Contact/Entity seeking the need (from needSlot.offered_by)
+ */
+export function skillsCompatible(
+	needSlot: NeedSlot,
+	provider: Contact | undefined,
+	capacitySlot: AvailabilitySlot,
+	seeker: Contact | undefined
+): boolean {
+	// 1. FORWARD CHECK: Need requires Provider Skills
+	if (needSlot.required_skills && needSlot.required_skills.length > 0) {
+		if (!provider) return false; // Provider identity required for skill check
+
+		const missingSkill = needSlot.required_skills.find(req => {
+			// Check if provider has this skill (by ID)
+			return !provider.skills.some(s => s.id === req.id);
+		});
+
+		if (missingSkill) return false;
+	}
+
+	// 2. REVERSE CHECK: Capacity requires Seeker Skills
+	// (e.g. "Intermediate Class" requires "Basic Training")
+	if (capacitySlot.required_skills && capacitySlot.required_skills.length > 0) {
+		if (!seeker) return false; // Seeker identity required for skill check
+
+		const missingSkill = capacitySlot.required_skills.find(req => {
+			return !seeker.skills.some(s => s.id === req.id);
+		});
+
+		if (missingSkill) return false;
+	}
+
+	return true;
+}
 
 // ═══════════════════════════════════════════════════════════════════
 // RECURRENCE TRACK IDENTIFICATION
@@ -315,6 +364,116 @@ function convertDayScheduleToUTC(
 			}
 		}
 	}
+
+	return result;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TIME INTERSECTION UTILITIES
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Calculate the intersection of two sets of time ranges
+ * e.g., [9-12, 14-17] intersected with [10-15] -> [10-12, 14-15]
+ */
+export function intersectTimeRanges(ranges1: TimeRange[], ranges2: TimeRange[]): TimeRange[] {
+	const sorted1 = [...ranges1].sort((a, b) => a.start_time.localeCompare(b.start_time));
+	const sorted2 = [...ranges2].sort((a, b) => a.start_time.localeCompare(b.start_time));
+
+	const result: TimeRange[] = [];
+	let i = 0;
+	let j = 0;
+
+	while (i < sorted1.length && j < sorted2.length) {
+		const r1 = sorted1[i];
+		const r2 = sorted2[j];
+
+		// Find overlap
+		const start = r1.start_time > r2.start_time ? r1.start_time : r2.start_time;
+		const end = r1.end_time < r2.end_time ? r1.end_time : r2.end_time;
+
+		if (start < end) {
+			result.push({ start_time: start, end_time: end });
+		}
+
+		// Advance the range that ends earlier
+		if (r1.end_time < r2.end_time) {
+			i++;
+		} else {
+			j++;
+		}
+	}
+
+	return result;
+}
+
+/**
+ * Calculate the concrete overlap between two availability windows
+ * 
+ * Returns a NEW AvailabilityWindow containing only the mutually valid times.
+ * Useful for proposing specific booking times after a match is found.
+ */
+export function calculateAvailabilityIntersection(
+	window1: AvailabilityWindow,
+	window2: AvailabilityWindow,
+	timezone1?: string,
+	timezone2?: string,
+	sampleDate: string = '2024-01-01'
+): AvailabilityWindow {
+	// 1. Convert everything to UTC day schedules
+	const dayScheds1UTC = flattenWindowToUTCDaySchedules(window1, timezone1, sampleDate);
+	const dayScheds2UTC = flattenWindowToUTCDaySchedules(window2, timezone2, sampleDate);
+
+	const commonDaySchedules: DaySchedule[] = [];
+	const daysProcessed = new Set<DayOfWeek>();
+
+	// 2. Find common days
+	for (const sched1 of dayScheds1UTC) {
+		for (const sched2 of dayScheds2UTC) {
+			if (sched1.day === sched2.day) {
+				// 3. Intersect times on this day
+				const overlap = intersectTimeRanges(sched1.timeRanges, sched2.timeRanges);
+
+				if (overlap.length > 0) {
+					// Check if we already have a schedule for this day to merge into
+					// (Simplification: just add new day entry)
+					commonDaySchedules.push({
+						days: [sched1.day],
+						time_ranges: overlap
+					});
+				}
+			}
+		}
+	}
+
+	// 4. Return new window (always normalize to day_schedules for simplicity)
+	return {
+		day_schedules: commonDaySchedules
+	};
+}
+
+/**
+ * Helper to flatten any window structure into a uniform array of UTC DaySchedules
+ */
+function flattenWindowToUTCDaySchedules(
+	window: AvailabilityWindow,
+	timezone?: string,
+	sampleDate: string = '2024-01-01'
+): Array<{ day: DayOfWeek; timeRanges: TimeRange[] }> {
+	const result: Array<{ day: DayOfWeek; timeRanges: TimeRange[] }> = [];
+
+	// Handle day_schedules
+	if (window.day_schedules) {
+		for (const sched of window.day_schedules) {
+			result.push(...convertDayScheduleToUTC(sched, sampleDate, timezone));
+		}
+	}
+
+	// Handle time_ranges (assumed to apply to ALL days if no day specified, 
+	// but in this context usually implies "every day" or needs context.
+	// For safety, we only process explicit day_schedules or Week/Month patterns here.
+	// If only time_ranges exist, we might assume they apply to the sampleDate's day?
+	// For now, adhering to the "explicit pattern" rule.)
 
 	return result;
 }
@@ -637,6 +796,44 @@ function availabilityWindowsOverlapWithTimezone(
 
 	// Fallback to standard comparison if no day_schedules
 	return availabilityWindowsOverlap(window1, window2);
+}
+
+/**
+ * Calculate the total duration in hours for an AvailabilityWindow
+ * 
+ * Useful for converting a complex intersection window back into a scalar quantity
+ * for the solver/allocation logic.
+ * 
+ * Assumes weekly recurrence for day_schedules (sums hours per week).
+ */
+export function calculateWindowDurationHours(window: AvailabilityWindow): number {
+	let totalMinutes = 0;
+
+	if (window.day_schedules) {
+		for (const sched of window.day_schedules) {
+			const daysCount = sched.days.length;
+			for (const range of sched.time_ranges) {
+				const startMinutes = parseTimeToMinutes(range.start_time);
+				const endMinutes = parseTimeToMinutes(range.end_time);
+
+				// Handle crossing midnight (e.g. 23:00 to 01:00 is 2 hours)
+				let duration = endMinutes - startMinutes;
+				if (duration < 0) duration += 24 * 60;
+
+				totalMinutes += duration * daysCount;
+			}
+		}
+	}
+
+	// Note: We ignore standalone time_ranges here as they are ambiguous without days 
+	// (daily? once?) in this context. The intersection logic prioritizes day_schedules.
+
+	return totalMinutes / 60.0;
+}
+
+function parseTimeToMinutes(timeStr: string): number {
+	const [hours, minutes] = timeStr.split(':').map(Number);
+	return (hours * 60) + minutes;
 }
 
 /**
@@ -1260,12 +1457,12 @@ export function locationsCompatible(
 			slot1.search_radius_km ?? DEFAULT_SEARCH_RADIUS_KM,
 			slot2.search_radius_km ?? DEFAULT_SEARCH_RADIUS_KM
 		);
-		
+
 		return cellsCompatible(slot1.h3_index, slot2.h3_index, searchRadius);
 	}
 
 	// **LEGACY: Fallback to coordinate/city/country matching**
-	
+
 	// If neither has location info, be optimistic - assume they match
 	const slot1HasLocation = slot1.city || slot1.country || slot1.latitude !== undefined;
 	const slot2HasLocation = slot2.city || slot2.country || slot2.latitude !== undefined;
@@ -1317,7 +1514,7 @@ export function locationsCompatible(
 			slot1.search_radius_km ?? 50,
 			slot2.search_radius_km ?? 50
 		);
-		
+
 		const distance = haversineDistance(
 			slot1.latitude,
 			slot1.longitude,

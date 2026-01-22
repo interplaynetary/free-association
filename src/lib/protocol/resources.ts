@@ -11,6 +11,28 @@ export const PointsSchema = z.number().gte(0);
 export const PercentageSchema = z.number().gte(0).lte(1);
 
 // ═══════════════════════════════════════════════════════════════════
+// SKILLS & CAPABILITIES
+// ═══════════════════════════════════════════════════════════════════
+
+// Future: This will likely evolve into a Verifiable Credential (VC) structure
+// where the skill claim is cryptographically signed by an issuer.
+// For now, it is a self-attested structured data object.
+export const SkillSchema = z.object({
+    id: z.string().min(1), // URI or unique identifier (e.g. ESCO URI)
+    name: z.string().optional(),
+    category: z.string().optional(),
+    level: z.union([z.number(), z.string()]).optional(),
+    // Future VC fields:
+    // context: z.array(z.string()).optional(),
+    // type: z.array(z.string()).optional(),
+    // issuer: z.string().optional(),
+    // issuanceDate: z.string().optional(),
+    // proof: z.any().optional()
+});
+
+export type Skill = z.infer<typeof SkillSchema>;
+
+// ═══════════════════════════════════════════════════════════════════
 // ITC CAUSALITY SCHEMAS
 // ═══════════════════════════════════════════════════════════════════
 
@@ -110,15 +132,14 @@ export type AvailabilityWindow = z.infer<typeof AvailabilityWindowSchema>;
 
 export const BaseSlotSchema = z.object({
     id: z.string().min(1),
-    quantity: z.number().gte(0),
+    name: z.string(),
     type_id: z.string().min(1),
+    emoji: z.string().optional(),
+    description: z.string().optional(),
+    quantity: z.number().gte(0),
+    unit: z.string().optional(),
     max_natural_div: z.number().gte(1).optional(),
     min_allocation_percentage: PercentageSchema.optional(),
-    name: z.string(),
-    emoji: z.string().optional(),
-    unit: z.string().optional(),
-    description: z.string().optional(),
-    resource_type: z.string().optional(),
     filter_rule: z.any().optional(),
     hidden_until_request_accepted: z.boolean().optional(),
     advance_notice_hours: z.number().gte(0).optional(),
@@ -136,6 +157,9 @@ export const BaseSlotSchema = z.object({
     state_province: z.string().optional(),
     postal_code: z.string().optional(),
     country: z.string().optional(),
+    offered_by: z.string().optional(), // ID of Contact/Org
+    required_skills: z.array(SkillSchema).optional(), // Skills required by this slot
+
     online_link: z.string().url().or(z.string().length(0)).optional(),
     h3_index: z.string().optional(),
     h3_resolution: z.number().int().min(0).max(15).optional(),
@@ -145,8 +169,7 @@ export const BaseSlotSchema = z.object({
     priority: z.number().optional(),
     members: z.array(z.string()).optional(),
     priority_distribution: z.record(z.string(), z.number().min(0).max(1)).optional(),
-    // H3 Spatial Indexing Fields (Phase 1)
-   });
+});
 
 export type BaseSlot = z.infer<typeof BaseSlotSchema>;
 
@@ -166,6 +189,7 @@ export const ContactSchema = z.object({
     public_key: z.string().optional(),
     emoji: z.string().optional(),
     notes: z.string().optional(),
+    skills: z.array(SkillSchema).default([]),
     created_at: z.number().optional(),
     updated_at: z.number().optional(),
     _updatedAt: z.number().optional()
@@ -191,6 +215,7 @@ export const OrganizationSchema = z.object({
     names: z.record(z.string(), z.string()),
     emoji: z.string().optional(),
     description: z.string().optional(),
+    skills: z.array(SkillSchema).default([]),
     created_at: z.number().optional(),
     updated_at: z.number().optional(),
     _updatedAt: z.number().optional()
@@ -215,6 +240,7 @@ export const SlotFilterSchema = z.object({
     applies_to: z.enum(['capacity', 'need', 'both']).default('both'),
     source_pubkeys: z.array(z.string()).optional(),
     type_ids: z.array(z.string()).optional(),
+    required_skills: z.array(SkillSchema).optional(),
     must_include_me: z.boolean().optional(),
     must_include_ids: MembersSchema.optional(),
     location_max_distance_km: z.number().optional(),
@@ -248,3 +274,5 @@ export const MyResourcesSchema = z.object({
 });
 
 export type MyResources = z.infer<typeof MyResourcesSchema>;
+
+

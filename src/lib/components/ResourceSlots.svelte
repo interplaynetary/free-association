@@ -18,6 +18,7 @@
 		DEFAULT_H3_RESOLUTION, 
 		DEFAULT_SEARCH_RADIUS_KM 
 	} from '$lib/protocol/spatial';
+
 	
 	/**
 	 * Generalized resource slots component with need type selection
@@ -65,6 +66,9 @@
 
 	// Delete confirmation state
 	let deletePending = $state<string | null>(null);
+
+	// Skill Tree State
+
 	
 	// Get current need type info
 	const currentResourceType = $derived(types.find(t => t.id === selectedResourceType) || types[0]);
@@ -644,31 +648,40 @@
 {/snippet}
 
 <div class="slots-container">
-	<!-- Tab Navigation -->
+	<!-- Skill Tree Section (Always at top) -->
 
-	
-	<!-- Slots List -->
-	<div class="slots-list">
-		{#if currentSlots.length === 0}
-			<div class="empty-state">
-				No {globalState.inventoryTab === 'needs' ? 'need' : 'capacity'} slots yet
-			</div>
-		{:else}
-			{#each currentSlots as slot (slot.id)}
-				{@render slotCard(slot)}
-			{/each}
-		{/if}
-	</div>
+
+    <div class="inventory-section">
+		<!-- Slots List -->
+		<div class="slots-list">
+			{#if currentSlots.length === 0}
+				<div class="empty-state">
+					No {globalState.inventoryTab === 'needs' ? 'need' : 'capacity'} slots yet
+				</div>
+			{:else}
+				{#each currentSlots as slot (slot.id)}
+					{@render slotCard(slot)}
+				{/each}
+			{/if}
+		</div>
+    </div>
 </div>
 
 <style>
 	.slots-container {
 		display: flex;
 		flex-direction: column;
-		padding: 0.75rem;
+		padding: 0;
 		height: 100%;
-		overflow: hidden;
-		gap: 0.75rem;
+		overflow-y: auto; /* Scroll the whole container */
+		gap: 0;
+    }
+
+    .inventory-section {
+        padding: 0.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
     }
 	
 	/* Need Type Selector */

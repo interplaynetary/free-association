@@ -96,18 +96,18 @@
 	const typeEmoji = $derived(firstSlot?.emoji || '📦');
 	const typeUnit = $derived(firstSlot?.unit || '');
 	const typeDescription = $derived(firstSlot?.description || '');
-	const typeResourceType = $derived(firstSlot?.resource_type || '');
+	const typeTypeId = $derived(firstSlot?.type_id || '');
 	
 	// Local editable state for batch fields (only update on blur)
 	let localUnit = $state('');
 	let localDescription = $state('');
-	let localResourceType = $state('');
+	let localTypeId = $state('');
 	
 	// Keep local state in sync when derived values change
 	$effect(() => {
 		localUnit = typeUnit;
 		localDescription = typeDescription;
-		localResourceType = typeResourceType;
+		localTypeId = typeTypeId;
 	});
 	
 	// Expanded state for type-level controls
@@ -164,9 +164,9 @@
 		}
 	}
 	
-	function handleResourceTypeBlur() {
-		if (localResourceType !== typeResourceType) {
-			applyBatchUpdate('resource_type', localResourceType);
+	function handleTypeIdBlur() {
+		if (localTypeId !== typeTypeId) {
+			applyBatchUpdate('type_id', localTypeId);
 		}
 	}
 </script>
@@ -241,9 +241,9 @@
 						<input
 							id="{typeId}-resource-type"
 							type="text"
-							bind:value={localResourceType}
+							bind:value={localTypeId}
 							placeholder="e.g., perishable, durable"
-							onblur={handleResourceTypeBlur}
+							onblur={handleTypeIdBlur}
 						/>
 					</div>
 					

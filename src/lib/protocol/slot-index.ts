@@ -10,7 +10,7 @@
  */
 
 import * as h3 from 'h3-js';
-import type { BaseSlot } from './resources.js';
+import type { BaseSlot, Contact } from './resources.js';
 import {
 	computeH3Index,
 	ensureH3Index,
@@ -32,7 +32,7 @@ import {
 export class TemporalIndex {
 	// One-time slots indexed by month (YYYY-MM)
 	private oneTimeSlots: Map<string, BaseSlot[]>;
-	
+
 	// Recurring slots indexed by recurrence pattern
 	private recurringSlots: Map<string, BaseSlot[]>;
 
@@ -165,7 +165,7 @@ export class TemporalIndex {
 	// Private helper methods
 
 	private isRecurring(slot: BaseSlot): boolean {
-		return !!(slot.recurrence && slot.recurrence !== 'none');
+		return !!(slot.recurrence);
 	}
 
 	private getMonthKey(slot: BaseSlot): string | null {
@@ -298,7 +298,7 @@ export class SpatialIndex {
 		const temporalIndex = this.cells.get(slot.h3_index);
 		if (temporalIndex) {
 			temporalIndex.remove(slot);
-			
+
 			// Clean up empty temporal indexes
 			if (temporalIndex.size === 0) {
 				this.cells.delete(slot.h3_index);
@@ -413,7 +413,7 @@ export class TypeIndex {
 		const spatialIndex = this.indexes.get(slot.type_id);
 		if (spatialIndex) {
 			spatialIndex.remove(slot);
-			
+
 			// Clean up empty spatial indexes
 			if (spatialIndex.size === 0) {
 				this.indexes.delete(slot.type_id);
@@ -459,6 +459,70 @@ export class TypeIndex {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// SKILL INDEX (Option 2 - Inverted Index)
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Skill index - Maps Skill ID to Contacts who possess it
+ * Used for efficient intersection filtering
+ */
+export class SkillIndex {
+	// Map skill_id → Set of contact_ids
+	private index: Map<string, Set<string>>;
+
+	constructor() {
+		this.index = new Map();
+	}
+
+	/**
+	 * Index a contact's skills
+	 */
+	insert(contact: Contact): void {
+		for (const skill of contact.skills) {
+			let contactSet = this.index.get(skill.id);
+			if (!contactSet) {
+				contactSet = new Set();
+				this.index.set(skill.id, contactSet);
+			}
+			contactSet.add(contact.contact_id);
+		}
+	}
+
+	/**
+	 * Remove a contact from the index
+	 */
+	remove(contact: Contact): void {
+		for (const skill of contact.skills) {
+			const contactSet = this.index.get(skill.id);
+			if (contactSet) {
+				contactSet.delete(contact.contact_id);
+				if (contactSet.size === 0) {
+					this.index.delete(skill.id);
+				}
+			}
+		}
+	}
+
+	/**
+	 * Get contacts that possess a specific skill
+	 */
+	query(skillId: string): Set<string> {
+		return this.index.get(skillId) ?? new Set();
+	}
+
+	/**
+	 * Get number of indexed skills
+	 */
+	get size(): number {
+		return this.index.size;
+	}
+
+	clear(): void {
+		this.index.clear();
+	}
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // COMPOSITE SLOT INDEX (Main API)
 // ═══════════════════════════════════════════════════════════════════
 
@@ -470,9 +534,27 @@ export class TypeIndex {
  */
 export class SlotIndex {
 	private typeIndex: TypeIndex;
+	private skillIndex?: SkillIndex;
 
 	constructor() {
 		this.typeIndex = new TypeIndex();
+	}
+
+	/**
+	 * Populate the separate SkillIndex with known contacts
+	 * Enables "Option 2" filtering (Inverted Index)
+	 */
+	withContacts(contacts: Contact[]): SlotIndex {
+		if (!this.skillIndex) {
+			this.skillIndex = new SkillIndex();
+		} else {
+			this.skillIndex.clear();
+		}
+
+		for (const contact of contacts) {
+			this.skillIndex.insert(contact);
+		}
+		return this;
 	}
 
 	/**
@@ -519,11 +601,50 @@ export class SlotIndex {
 		const radiusKm = probeSlot.search_radius_km ?? DEFAULT_SEARCH_RADIUS_KM;
 
 		// 2. Spatial filter (O(k) where k = covering cells)
-		const candidates = this.typeIndex.queryTypeSpace(typeId, h3Index, radiusKm);
+		let candidates = this.typeIndex.queryTypeSpace(typeId, h3Index, radiusKm);
 
-		// 3. Temporal filter (TODO in Phase 4)
-		// For now, we return broad spatial matches and let caller verify time
-		
+		// 3. Skill Filter (Option 2 - Inverted Index Intersection)
+		// If the probe slot requires skills, and we have a SkillIndex,
+		// filter candidates to only those offered by qualified contacts.
+		if (this.skillIndex && probeSlot.required_skills && probeSlot.required_skills.length > 0) {
+			// Find set of contacts that have ALL required skills
+			let qualifiedContacts: Set<string> | null = null;
+
+			for (const reqSkill of probeSlot.required_skills) {
+				const providers = this.skillIndex.query(reqSkill.id);
+
+				if (qualifiedContacts === null) {
+					// First skill - initialize set
+					qualifiedContacts = new Set(providers);
+				} else {
+					// Subsequent skills - intersect
+					for (const contactId of qualifiedContacts) {
+						if (!providers.has(contactId)) {
+							qualifiedContacts.delete(contactId);
+						}
+					}
+				}
+
+				// Optimization: If intersection becomes empty, no matches possible
+				if (qualifiedContacts && qualifiedContacts.size === 0) {
+					break;
+				}
+			}
+
+			// Filter candidates by qualified offered_by
+			if (qualifiedContacts && qualifiedContacts.size > 0) {
+				candidates = candidates.filter(slot =>
+					slot.offered_by && qualifiedContacts!.has(slot.offered_by)
+				);
+			} else {
+				// Requirements exist but no one qualifies -> 0 matches
+				return [];
+			}
+		}
+
+		// 4. Temporal filter (TODO in Phase 4)
+		// For now, we return broad spatial (and optionally skill-filtered) matches
+
 		return candidates;
 	}
 

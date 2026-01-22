@@ -4,6 +4,7 @@
 	import Bar from '$lib/components/Bar.svelte';
 	import Map from '$lib/components/Map.svelte';
 	import ResourceSlots from '$lib/components/ResourceSlots.svelte';
+	import SkillTree from '$lib/components/SkillTree.svelte';
 	// V5: Import from v5 stores - fully reactive, no manual recalculation needed!
 	import { 
 		myRecognitionTreeStore, 
@@ -27,6 +28,9 @@
 	// Reactive state for inventory view (Svelte 5 runes) - USD only!
 	let needSlots = $state<NeedSlot[]>([]);
 	let capacitySlots = $state<AvailabilitySlot[]>([]);
+	
+	// Skill Tree State (Moved from ResourceSlots)
+	let selectedSkills = $state(new Set<string>());
 
 	onMount(() => {
 		console.log('[TRACE] [ENTER] src/routes/+page.svelte: onMount');
@@ -169,6 +173,17 @@
 					onNeedDelete={removeNeedSlot}
 					onCapacityUpdate={updateCapacitySlot}
 					onCapacityDelete={removeCapacitySlot}
+				/>
+			</div>
+		{:else if currentView === 'skills'}
+			<div class="skills-view" style="height: 100%; overflow-y: auto;">
+				<SkillTree 
+					{selectedSkills} 
+					onSelectionChange={(skills) => selectedSkills = skills}
+					onContinue={() => {
+                        // For now, just a placeholder action
+                        console.log('Skills confirmed', selectedSkills);
+                    }}
 				/>
 			</div>
 		{/if}

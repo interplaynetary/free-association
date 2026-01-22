@@ -395,3 +395,122 @@ describe('Performance Comparison', () => {
 		expect(matches.length).toBeGreaterThan(0);
 	});
 });
+
+describe('Skill Index (Option 2)', () => {
+	let index: SlotIndex;
+
+	beforeEach(() => {
+		index = new SlotIndex();
+	});
+
+	it('should filter slots by required skills', () => {
+		// 1. Setup Contacts with Skills
+		const plumber = {
+			contact_id: 'plumber-1',
+			name: 'Mario',
+			skills: [{ id: 'skill-plumbing', name: 'Plumbing' }]
+		};
+
+		const painter = {
+			contact_id: 'painter-1',
+			name: 'Luigi',
+			skills: [{ id: 'skill-painting', name: 'Painting' }]
+		};
+
+		const master = {
+			contact_id: 'master-1',
+			name: 'Wario',
+			skills: [
+				{ id: 'skill-plumbing', name: 'Plumbing' },
+				{ id: 'skill-painting', name: 'Painting' }
+			]
+		};
+
+		// 2. Setup Slots offered by these contacts
+		const slots: any[] = [
+			{
+				id: 'slot-plumber',
+				type_id: 'labor',
+				offered_by: 'plumber-1',
+				latitude: 37.7749,
+				longitude: -122.4194,
+				name: 'Plumbing Service',
+				quantity: 1
+			},
+			{
+				id: 'slot-painter',
+				type_id: 'labor',
+				offered_by: 'painter-1',
+				latitude: 37.7749,
+				longitude: -122.4194,
+				name: 'Painting Service',
+				quantity: 1
+			},
+			{
+				id: 'slot-master',
+				type_id: 'labor',
+				offered_by: 'master-1',
+				latitude: 37.7749,
+				longitude: -122.4194,
+				name: 'Master Service',
+				quantity: 1
+			}
+		];
+
+		// 3. Build Index & Populate Skills
+		index.build(slots);
+		index.withContacts([plumber, painter, master]);
+
+		// 4. Query: Need Plumbing
+		const needPlumbing: any = {
+			id: 'need-1',
+			type_id: 'labor',
+			latitude: 37.7749,
+			longitude: -122.4194,
+			search_radius_km: 100,
+			required_skills: [{ id: 'skill-plumbing' }],
+			name: 'Need Plumbing',
+			quantity: 1
+		};
+
+		const plumbingMatches = index.query(needPlumbing);
+		// Should match Mario (Plumber) and Wario (Master)
+		// Should NOT match Luigi (Painter)
+		expect(plumbingMatches.map(s => s.id).sort()).toEqual(['slot-master', 'slot-plumber']);
+
+		// 5. Query: Need Painting
+		const needPainting: any = {
+			id: 'need-2',
+			type_id: 'labor',
+			latitude: 37.7749,
+			longitude: -122.4194,
+			search_radius_km: 100,
+			required_skills: [{ id: 'skill-painting' }],
+			name: 'Need Painting',
+			quantity: 1
+		};
+
+		const paintingMatches = index.query(needPainting);
+		// Should match Luigi (Painter) and Wario (Master)
+		expect(paintingMatches.map(s => s.id).sort()).toEqual(['slot-master', 'slot-painter']);
+
+		// 6. Query: Need BOTH
+		const needBoth: any = {
+			id: 'need-3',
+			type_id: 'labor',
+			latitude: 37.7749,
+			longitude: -122.4194,
+			search_radius_km: 100,
+			required_skills: [
+				{ id: 'skill-plumbing' },
+				{ id: 'skill-painting' }
+			],
+			name: 'Need Both',
+			quantity: 1
+		};
+
+		const bothMatches = index.query(needBoth);
+		// Should match ONLY Wario (Master)
+		expect(bothMatches.map(s => s.id)).toEqual(['slot-master']);
+	});
+});
