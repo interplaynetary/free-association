@@ -64,7 +64,6 @@ export const ResourceTypeSchema = z.object({
 
 export const DivisibilitySchema = z.object({
   max_natural_div: z.number().int().gte(1).optional(),
-  min_allocation_percentage: PercentageSchema.optional()
 });
 
 // ═══════════════════════════════════════════════════════════════════

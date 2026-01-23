@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { SlotSchema, ProfferRegistryManager, type Slot, type Proffer } from './experiments/proffer';
+import { SlotSchema, ProfferRegistryManager, type Slot, type Proffer } from '../../../../protocol/proffer';
 import { BaseCapacitySchema, ShareMapSchema, type BaseCapacity, type ShareMap } from '../schema';
 
 // Extended input definition that can reference capacity shares
@@ -145,7 +145,7 @@ export class CompositeCapacityManager {
 		private profferRegistry: ProfferRegistryManager,
 		private capacityRegistry: Map<string, BaseCapacity> = new Map(),
 		private networkCapacityRegistry: Map<string, Map<string, BaseCapacity>> = new Map()
-	) {}
+	) { }
 
 	/**
 	 * Create a composite capacity from template
@@ -290,12 +290,14 @@ export class CompositeCapacityManager {
 		const ourQuantity = Math.round(baseQuantity * ourShare);
 
 		// Apply divisibility constraints
-		const maxNatural = capacity.max_natural_div || 1;
-		const maxPercent = capacity.min_allocation_percentage || 1;
+		// Apply generalized constraints
+		const minAtomic = capacity.min_atomic_size || 1;
 
-		const percentConstrained =
-			ourShare > maxPercent ? Math.round(baseQuantity * maxPercent) : ourQuantity;
-		const naturalConstrained = Math.floor(percentConstrained / maxNatural) * maxNatural;
+		// Ensure we don't allocate less than atomic size
+		const constrained = ourQuantity < minAtomic ? 0 : ourQuantity;
+		// Ensure multiple of atomic size? Or just min?
+		// For now, let's just respect min atomic size as a floor if we have any.
+		const naturalConstrained = Math.floor(constrained / minAtomic) * minAtomic;
 
 		const availableQuantity = naturalConstrained;
 

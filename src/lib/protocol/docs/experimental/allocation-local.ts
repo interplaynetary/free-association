@@ -27,7 +27,7 @@ import {
 
 import {
     slotsCompatible
-} from '@playnet/free-association/utils/match';
+} from '$lib/protocol/match';
 
 // ═══════════════════════════════════════════════════════════════════
 // TYPES
@@ -68,11 +68,11 @@ export function redistributeRemainder(
     remainingCapacity: number,
     totalCapacity: number,
     shares: Map<string, number>,
-    maxNaturalDiv: number,
+    minAtomicSize: number,
     debug: boolean
 ): number {
 
-    const unitSize = totalCapacity / maxNaturalDiv;
+    const unitSize = minAtomicSize > EPSILON ? minAtomicSize : 1;
     const remainingUnits = Math.floor(remainingCapacity / unitSize);
 
     if (remainingUnits === 0) return 0;
@@ -242,10 +242,10 @@ export function calculateSlotBasedPriorityAllocation(
 
     // Final Divisibility Check: Re-apply constraints if Phase 2 shifted things off-grid
     for (const cs of capacitySlots) {
-        if (cs.max_natural_div) {
+        if (cs.min_atomic_size && cs.min_atomic_size > EPSILON) {
             // Check if any allocation is invalid
             let clean = true;
-            const unit = cs.quantity / cs.max_natural_div;
+            const unit = cs.min_atomic_size;
             const matrixRow = allocationMatrix[cs.id];
 
             for (const nsId in matrixRow) {
@@ -282,7 +282,7 @@ export function calculateSlotBasedPriorityAllocation(
                     totalUsed, // Amount to distribute (Full amount here for re-quantization)
                     cs.quantity,
                     shares,
-                    cs.max_natural_div,
+                    cs.min_atomic_size,
                     debug
                 );
 
@@ -311,27 +311,19 @@ export function applyDivisibilityConstraints(
     sharePercentage: number,
     slot: AvailabilitySlot
 ): number {
-    // 1. Check minimum allocation percentage
-    if (slot.min_allocation_percentage) {
-        if (sharePercentage < slot.min_allocation_percentage - EPSILON) {
-            return 0;
-        }
-    }
+    const minAtomic = slot.min_atomic_size || 0;
 
-    // 2. Check natural unit divisibility
-    // Default to 1 if not specified (standard unit)
-    const unitSize = (slot.max_natural_div && slot.max_natural_div > 0)
-        ? (slot.quantity / slot.max_natural_div)
-        : 1.0;
+    // If no atomic size, return raw
+    if (minAtomic <= EPSILON) return rawQuantity;
 
     // If smaller than one unit, return 0
-    if (rawQuantity < unitSize - EPSILON) {
+    if (rawQuantity < minAtomic - EPSILON) {
         return 0;
     }
 
     // Round down to nearest unit
-    const units = Math.floor((rawQuantity + EPSILON) / unitSize);
-    return units * unitSize;
+    const units = Math.floor((rawQuantity + EPSILON) / minAtomic);
+    return units * minAtomic;
 }
 
 /**
@@ -347,20 +339,10 @@ export function meetsMinimumAllocation(
 ): boolean {
     if (quantity <= EPSILON) return false;
 
-    // Check percentage
-    if (slot.min_allocation_percentage) {
-        const percentage = quantity / slot.quantity;
-        if (percentage < slot.min_allocation_percentage - EPSILON) {
-            return false;
-        }
-    }
-
     // Check unit size check
-    const unitSize = (slot.max_natural_div && slot.max_natural_div > 0)
-        ? (slot.quantity / slot.max_natural_div)
-        : 1.0;
+    const minAtomic = slot.min_atomic_size || 0;
 
-    if (quantity < unitSize - EPSILON) {
+    if (minAtomic > EPSILON && quantity < minAtomic - EPSILON) {
         return false;
     }
 
@@ -439,7 +421,7 @@ export function initialAllocationWithSurplus(
         }
 
         // Step 5: Divisibility constraints (Least Remainder)
-        if (surplus > EPSILON && cs.max_natural_div) {
+        if (surplus > EPSILON && cs.min_atomic_size && cs.min_atomic_size > EPSILON) {
             surplus = applyLeastRemainderMethod(
                 cs,
                 matrix,
@@ -620,7 +602,7 @@ export function applyLeastRemainderMethod(
     surplus: number,
     debug: boolean
 ): number {
-    const maxNatural = cs.max_natural_div!;
+    const minAtomic = cs.min_atomic_size || 1;
     const targets = new Map<string, number>();
 
     // Collect current allocations
@@ -643,7 +625,7 @@ export function applyLeastRemainderMethod(
         surplus,
         cs.quantity,
         undefined as any, // Standard mode: derive shares from targets
-        maxNatural,
+        minAtomic,
         debug
     );
 

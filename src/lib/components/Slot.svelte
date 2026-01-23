@@ -100,10 +100,11 @@
 	}
 
 	// Divisibility handler
-	function handleDivisibilityUpdate(maxNaturalDiv?: number, minAllocationPercentage?: number) {
+	function handleDivisibilityUpdate(minAtomicSize?: number, maxParticipation?: number, maxConcurrency?: number) {
 		updateSlot({
-			max_natural_div: maxNaturalDiv,
-			min_allocation_percentage: minAllocationPercentage
+            min_atomic_size: minAtomicSize,
+            max_participation: maxParticipation,
+            max_concurrency: maxConcurrency
 		});
 	}
 
@@ -186,13 +187,17 @@
 	function formatConstraintsDisplay(): string {
 		const parts: string[] = [];
 		
-		if (slot.max_natural_div) {
-			parts.push(`Max ${slot.max_natural_div} divisions`);
+		if (slot.min_atomic_size) {
+			parts.push(`Size >= ${slot.min_atomic_size}`);
 		}
 		
-		if (slot.min_allocation_percentage) {
-			parts.push(`Min ${Math.round(slot.min_allocation_percentage * 100)}%`);
+		if (slot.max_participation) {
+			parts.push(`Max ${slot.max_participation} agents`);
 		}
+
+        if (slot.max_concurrency) {
+            parts.push(`Max ${slot.max_concurrency} concurrent`);
+        }
 		
 		if (slot.advance_notice_hours) {
 			parts.push(`${slot.advance_notice_hours}h notice`);
@@ -342,8 +347,9 @@
 	{#if constraintsExpanded}
 		<div class="slot-details constraints-details">
 		<DivisibilityEditor
-			maxNaturalDiv={slot.max_natural_div}
-			minAllocationPercentage={slot.min_allocation_percentage}
+			minAtomicSize={slot.min_atomic_size}
+			maxParticipation={slot.max_participation}
+			maxConcurrency={slot.max_concurrency}
 			onUpdate={handleDivisibilityUpdate}
 		/>
 		</div>

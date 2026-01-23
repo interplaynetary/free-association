@@ -42,17 +42,11 @@ describe('Allocation Local - Comprehensive Tests', () => {
 
     describe('1. Utility Functions', () => {
         describe('applyDivisibilityConstraints', () => {
-            it('should respect minimum allocation percentage', () => {
-                const slot = createCapacitySlot('c1', 100, { min_allocation_percentage: 0.1 });
-                // 5% share < 10% min
-                expect(applyDivisibilityConstraints(5, 0.05, slot)).toBe(0);
-                // 15% share >= 10% min
-                expect(applyDivisibilityConstraints(15, 0.15, slot)).toBe(15);
-            });
+            // min_allocation_percentage is deprecated/removed. Test removed.
 
-            it('should respect max natural divisibility (quantization)', () => {
-                const slot = createCapacitySlot('c1', 10, { max_natural_div: 5 });
-                // Unit size = 10 / 5 = 2.0
+            it('should respect min atomic size (quantization)', () => {
+                const slot = createCapacitySlot('c1', 10, { min_atomic_size: 2 });
+                // Atomic size = 2.0
                 expect(applyDivisibilityConstraints(1.9, 0.19, slot)).toBe(0);
                 expect(applyDivisibilityConstraints(2.1, 0.21, slot)).toBe(2);
                 expect(applyDivisibilityConstraints(3.9, 0.39, slot)).toBe(2);
@@ -67,14 +61,10 @@ describe('Allocation Local - Comprehensive Tests', () => {
                 expect(meetsMinimumAllocation(1e-10, slot)).toBe(false);
             });
 
-            it('should fail if below percentage threshold', () => {
-                const slot = createCapacitySlot('c1', 100, { min_allocation_percentage: 0.2 });
-                expect(meetsMinimumAllocation(19, slot)).toBe(false);
-                expect(meetsMinimumAllocation(21, slot)).toBe(true);
-            });
+
 
             it('should fail if below unit size', () => {
-                const slot = createCapacitySlot('c1', 10, { max_natural_div: 2 }); // Unit 5
+                const slot = createCapacitySlot('c1', 10, { min_atomic_size: 5 }); // Atomic 5
                 expect(meetsMinimumAllocation(4, slot)).toBe(false);
                 expect(meetsMinimumAllocation(5, slot)).toBe(true);
             });

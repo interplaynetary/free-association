@@ -1,5 +1,4 @@
 import * as z from 'zod';
-import { AvailabilitySlotSchema, NeedSlotSchema } from './resources';
 
 // ═══════════════════════════════════════════════════════════════════
 // ALLOCATION RECORDS

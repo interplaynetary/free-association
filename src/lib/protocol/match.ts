@@ -470,10 +470,17 @@ function flattenWindowToUTCDaySchedules(
 	}
 
 	// Handle time_ranges (assumed to apply to ALL days if no day specified, 
-	// but in this context usually implies "every day" or needs context.
-	// For safety, we only process explicit day_schedules or Week/Month patterns here.
-	// If only time_ranges exist, we might assume they apply to the sampleDate's day?
-	// For now, adhering to the "explicit pattern" rule.)
+	// OR to the specific sampleDate provided for context)
+	if (window.time_ranges && window.time_ranges.length > 0) {
+		// Construct a synthetic DaySchedule for the sampleDate's day
+		// This ensures we can intersect even simple time-range-only slots
+		const dayName = getDayOfWeekFromDate(sampleDate);
+		const syntheticSchedule: DaySchedule = {
+			days: [dayName],
+			time_ranges: window.time_ranges
+		};
+		result.push(...convertDayScheduleToUTC(syntheticSchedule, sampleDate, timezone));
+	}
 
 	return result;
 }
@@ -736,7 +743,7 @@ function monthsOverlap(months1?: number[], months2?: number[]): boolean {
  * @param sampleDate - Reference date for timezone conversions (default: '2024-01-01')
  * @returns true if windows overlap in UTC time
  */
-function availabilityWindowsOverlapWithTimezone(
+export function availabilityWindowsOverlapWithTimezone(
 	window1: AvailabilityWindow | undefined,
 	window2: AvailabilityWindow | undefined,
 	timezone1?: string,
@@ -1340,6 +1347,24 @@ export function timeRangesOverlap(
 		time_zone?: string;
 	}
 ): boolean {
+	// **NEW: Check Validity Period (start_date / end_date) FIRST**
+	// Before matching specific time-of-day or recurrence patterns, 
+	// we must ensure the slots are valid roughly in the same era.
+	// (e.g., A "2024 Only" recurring slot cannot match a "2025" request)
+
+	const start1 = slot1.start_date ? new Date(slot1.start_date) : new Date('1900-01-01');
+	const end1 = slot1.end_date ? new Date(slot1.end_date) :
+		(slot1.start_date ? new Date(slot1.start_date) : new Date('2100-12-31'));
+
+	const start2 = slot2.start_date ? new Date(slot2.start_date) : new Date('1900-01-01');
+	const end2 = slot2.end_date ? new Date(slot2.end_date) :
+		(slot2.start_date ? new Date(slot2.start_date) : new Date('2100-12-31'));
+
+	// Check if validity periods overlap
+	if (start1 > end2 || start2 > end1) {
+		return false;
+	}
+
 	// **NEW APPROACH: Use structured availability windows if both slots have them**
 	if (slot1.availability_window && slot2.availability_window) {
 		const track1 = getRecurrenceTrack(slot1);
@@ -1535,60 +1560,228 @@ export function locationsCompatible(
 }
 
 
+// ═══════════════════════════════════════════════════════════════════
+// GENERALIZED FLOW CONSTRAINTS (v6)
+// ═══════════════════════════════════════════════════════════════════
+
 /**
- * Check if a need slot can be fulfilled by an availability slot (v5 - Multi-Dimensional)
+ * Calculate the maximum contiguous duration (in hours) available in the intersection
+ * of two slots.
+ * 
+ * Used for verifying min_calendar_duration (physics floor).
+ */
+export function calculateMaxContiguousDuration(
+	needSlot: NeedSlot,
+	availabilitySlot: AvailabilitySlot,
+	referenceDate: string = '2024-01-01'
+): number {
+	// If either lacks availability info, assume optimistic full continuity implies sufficient duration
+	// (or should we be pessimistic? For physics floor, optimistic is probably safer for now unless detailed)
+	if (!needSlot.availability_window && !needSlot.start_time) return Infinity; // Infinite theoretical overlap
+	if (!availabilitySlot.availability_window) return Infinity;
+
+	// Simplification: We only check explicit TimeRange intersections for now.
+	// A strictly correct implementation requires intersecting the full day schedules.
+
+	// 1. Get intersection window
+	const intersection = calculateAvailabilityIntersection(
+		needSlot.availability_window || { time_ranges: [] }, // fallback
+		availabilitySlot.availability_window,
+		needSlot.time_zone,
+		availabilitySlot.time_zone,
+		referenceDate
+	);
+
+	let maxDurationMinutes = 0;
+
+	// 2. Scan for largest single block in intersection
+	if (intersection.day_schedules) {
+		for (const sched of intersection.day_schedules) {
+			for (const range of sched.time_ranges) {
+				const duration = parseTimeToMinutes(range.end_time) - parseTimeToMinutes(range.start_time);
+				// Handle overnight? (Simple subtraction might be negative)
+				// parseTimeToMinutes is simple HH*60+MM. 
+				// TimeRangeSchema implies HH:MM. Overnight usually handled by splitting.
+				// Assuming standard ranges for now.
+				const validDuration = duration > 0 ? duration : (24 * 60 + duration); // simplistic wrap
+				if (validDuration > maxDurationMinutes) {
+					maxDurationMinutes = validDuration;
+				}
+			}
+		}
+	}
+
+	return maxDurationMinutes / 60.0;
+}
+
+
+/**
+ * Check all Generalized Flow Constraints (v6)
+ * 
+ * Groups all structural constraints logic:
+ * 1. Granularity (min_atomic_size)
+ * 2. Physics Floor (min_calendar_duration)
+ * 3. Lead Time (advance_notice_hours)
+ * 4. Booking Window (booking_window_hours)
+ * 5. Fan-In (max_participation)
+ */
+export function checkFlowConstraints(
+	needSlot: NeedSlot,
+	availabilitySlot: AvailabilitySlot,
+	referenceTime?: string | Date
+): boolean {
+	// 1. **Granularity (min_atomic_size)**
+	// Can this chunk of Need actually fit into the Capacity's atomic units?
+	if (availabilitySlot.min_atomic_size !== undefined && availabilitySlot.min_atomic_size > 0) {
+		// Strict check: Need quantity must be at least one atom
+		// (Allocation algorithm might handle quantization, but if Need < Atomic, it's impossible to serve)
+		if (needSlot.quantity < availabilitySlot.min_atomic_size) {
+			return false;
+		}
+	}
+
+	// 2. **Fan-In / Participation (max_participation)**
+	// Static check only: If Need declares explicit members, do they fit?
+	if (availabilitySlot.max_participation !== undefined) {
+		if (needSlot.members && needSlot.members.length > availabilitySlot.max_participation) {
+			return false;
+		}
+	}
+
+	// 3. **Physics Floor (min_calendar_duration)**
+	// Do they overlap for long enough to do the thing?
+	if (availabilitySlot.min_calendar_duration !== undefined && availabilitySlot.min_calendar_duration > 0) {
+		// We calculate the maximum contiguous block of time in their intersection.
+		// If the longest possible session is shorter than the minimum required duration, it's a fail.
+
+		// Optimization: If simple date overlap without time details, assume yes?
+		// We use our helper if structural info exists.
+		const maxOverlap = calculateMaxContiguousDuration(needSlot, availabilitySlot, needSlot.start_date || undefined);
+
+		if (maxOverlap < availabilitySlot.min_calendar_duration) {
+			return false;
+		}
+	}
+
+	// Time-Relative Constraints (require referenceTime)
+	if (referenceTime) {
+		const refDate = new Date(referenceTime);
+		const nowMs = refDate.getTime();
+
+		// Calculate the *earliest possible start time* of the match
+		// This is needed for Advance Notice and Booking Window checks
+		// Simplification: Use Need.start_date + Need.start_time (or earliest in window)
+		// Ideally we find the *first intersection point*.
+
+		const earliestStart = getEarliestMatchTime(needSlot, availabilitySlot, refDate);
+
+		if (earliestStart) {
+			const startMs = earliestStart.getTime();
+			const diffHours = (startMs - nowMs) / (1000 * 60 * 60);
+
+			// 4. **Lead Time (advance_notice_hours)**
+			// Only valid if we are booking *enough in advance*
+			if (availabilitySlot.advance_notice_hours !== undefined) {
+				if (diffHours < availabilitySlot.advance_notice_hours) {
+					return false;
+				}
+			}
+
+			// 5. **Booking Window (booking_window_hours)**
+			// Only valid if we are NOT booking *too far in advance*
+			if (availabilitySlot.booking_window_hours !== undefined) {
+				if (diffHours > availabilitySlot.booking_window_hours) {
+					return false;
+				}
+			}
+		}
+	}
+
+	return true;
+}
+
+/**
+ * Helper to find the earliest absolute start time of a match.
+ * Used for Lead Time / Booking Window calculations.
+ */
+function getEarliestMatchTime(
+	needSlot: NeedSlot,
+	availabilitySlot: AvailabilitySlot,
+	refDate: Date
+): Date | null {
+	// If one-time slot with explicit date, use that
+	if (needSlot.start_date) {
+		const dateStr = needSlot.start_date;
+		let timeStr = '00:00';
+
+		// Refine with time info
+		if (needSlot.availability_window?.time_ranges?.length) {
+			timeStr = needSlot.availability_window.time_ranges[0].start_time;
+		} else if (needSlot.start_time) {
+			timeStr = needSlot.start_time;
+		}
+
+		// Parse (assuming local time or matched timezone for simplicity in this heuristic)
+		// To be perfectly precise requires timezone logic from earlier
+		const [h, m] = timeStr.split(':').map(Number);
+
+		// Basic parsing
+		const d = new Date(dateStr);
+		d.setHours(h, m, 0, 0);
+		return d;
+	}
+
+	// If recurring, we assume the "next occurrence" relative to refDate?
+	// This is complex. For now, if no explicit date, we might assume
+	// it's "available immediately" or skip time-relative checks.
+	// Current behavior: return null implies "cannot determine specific time", so skip checks.
+	return null;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// SLOT COMPATIBILITY CHECKING (Updated)
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Check if a need slot can be fulfilled by an availability slot (v6)
  * 
  * COMPATIBILITY REQUIREMENTS:
- * - **Type match: need_type_id must be identical (E28' - CRITICAL for multi-dimensional)**
- * - **Time compatibility: date/time ranges must overlap**
- * - **Location compatibility: city/country/coordinates must match**
- * - **Recurrence: NO FILTERING** - capacity can serve any compatible need regardless of recurrence pattern
- * 
- * ASYMMETRIC RECURRENCE MODEL:
- * - Capacity slots (recurring or one-time) can match ANY compatible need slot
- * - Need slots are implicitly separated by recurrence track (getRecurrenceTrack)
- * - A recurring capacity (e.g., "tutoring every Monday") can simultaneously serve:
- *   - Recurring needs (e.g., "weekly tutoring")
- *   - One-time needs (e.g., "help this Monday only")
- * - This provides maximum flexibility for providers while maintaining clarity for recipients
- * 
- * FILTER LOGIC:
- * - Availability slot filter: Who can RECEIVE from this slot
- * - Need slot filter: Who can PROVIDE to fulfill this need
- * - Both filters must pass for compatibility
- * 
- * Note: Filter checking requires provider/recipient context and should be done
- * in the allocation algorithm (see algorithm.svelte.ts via passesSlotFilters)
+ * 1. Type match (E28')
+ * 2. Time compatibility (Overlap)
+ * 3. Location compatibility
+ * 4. **Generalized Flow Constraints** (Granularity, Duration, Flow controls)
  * 
  * @param needSlot - The need slot to check
  * @param availabilitySlot - The availability slot to check
- * @returns true if slots are compatible (type AND time AND location match, recurrence ignored)
+ * @param referenceTime - (Optional) Current time for enforcing Lead Time / Booking Window
+ * @returns true if slots are compatible
  */
-export function slotsCompatible(needSlot: NeedSlot, availabilitySlot: AvailabilitySlot): boolean {
-	// **V5 CRITICAL: Type matching (E28')**
-	// Different need types CANNOT be matched (no cross-type allocation)
+export function slotsCompatible(
+	needSlot: NeedSlot,
+	availabilitySlot: AvailabilitySlot,
+	referenceTime?: string | Date
+): boolean {
+	// 1. Type match
 	if (needSlot.type_id !== availabilitySlot.type_id) {
 		return false;
 	}
 
-	// **NO RECURRENCE FILTERING**
-	// Capacity (recurring or one-time) can match any compatible need
-	// This implements the asymmetric track model:
-	//   - Need slots are separated into recurring/onetime tracks (via slot metadata)
-	//   - Capacity slots serve both tracks flexibly
-	// The allocation algorithm processes each slot independently, so this happens naturally
-
-	// Check time compatibility
+	// 2. Time compatibility (Basic Overlap)
 	if (!timeRangesOverlap(needSlot, availabilitySlot)) {
 		return false;
 	}
 
-	// Check location compatibility
+	// 3. Location compatibility
 	if (!locationsCompatible(needSlot, availabilitySlot)) {
 		return false;
 	}
 
-	// All checks passed: type + time + location compatible!
+	// 4. Generalized Flow Constraints (v6)
+	if (!checkFlowConstraints(needSlot, availabilitySlot, referenceTime)) {
+		return false;
+	}
+
 	return true;
 }
 

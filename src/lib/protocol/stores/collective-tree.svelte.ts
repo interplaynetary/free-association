@@ -3191,8 +3191,7 @@ export function exampleGovernancePipeline() {
 			quantity: 100,
 			type_id: 'food',
 			name: 'Community Kitchen Meals',
-			max_natural_div: 1,
-			min_allocation_percentage: 0.1
+			min_atomic_size: 1
 		}
 	];
 

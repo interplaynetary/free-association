@@ -45,35 +45,35 @@ export function filter(
 // Runtime filter composition
 export const compose =
 	(...filters: ShareFilter[]): ShareFilter =>
-	(nodeId, share, context) =>
-		filters.every((f) => f(nodeId, share, context));
+		(nodeId, share, context) =>
+			filters.every((f) => f(nodeId, share, context));
 
 export const or =
 	(...filters: ShareFilter[]): ShareFilter =>
-	(nodeId, share, context) =>
-		filters.some((f) => f(nodeId, share, context));
+		(nodeId, share, context) =>
+			filters.some((f) => f(nodeId, share, context));
 
 export const not =
 	(filter: ShareFilter): ShareFilter =>
-	(nodeId, share, context) =>
-		!filter(nodeId, share, context);
+		(nodeId, share, context) =>
+			!filter(nodeId, share, context);
 
 // Runtime filter generators
 export const Filters = {
 	includeNodes:
 		(nodeIds: string[]): ShareFilter =>
-		(nodeId) =>
-			nodeIds.includes(nodeId),
+			(nodeId) =>
+				nodeIds.includes(nodeId),
 
 	excludeNodes:
 		(nodeIds: string[]): ShareFilter =>
-		(nodeId) =>
-			!nodeIds.includes(nodeId),
+			(nodeId) =>
+				!nodeIds.includes(nodeId),
 
 	aboveThreshold:
 		(threshold: number): ShareFilter =>
-		(_, share) =>
-			share >= threshold
+			(_, share) =>
+				share >= threshold
 
 	// Note: byCategory removed as Node schema doesn't have categories property
 };
@@ -146,7 +146,7 @@ export function ruleToFilter(rule: JsonLogicRule): ShareFilter {
  * Apply capacity-level filter rules to a share map.
  *
  * IMPORTANT: This function ONLY handles logical filtering (e.g., include/exclude nodes, thresholds).
- * For slot-based divisibility constraints (e.g., min_allocation_percentage, max_natural_div),
+ * For slot-based constraints (e.g., min_atomic_size, max_participation),
  * use applySlotConstraints() in slots.svelte.ts instead.
  *
  * This separation ensures:

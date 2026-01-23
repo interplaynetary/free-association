@@ -281,8 +281,6 @@ if (data.isUserTree) {
 			type_id: newResourceType,
 			quantity: newNeedQuantity,
 			unit: 'units',
-			max_natural_div: 1,
-			min_allocation_percentage: 0.01,
 			recurrence: undefined,
 			availability_window: undefined
 		};
@@ -316,8 +314,6 @@ if (data.isUserTree) {
 			type_id: newCapacityType,
 			quantity: newCapacityQuantity,
 			unit: 'units',
-			max_natural_div: 1,
-			min_allocation_percentage: 0.01,
 			recurrence: undefined,
 			availability_window: undefined,
 			priority_distribution: undefined

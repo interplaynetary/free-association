@@ -68,7 +68,7 @@ mock.module(storesPath, () => {
 });
 
 // Mock util dependencies
-mock.module("@playnet/free-association/utils/match", () => ({
+mock.module("$lib/protocol/match", () => ({
     slotsCompatible: () => true,
     passesSlotFilters: () => true,
     getTimeBucketKey: () => "time",

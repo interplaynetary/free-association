@@ -195,12 +195,16 @@ export function hasAddressComponents(slot: any): boolean {
 export function formatDivisibilityDisplay(slot: SlotType): string {
     const parts: string[] = [];
 
-    if (slot.max_natural_div) {
-        parts.push(`Max ${slot.max_natural_div}`);
+    if (slot.min_atomic_size) {
+        parts.push(`Size >= ${slot.min_atomic_size}`);
     }
 
-    if (slot.min_allocation_percentage) {
-        parts.push(`Min ${Math.round(slot.min_allocation_percentage * 100)}%`);
+    if (slot.max_participation) {
+        parts.push(`Max ${slot.max_participation} agents`);
+    }
+
+    if (slot.max_concurrency) {
+        parts.push(`Max ${slot.max_concurrency} concurrent`);
     }
 
     return parts.length > 0 ? parts.join(', ') : 'None';

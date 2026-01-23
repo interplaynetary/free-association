@@ -1,122 +1,121 @@
 <script lang="ts">
 	/**
-	 * DivisibilityEditor - Slot divisibility constraints
+	 * DivisibilityEditor (Constraints)
 	 * 
-	 * Allows setting constraints on how much a slot can be divided:
-	 * - max_natural_div: Maximum number of natural divisions (e.g., can't split a person)
-	 * - min_allocation_percentage: Minimum percentage of slot that can be allocated
-	 * 
-	 * @example
-	 * <DivisibilityEditor 
-	 *   maxNaturalDiv={4}
-	 *   minAllocationPercentage={0.25}
-	 *   onUpdate={(natural, percentage) => {...}}
-	 * />
+	 * Allows setting generalized resource constraints:
+	 * - min_atomic_size: Granularity (Minimum usable chunk)
+	 * - max_participation: Fan-In (Max unique agents)
+	 * - max_concurrency: Bandwidth (Max simultaneous agents)
 	 */
 	
 	interface Props {
-		maxNaturalDiv?: number;
-		minAllocationPercentage?: number;
-		onUpdate: (maxNaturalDiv?: number, minAllocationPercentage?: number) => void;
+		minAtomicSize?: number;
+		maxParticipation?: number;
+		maxConcurrency?: number;
+		onUpdate: (minAtomicSize?: number, maxParticipation?: number, maxConcurrency?: number) => void;
 	}
 	
 	let {
-		maxNaturalDiv,
-		minAllocationPercentage,
+		minAtomicSize,
+		maxParticipation,
+		maxConcurrency,
 		onUpdate
 	}: Props = $props();
 	
-	// Default values: 1 natural division, 1% minimum percentage
-	let localMaxNaturalDiv = $state(maxNaturalDiv ?? 1);
-	let localMinAllocationPercentage = $state(minAllocationPercentage ?? 0.01);
+	let localMinAtomicSize = $state(minAtomicSize);
+	let localMaxParticipation = $state(maxParticipation);
+	let localMaxConcurrency = $state(maxConcurrency);
 	
-	// Sync with props (but keep defaults if undefined)
 	$effect(() => {
-		localMaxNaturalDiv = maxNaturalDiv ?? 1;
-		localMinAllocationPercentage = minAllocationPercentage ?? 0.01;
+		localMinAtomicSize = minAtomicSize;
+		localMaxParticipation = maxParticipation;
+		localMaxConcurrency = maxConcurrency;
 	});
 	
-	function handleNaturalDivChange(e: Event) {
-		const value = (e.target as HTMLInputElement).value;
-		const numValue = value ? parseInt(value) : undefined;
-		localMaxNaturalDiv = numValue;
-		onUpdate(numValue, localMinAllocationPercentage);
+	function handleUpdate() {
+		onUpdate(localMinAtomicSize, localMaxParticipation, localMaxConcurrency);
 	}
-	
-	function handlePercentageDivChange(e: Event) {
-		const value = (e.target as HTMLInputElement).value;
-		const numValue = value ? parseFloat(value) / 100 : undefined;
-		localMinAllocationPercentage = numValue;
-		onUpdate(localMaxNaturalDiv, numValue);
-	}
-	
-	// Convert to percentage for display (default 1%)
-	const displayPercentage = $derived(() => {
-		return Math.round((localMinAllocationPercentage ?? 0.01) * 100);
-	});
+
+    function handleNumericInput(e: Event, setter: (val: number | undefined) => void) {
+        const val = (e.target as HTMLInputElement).value;
+        const num = val ? parseFloat(val) : undefined;
+        setter(num);
+        handleUpdate();
+    }
 </script>
 
 <div class="divisibility-editor">
-	<h4 class="editor-title">📏 Divisibility Constraints</h4>
+	<h4 class="editor-title">⚙️ Flow Constraints</h4>
 	<p class="editor-description">
-		Control how this resource can be divided among recipients
+		Control the Granularity, Fan-In, and Bandwidth of this resource flow.
 	</p>
 	
 	<div class="constraint-fields">
-		<!-- Natural Division -->
+		<!-- Granularity -->
 		<div class="constraint-field">
-			<label for="natural-div">
-				Maximum Natural Divisions
-				<span class="help-icon" title="How many times can this be split? E.g., a person can't be divided.">ⓘ</span>
+			<label for="atomic-size">
+				Min Atomic Size (Granularity)
+				<span class="help-icon" title="The smallest divisible unit. E.g., '1 hour shift' or '1 crate'.">ⓘ</span>
 			</label>
 			<input
-				id="natural-div"
+				id="atomic-size"
+				type="number"
+				min="0"
+				step="any"
+				value={localMinAtomicSize}
+				placeholder="0 (No minimum)"
+				oninput={(e) => handleNumericInput(e, v => localMinAtomicSize = v)}
+				class="constraint-input"
+			/>
+            <p class="field-hint">Defines the "Packet Size". Anything smaller is rejected.</p>
+		</div>
+		
+		<!-- Fan-In -->
+		<div class="constraint-field">
+			<label for="max-participation">
+				Max Participation (Fan-In)
+				<span class="help-icon" title="Maximum number of unique agents allowed to contribute over the lifecycle.">ⓘ</span>
+			</label>
+			<input
+				id="max-participation"
 				type="number"
 				min="1"
 				step="1"
-				value={localMaxNaturalDiv}
-				placeholder="1 (default)"
-				oninput={handleNaturalDivChange}
+				value={localMaxParticipation}
+				placeholder="Unlimited"
+				oninput={(e) => handleNumericInput(e, v => localMaxParticipation = v)}
 				class="constraint-input"
 			/>
-			<p class="field-hint">
-				Default: 1 (indivisible). Increase to allow splitting resources into multiple parts.
-			</p>
+            <p class="field-hint">Limits management overhead (e.g. "I can only manage 5 people").</p>
 		</div>
-		
-		<!-- Percentage Division -->
+
+        <!-- Bandwidth -->
 		<div class="constraint-field">
-			<label for="percentage-div">
-				Minimum Allocation Percentage
-				<span class="help-icon" title="What's the smallest chunk that can be allocated? Prevents tiny fragments.">ⓘ</span>
+			<label for="max-concurrency">
+				Max Concurrency (Bandwidth)
+				<span class="help-icon" title="Maximum number of simultaneous active agents allowed at any moment.">ⓘ</span>
 			</label>
-			<div class="percentage-input-group">
-				<input
-					id="percentage-div"
-					type="range"
-					min="1"
-					max="100"
-					step="1"
-					value={displayPercentage()}
-					oninput={handlePercentageDivChange}
-					class="percentage-slider"
-				/>
-				<span class="percentage-value">
-					{displayPercentage()}%
-				</span>
-			</div>
-			<p class="field-hint">
-				Default: 1% (minimum allocation). Increase to prevent tiny fragments (e.g., 10% minimum).
-			</p>
+			<input
+				id="max-concurrency"
+				type="number"
+				min="1"
+				step="1"
+				value={localMaxConcurrency}
+				placeholder="Unlimited"
+				oninput={(e) => handleNumericInput(e, v => localMaxConcurrency = v)}
+				class="constraint-input"
+			/>
+            <p class="field-hint">Physical limit (e.g. "Only 2 chairs available"). 1 = Sequential.</p>
 		</div>
 	</div>
 	
-	<!-- Preview of constraints (always show with defaults) -->
+	<!-- Preview -->
 	<div class="constraints-preview">
-		<strong>Active Constraints:</strong>
+		<strong>Active Configuration:</strong>
 		<ul>
-			<li>Can be divided into <strong>at most {localMaxNaturalDiv}</strong> part{localMaxNaturalDiv > 1 ? 's' : ''}</li>
-			<li>Each allocation must be <strong>at least {displayPercentage()}%</strong> of total quantity</li>
+            <li>Packet Size: <strong>{localMinAtomicSize ? `>= ${localMinAtomicSize}` : 'Any'}</strong></li>
+			<li>Total Roster: <strong>{localMaxParticipation ? `Max ${localMaxParticipation} people` : 'Unlimited'}</strong></li>
+			<li>Throughput: <strong>{localMaxConcurrency ? `Max ${localMaxConcurrency} at once` : 'Unlimited'}</strong></li>
 		</ul>
 	</div>
 </div>
@@ -190,50 +189,6 @@
 		outline: none;
 		border-color: #3b82f6;
 		box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-	}
-	
-	.percentage-input-group {
-		display: flex;
-		align-items: center;
-		gap: 1rem;
-	}
-	
-	.percentage-slider {
-		flex: 1;
-		height: 0.5rem;
-		border-radius: 0.25rem;
-		background: linear-gradient(to right, #fee2e2, #dcfce7);
-		outline: none;
-		appearance: none;
-	}
-	
-	.percentage-slider::-webkit-slider-thumb {
-		appearance: none;
-		width: 1.25rem;
-		height: 1.25rem;
-		border-radius: 50%;
-		background: #3b82f6;
-		cursor: pointer;
-		border: 2px solid white;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-	}
-	
-	.percentage-slider::-moz-range-thumb {
-		width: 1.25rem;
-		height: 1.25rem;
-		border-radius: 50%;
-		background: #3b82f6;
-		cursor: pointer;
-		border: 2px solid white;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-	}
-	
-	.percentage-value {
-		font-size: 0.875rem;
-		font-weight: 600;
-		color: #1f2937;
-		min-width: 3rem;
-		text-align: right;
 	}
 	
 	.field-hint {

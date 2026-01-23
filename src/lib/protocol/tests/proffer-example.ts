@@ -6,8 +6,9 @@ import {
 	globalProfferRegistry,
 	serializeProfferRegistry,
 	deserializeProfferRegistry,
-	calculateNestedProgress
-} from '../experiments/proffer';
+	calculateNestedProgress,
+	checkAcceptance
+} from '../proffer';
 
 // Helper function to create a slot
 function createSlot(
@@ -33,7 +34,7 @@ function createSlot(
 			},
 			acceptanceLogic: {
 				type: 'automatic' as const,
-				conditions: ['non-empty-text']
+				rule: { '!!': [{ var: 'currentInput' }] } // Non-empty check
 			}
 		};
 	}
@@ -47,7 +48,12 @@ function createSlot(
 			},
 			acceptanceLogic: {
 				type: 'automatic' as const,
-				conditions: ['valid-number-range']
+				rule: {
+					and: [
+						{ '>=': [{ var: 'currentInput' }, 1] },
+						{ '<=': [{ var: 'currentInput' }, 100] }
+					]
+				}
 			}
 		};
 	}
@@ -63,7 +69,7 @@ function createSlot(
 			},
 			acceptanceLogic: {
 				type: 'automatic' as const,
-				conditions: ['proffer-completed']
+				rule: { '==': [{ var: 'nestedProffer.status' }, 'completed'] }
 			}
 		};
 	}
@@ -99,9 +105,34 @@ function createBasicProffer(
 }
 
 // Function to simulate filling a slot
-function fillSlot(proffer: Proffer, slotId: string, input: any): void {
+function fillSlot(
+	proffer: Proffer,
+	slotId: string,
+	input: any,
+	registry?: ProfferRegistryManager
+): void {
 	const slot = [...proffer.requiredSlots, ...proffer.optionalSlots].find((s) => s.id === slotId);
 	if (slot) {
+		// Prepare context for validation
+		let context: any = { currentInput: input };
+
+		// If it's a nested proffer slot, we might need more context (like the nested proffer itself)
+		if (slot.inputDefinition.type === 'proffer' && registry && typeof input === 'string') {
+			const nestedProffer = registry.getProffer(input);
+			if (nestedProffer) {
+				context.nestedProffer = nestedProffer;
+			}
+		}
+
+		// Validate
+		const validation = checkAcceptance(slot.acceptanceLogic, context);
+		if (!validation.accepted) {
+			console.log(`❌ Slot ${slotId} validation failed: ${validation.reason}`);
+			// For this example, we might want to proceed or stop. 
+			// Let's stop to clearly show validation working.
+			return;
+		}
+
 		slot.status = 'filled';
 		slot.currentInput = input;
 		slot.updatedAt = new Date();
@@ -211,9 +242,9 @@ async function runProfferExample() {
 	console.log('Initial progress:', taskProffer.progress);
 
 	// Fill the task proffer slots
-	fillSlot(taskProffer, 'task-title', 'Implement user authentication');
-	fillSlot(taskProffer, 'task-description', 'Add login/logout functionality with JWT tokens');
-	fillSlot(taskProffer, 'estimated-hours', 8);
+	fillSlot(taskProffer, 'task-title', 'Implement user authentication', registry);
+	fillSlot(taskProffer, 'task-description', 'Add login/logout functionality with JWT tokens', registry);
+	fillSlot(taskProffer, 'estimated-hours', 8, registry);
 
 	console.log('After filling all slots:');
 	console.log('  Status:', taskProffer.status);
@@ -225,8 +256,8 @@ async function runProfferExample() {
 	const projectProffer = registry.getProffer('project-001')!;
 
 	// Fill project slots
-	fillSlot(projectProffer, 'project-name', 'User Management System');
-	fillSlot(projectProffer, 'budget', 10000);
+	fillSlot(projectProffer, 'project-name', 'User Management System', registry);
+	fillSlot(projectProffer, 'budget', 10000, registry);
 
 	// Create and fill nested task instances
 	const task1Data = createBasicProffer('task-instance-1', 'Task 1 Instance', [
@@ -241,9 +272,9 @@ async function runProfferExample() {
 		const task1Slot = projectProffer.requiredSlots.find((s) => s.id === 'task-1');
 		if (task1Slot) {
 			task1Slot.nestedProfferId = task1Result.proffer.id;
-			fillSlot(task1Result.proffer, 'task-title', 'User Registration');
-			fillSlot(task1Result.proffer, 'task-description', 'Create registration form and validation');
-			fillSlot(task1Result.proffer, 'estimated-hours', 6);
+			fillSlot(task1Result.proffer, 'task-title', 'User Registration', registry);
+			fillSlot(task1Result.proffer, 'task-description', 'Create registration form and validation', registry);
+			fillSlot(task1Result.proffer, 'estimated-hours', 6, registry);
 		}
 	}
 

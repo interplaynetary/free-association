@@ -53,7 +53,7 @@ import {
 	slotsCompatible,
 	getTimeBucketKey,
 	getLocationBucketKey
-} from '$lib/protocol/utils/match';
+} from '$lib/protocol/match';
 
 import type { ComplianceFilter } from '$lib/protocol/utils/filters';
 

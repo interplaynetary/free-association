@@ -42,7 +42,7 @@ import {
 } from './schemas';
 
 import { holsterUserPub, holsterUser } from '$lib/network/holster.svelte';
-import { getTimeBucketKey, getLocationBucketKey } from '$lib/protocol/utils/match';
+import { getTimeBucketKey, getLocationBucketKey } from '$lib/protocol/match';
 import { sharesOfGeneralFulfillmentMap, getAllContributorsFromTree } from '$lib/protocol/tree';
 import { myAttributeRecognitions, myAttributeSubscriptions } from '$lib/protocol/attributes/attribute-recognition.svelte';
 import { slotSubscriptions, slotFilters, capacityCache, needCache } from '$lib/network/capacity-subscriptions.svelte';

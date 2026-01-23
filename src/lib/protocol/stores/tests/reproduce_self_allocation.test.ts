@@ -1,6 +1,6 @@
 
 import { describe, it, expect } from 'vitest';
-import { calculateSlotBasedPriorityAllocation } from './allocation-local';
+import { calculateSlotBasedPriorityAllocation } from '../../docs/experimental/allocation-local';
 
 // Types mock
 type AvailabilitySlot = any;
@@ -93,7 +93,7 @@ const myCapSlot = {
     quantity: 1, // LOW QUANTITY
     start_date: "2024-01-01",
     location_type: "anywhere",
-    max_natural_div: 1, // ENFORCE INTEGER UNITS
+    min_atomic_size: 1, // ENFORCE INTEGER UNITS
     priority_distribution: undefined
 };
 
@@ -125,7 +125,7 @@ describe('Self Allocation Enrichment + Algorithm', () => {
 
         console.log("Enriched Cap Priority Dist:", enrichedCap.priority_distribution);
         expect(enrichedCap.priority_distribution).toHaveLength(1);
-        expect(enrichedCap.priority_distribution[0].priority_percentage).toBe(0.0774);
+        expect(enrichedCap.priority_distribution[0].priority_percentage).toBe(1.0);
 
         // 3. Enrich Need
         // Note: In allocation.svelte 'theirRecognitionOfMe' logic

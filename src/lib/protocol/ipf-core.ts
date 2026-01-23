@@ -14,7 +14,7 @@ import type { GlobalRecognitionWeights } from './recognition.js';
 
 import {
     slotsCompatible
-} from '$lib/utils/match';
+} from '$lib/protocol/match';
 
 // ═══════════════════════════════════════════════════════════════════
 // TYPES

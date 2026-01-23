@@ -457,9 +457,10 @@
 			time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 			recurrence: 'daily',
 			capacity_group_id: capacityGroupId, // ✅ Add group ID for virtual grouping
-			// Default divisibility constraints
-			max_natural_div: 1,
-			min_allocation_percentage: 0.01
+			// Default constraints
+			min_atomic_size: 1, // Default granularity
+			max_participation: undefined, // Unlimited
+			max_concurrency: undefined // Unlimited
 		};
 
 		const updatedSlots = [...normalizedExistingSlots, newSlot];

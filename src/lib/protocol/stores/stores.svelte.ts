@@ -51,7 +51,7 @@ import type { DistributedIPFState } from '../solver';
 import { holsterUserPub, holsterUser, holsterUserAlias } from '$lib/network/holster.svelte';
 import { applyTemplate } from '$lib/templates';
 import { createRootNode } from '@playnet/free-association/tree';
-import { getTimeBucketKey, getLocationBucketKey } from '@playnet/free-association/utils/match';
+import { getTimeBucketKey, getLocationBucketKey } from '$lib/protocol/match';
 import { sharesOfGeneralFulfillmentMap, getAllContributorsFromTree } from '@playnet/free-association/tree';
 // Pure attribute-based membership
 import { myAttributeRecognitions, myAttributeSubscriptions } from './attributes.svelte';

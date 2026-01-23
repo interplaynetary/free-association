@@ -629,8 +629,8 @@
 		const quantity = generatePlayfulQuantity();
 
 		// Generate some variety in divisibility - make it more interesting
-		const maxNaturalDiv = Math.floor(Math.random() * Math.min(quantity, 10)) + 1;
-		const minAllocationPercentage = Math.random() * 0.8 + 0.2; // 0.2 to 1.0
+		// Generate some variety in constraints
+		const minAtomicSize = 1;
 
 		const todayString = today(getLocalTimeZone()).toString();
 		const timePattern = generateTimePattern();
@@ -670,8 +670,7 @@
 										}
 									]
 								},
-					max_natural_div: maxNaturalDiv,
-					min_allocation_percentage: minAllocationPercentage,
+					min_atomic_size: minAtomicSize,
 					filter_rule: null,
 					capacity_group_id: capacityGroupId // ✅ Group ID for virtual grouping
 				} as any
@@ -707,8 +706,7 @@
 					end_date: null,
 					time_zone: getLocalTimeZone(),
 					recurrence: 'daily',
-					max_natural_div: 1,
-					min_allocation_percentage: 1.0,
+					min_atomic_size: 1,
 					filter_rule: null,
 					capacity_group_id: capacityGroupId // ✅ Group ID for virtual grouping
 				} as any

@@ -1,22 +1,29 @@
 import { z } from 'zod';
+import jsonLogic from 'json-logic-js';
 
 // Lets transition from functions to jsonlogic so we can be completely json encodable.
 
 /*
 From Pekko Koskinen:
 
-## **Slot**
+## **Summary of Proffers (programmable offers)**
 
-#### 
+\- Establish a lego-like composition system for creating offers  
+\- Coordinate collaborations between multiple parties  
+\- Execute the fulfilment of combined proposals  
+\- Express relations between token economies, production and assets  
+\- Can be flexibly templated to provide simple user interfaces  
+
+## **Slot**
 
 #### **Definition of input:**
 
 * Strict:  
   * Type  
-    * Options (set of types)  
+	* Options (set of types)  
   * Quantity  
-    * Fixed amount  
-    * Array of options, fixed range (choose within the range).  
+	* Fixed amount  
+	* Array of options, fixed range (choose within the range).  
 * Descriptive (definition):  
   * Categorical (Image, text descriptions etc.)  
 * Combination:  
@@ -37,23 +44,61 @@ From Pekko Koskinen:
 
 * Description:  
   * Templated:  
-    * Strict  
-      * Required  
-        * Amount (of words, etc)  
-    * Lazy  
-      * Description with no checking
+	* Strict  
+	  * Required  
+		* Amount (of words, etc)  
+	* Lazy  
+	  * Description with no checking
 
 #### **Managing of the logic of Slots:**
 
 * Monitor conditions set by the Proffer:  
   * Required Slots  
-    * Logic: Fill the slots, fill the Proffer  
+	* Logic: Fill the slots, fill the Proffer  
   * Optional Slots  
 * If Slot conditions change, update the state of the Proffer  
   * Progress updates  
-    * Slot fulfilled  
+	* Slot fulfilled  
   * Proffer completed  
-    * Required Slot conditions fulfilled
+	* Required Slot conditions fulfilled
+
+Proffer Pattern
+Template the Proffer:
+- Contour the composition
+
+Provide an identity for a Proffer type:
+
+Composition of Proffer Patterns?
+
+Relational structures Proffer Patterns?
+- Subtypes
+	- Contouring a range of variability.
+
+## **Descriptions for the examples**
+
+### General aspects to highlight
+
+#### **Templates**
+
+* Template sets the framework, the combinatory logic of a proffer.  
+* Proffers can be created within the limits Templates.  
+  * Templates can also provide instructions for filling them.  
+* Templates can be created for general cases.  
+* Templates can set elements as fixed, as set options, or set ranges.  
+  * Examples:  
+	* Choose a value from a range.  
+	* Choose a proffer interaction among set options.  
+* A framework of a proffer made could be copied as a template.  
+  * Take the combination of interactions as a set template from a proffer made by someone else, and fill in your details.
+
+#### **Proffers as organizational instruments**
+
+* A specific proffer or a template can be set for an organization as persistent, or be governed for its modification.  
+  * Example:  
+	* Members have the right to make proposals of proffers for the organization to issue.  
+	  * This right could be compartmentalized. For example, members of publishing node could have the right to propose publishing proffers.  
+	* A decision mechanic (such as voting) validifies the proffer as issued by the organization.
+
 
 */
 
@@ -110,7 +155,7 @@ const InputDefinitionSchema = z.union([
 // Logic upon input types
 const AutomaticAcceptanceSchema = z.object({
 	type: z.literal('automatic'),
-	conditions: z.array(z.string()) // conditions that must be met
+	rule: z.record(z.any()) // JsonLogic rule
 });
 
 const GovernedAcceptanceSchema = z.object({
@@ -205,6 +250,41 @@ export type Progress = z.infer<typeof ProgressSchema>;
 export type ProfferReference = z.infer<typeof ProfferReferenceSchema>;
 export type ProfferRegistry = z.infer<typeof ProfferRegistrySchema>;
 
+// Helper to evaluate acceptance logic
+export const checkAcceptance = (
+	logic: AcceptanceLogic,
+	context: any,
+): { accepted: boolean; reason?: string } => {
+	if (logic.type === 'automatic') {
+		try {
+			// In JsonLogic, we pass the rule and the data (context)
+			// effectively: apply(rule, context)
+			const result = jsonLogic.apply(logic.rule, context);
+
+			// If result is true, accepted. If false, rejected.
+			if (result === true) {
+				return { accepted: true };
+			} else {
+				return { accepted: false, reason: 'Logic rule evaluated to false' };
+			}
+		} catch (e) {
+			return {
+				accepted: false,
+				reason: `Error evaluating logic: ${e instanceof Error ? e.message : String(e)}`
+			};
+		}
+	}
+
+	if (logic.type === 'governed') {
+		// Governed acceptance implies needing an external action/signature
+		// For checking "automatic" validity, this is always "false" until signed/approved.
+		// logic: "This slot cannot be automatically checked; it waits for governance."
+		return { accepted: false, reason: 'Governed slot requires external approval' };
+	}
+
+	return { accepted: false, reason: 'Unknown logic type' };
+};
+
 // Resolved types (with object graph reconstructed)
 export type ResolvedSlot = Omit<Slot, 'nestedProfferId'> & {
 	nestedProffer?: ResolvedProffer;
@@ -218,8 +298,8 @@ export type ResolvedProffer = Omit<Proffer, 'requiredSlots' | 'optionalSlots'> &
 export type ResolvedInputDefinition =
 	| Exclude<InputDefinition, ProfferReference>
 	| (Omit<ProfferReference, 'profferTemplateId'> & {
-			profferTemplate: ResolvedProffer;
-	  });
+		profferTemplate: ResolvedProffer;
+	});
 
 // Export schemas for validation
 export {

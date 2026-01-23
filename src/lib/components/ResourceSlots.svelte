@@ -19,7 +19,6 @@
 		DEFAULT_SEARCH_RADIUS_KM 
 	} from '$lib/protocol/spatial';
 
-	
 	/**
 	 * Generalized resource slots component with need type selection
 	 * Default time: per month
@@ -248,12 +247,19 @@
 		isNeed ? onNeedUpdate(updated as NeedSlot) : onCapacityUpdate(updated as AvailabilitySlot);
 	}
 	
-	// Divisibility handler
-	function handleDivisibilityUpdate(slot: SlotType, maxNaturalDiv?: number, minAllocationPercentage?: number, isNeed: boolean = false) {
+	// Divisibility (Constraints) handler
+	function handleDivisibilityUpdate(
+        slot: SlotType, 
+        minAtomicSize?: number, 
+        maxParticipation?: number, 
+        maxConcurrency?: number, 
+        isNeed: boolean = false
+    ) {
 		const updated = {
 			...slot,
-			max_natural_div: maxNaturalDiv,
-			min_allocation_percentage: minAllocationPercentage
+            min_atomic_size: minAtomicSize,
+            max_participation: maxParticipation,
+            max_concurrency: maxConcurrency
 		};
 		isNeed ? onNeedUpdate(updated as NeedSlot) : onCapacityUpdate(updated as AvailabilitySlot);
 	}
@@ -309,13 +315,15 @@
 	function formatDivisibilityDisplay(slot: SlotType): string {
 		const parts: string[] = [];
 		
-		if (slot.max_natural_div) {
-			parts.push(`Max ${slot.max_natural_div}`);
+		if (slot.min_atomic_size) {
+			parts.push(`Size >= ${slot.min_atomic_size}`);
 		}
-		
-		if (slot.min_allocation_percentage) {
-			parts.push(`Min ${Math.round(slot.min_allocation_percentage * 100)}%`);
+		if (slot.max_participation) {
+			parts.push(`Max ${slot.max_participation} Agents`);
 		}
+        if (slot.max_concurrency) {
+            parts.push(`Max ${slot.max_concurrency} Concurrent`);
+        }
 		
 		return parts.length > 0 ? parts.join(', ') : 'None';
 	}
@@ -550,21 +558,12 @@
 		{#if expandedEditor.get(slot.id) === 'divisibility'}
 			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
-			<div 
-				class="editor-section" 
-				role="region"
-				onclick={(e) => e.stopPropagation()}
-			>
-				<div class="editor-header">
-					<h4>⚙️ Divisibility</h4>
-					<p class="help-text">Control how this slot can be divided among allocations</p>
-				</div>
 				<DivisibilityEditor
-					maxNaturalDiv={slot.max_natural_div}
-					minAllocationPercentage={slot.min_allocation_percentage}
-					onUpdate={(maxDiv, minPct) => handleDivisibilityUpdate(slot, maxDiv, minPct, isNeedMode)}
+					minAtomicSize={slot.min_atomic_size}
+					maxParticipation={slot.max_participation}
+                    maxConcurrency={slot.max_concurrency}
+					onUpdate={(minSize, maxPart, maxConc) => handleDivisibilityUpdate(slot, minSize, maxPart, maxConc, isNeedMode)}
 				/>
-			</div>
 		{/if}
 
 		{#if expandedEditor.get(slot.id) === 'allocations'}
@@ -648,10 +647,6 @@
 {/snippet}
 
 <div class="slots-container">
-	<!-- Skill Tree Section (Always at top) -->
-
-
-    <div class="inventory-section">
 		<!-- Slots List -->
 		<div class="slots-list">
 			{#if currentSlots.length === 0}
@@ -664,26 +659,17 @@
 				{/each}
 			{/if}
 		</div>
-    </div>
 </div>
 
 <style>
 	.slots-container {
 		display: flex;
 		flex-direction: column;
-		padding: 0;
+		padding: 0.75rem;
 		height: 100%;
-		overflow-y: auto; /* Scroll the whole container */
-		gap: 0;
+		overflow: hidden; /* Scroll the whole container */
     }
 
-    .inventory-section {
-        padding: 0.75rem;
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-    }
-	
 	/* Need Type Selector */
 	.resource-type-selector {
 		background: white;

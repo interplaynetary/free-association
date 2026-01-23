@@ -1,6 +1,6 @@
 
 import { verifyGenericVC } from "./vc";
-import { Node, aggregateUp, Reducers, Extractors, Graph } from "./aggregation";
+import { type Node, aggregateUp, Reducers, Extractors, Graph } from "../aggregation";
 
 /**
  * VC Aggregation Bridge

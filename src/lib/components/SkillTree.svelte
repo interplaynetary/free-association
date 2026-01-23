@@ -80,10 +80,10 @@
 									class="skill-node child-node" 
 									class:selected={isSelected(child.id)}
 									class:locked={!isSelected(rootNode.id) && !isSelected(child.id)}
-									onclick={() => isSelected(rootNode.id) && toggleSkill(child.id)}
+									onclick={() => (isSelected(rootNode.id) || isSelected(child.id)) && toggleSkill(child.id)}
                                     role="button"
                                     tabindex="0"
-                                    onkeypress={(e) => e.key === 'Enter' && isSelected(rootNode.id) && toggleSkill(child.id)}
+                                    onkeypress={(e) => e.key === 'Enter' && (isSelected(rootNode.id) || isSelected(child.id)) && toggleSkill(child.id)}
 								>
 									<span class="icon">{child.icon}</span>
 									<span class="name">{child.name}</span>
@@ -97,10 +97,10 @@
 												class="skill-node grandchild-node" 
 												class:selected={isSelected(grandchild.id)}
 												class:locked={!isSelected(child.id) && !isSelected(grandchild.id)}
-												onclick={() => isSelected(child.id) && toggleSkill(grandchild.id)}
+												onclick={() => (isSelected(child.id) || isSelected(grandchild.id)) && toggleSkill(grandchild.id)}
                                                 role="button"
                                                 tabindex="0"
-                                                onkeypress={(e) => e.key === 'Enter' && isSelected(child.id) && toggleSkill(grandchild.id)}
+                                                onkeypress={(e) => e.key === 'Enter' && (isSelected(child.id) || isSelected(grandchild.id)) && toggleSkill(grandchild.id)}
 											>
 												<span class="icon">{grandchild.icon}</span>
 												<span class="name">{grandchild.name}</span>

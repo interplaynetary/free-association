@@ -138,17 +138,30 @@ export const BaseSlotSchema = z.object({
     description: z.string().optional(),
     quantity: z.number().gte(0),
     unit: z.string().optional(),
-    max_natural_div: z.number().gte(1).optional(),
-    min_allocation_percentage: PercentageSchema.optional(),
+    offered_by: z.string().optional(), // ID of Contact/Org
+    required_skills: z.array(SkillSchema).optional(), // Skills required by this slot
     filter_rule: z.any().optional(),
-    hidden_until_request_accepted: z.boolean().optional(),
+    search_radius_km: z.number().gte(0).optional(), // for matching
+
+    // for collective-slots?
+    members: z.array(z.string()).optional(),
+
+    // Generalized Constraints (v6)
+    min_atomic_size: z.number().positive().optional(), // Granularity (e.g. min duration or min qty)
+    max_participation: z.number().int().positive().optional(), // Total unique agents allowed (Fan-In)
+    max_concurrency: z.number().int().positive().optional(), // Max simultaneous agents (Bandwidth)
+    min_calendar_duration: z.number().positive().optional(), // Physics floor (Min total time)
+
+    // time constraints
     advance_notice_hours: z.number().gte(0).optional(),
     booking_window_hours: z.number().gte(0).optional(),
-    recurrence: z.enum(['daily', 'weekly', 'monthly', 'yearly']).nullable().optional(),
+    time_zone: z.string().optional(),
     start_date: z.string().nullable().optional(),
     end_date: z.string().nullable().optional(),
-    time_zone: z.string().optional(),
     availability_window: AvailabilityWindowSchema.optional(),
+    recurrence: z.enum(['daily', 'weekly', 'monthly', 'yearly']).nullable().optional(),
+
+    hidden_until_request_accepted: z.boolean().optional(), // only reveal specific location after provider accepts
     location_type: z.string().optional(),
     longitude: z.number().min(-180).max(180).optional(),
     latitude: z.number().min(-90).max(90).optional(),
@@ -157,17 +170,14 @@ export const BaseSlotSchema = z.object({
     state_province: z.string().optional(),
     postal_code: z.string().optional(),
     country: z.string().optional(),
-    offered_by: z.string().optional(), // ID of Contact/Org
-    required_skills: z.array(SkillSchema).optional(), // Skills required by this slot
-
     online_link: z.string().url().or(z.string().length(0)).optional(),
     h3_index: z.string().optional(),
     h3_resolution: z.number().int().min(0).max(15).optional(),
-    search_radius_km: z.number().gte(0).optional(),
+
     parent_slot_id: z.string().optional(),
     mutual_agreement_required: z.boolean().default(false).optional(),
     priority: z.number().optional(),
-    members: z.array(z.string()).optional(),
+
     priority_distribution: z.record(z.string(), z.number().min(0).max(1)).optional(),
 });
 
@@ -192,7 +202,6 @@ export const ContactSchema = z.object({
     skills: z.array(SkillSchema).default([]),
     created_at: z.number().optional(),
     updated_at: z.number().optional(),
-    _updatedAt: z.number().optional()
 });
 
 export type Contact = z.infer<typeof ContactSchema>;
@@ -218,7 +227,6 @@ export const OrganizationSchema = z.object({
     skills: z.array(SkillSchema).default([]),
     created_at: z.number().optional(),
     updated_at: z.number().optional(),
-    _updatedAt: z.number().optional()
 });
 
 export type Organization = z.infer<typeof OrganizationSchema>;

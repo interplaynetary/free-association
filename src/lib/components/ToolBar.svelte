@@ -765,8 +765,7 @@
                 quantity: draftSlot.quantity,
                 emoji: draftSlot.emoji,
                 unit: draftSlot.unit || (draftSlot.type_id === 'money' ? 'USD' : 'units'),
-                max_natural_div: 1,
-                min_allocation_percentage: 0.01,
+                min_atomic_size: 1, // Default granularity
                 recurrence: draftSlot.recurrence as any || 'monthly',
                 // Expanded fields
                 availability_window: draftSlot.availability_window,
@@ -795,8 +794,7 @@
                 quantity: draftSlot.quantity,
                 emoji: draftSlot.emoji,
                 unit: draftSlot.unit || (draftSlot.type_id === 'money' ? 'USD' : 'units'),
-                max_natural_div: 1,
-                min_allocation_percentage: 0.01,
+                min_atomic_size: 1, // Default granularity
                 recurrence: draftSlot.recurrence as any || 'monthly',
                 // Expanded fields
                 availability_window: draftSlot.availability_window,
