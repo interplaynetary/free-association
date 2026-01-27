@@ -130,15 +130,35 @@ export type AvailabilityWindow = z.infer<typeof AvailabilityWindowSchema>;
 // SLOTS
 // ═══════════════════════════════════════════════════════════════════
 
+// proffers have goals? aims, compose needs
+// project network - gantt chart
+// optimizers 
+/*
+Identifier
+Descriptive label
+Activity duration
+Early start time
+Early finish time
+Late start time
+Late finish time
+Activity float (slack)
+
+Activity Node Labels
+Start and finish times are used to determine the critical path of a project. 
+Activity float, or slack, time is used in project crashing.
+*/
+
 export const BaseSlotSchema = z.object({
     id: z.string().min(1),
     name: z.string(),
     type_id: z.string().min(1),
     emoji: z.string().optional(),
     description: z.string().optional(),
+    offered_by: z.string().optional(), // ID of Contact/Org
+
     quantity: z.number().gte(0),
     unit: z.string().optional(),
-    offered_by: z.string().optional(), // ID of Contact/Org
+
     required_skills: z.array(SkillSchema).optional(), // Skills required by this slot
     filter_rule: z.any().optional(),
     search_radius_km: z.number().gte(0).optional(), // for matching

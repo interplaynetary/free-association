@@ -1,49 +1,54 @@
 import { z } from 'zod';
-import { Type } from '$lib/utils/types_helper'; // Assuming this helper exists or we use raw objects
-import { ProfferV2Schema, type ProfferV2, type ProfferSlot } from '../proffer-v2';
-
-// NOTE: Ideally we would import 'createZodObject' or similar helpers, 
-// but for this example we'll manually construct matching objects to show the structure.
+import { ProfferV2Schema, type ProfferV2, type Slot, globalProfferV2Registry } from '../proffer-v2';
 
 function createId() {
     return Math.random().toString(36).substring(7);
 }
 
 // 1. Define a Nested Proffer: "Entertainment"
-// This proffer requires a Musician.
 const entertainmentProffer: ProfferV2 = {
     id: 'proffer-entertainment-01',
     name: 'Live Music Entertainment',
-    description: 'A 2-hour set of jazz music',
+    description: {
+        type: 'templated_strict',
+        template: 'template-jazz-gig-v1',
+        requirements: { format: '2 sets of 45 mins' }
+    },
     created_at: new Date(),
     updated_at: new Date(),
     status: 'draft',
     slots: [
         {
-            // Base properties from NeedSlotSchema
             id: 'slot-musician-01',
-            type_id: 'resource-type-musician',
             name: 'Jazz Pianist',
-            quantity: 1,
-            // Proffer-specific logic
+            phase: 'proposal',
             status: 'empty',
-            // Basic acceptance logic
+            input: {
+                kind: 'resource',
+                type_id: 'resource-type-musician',
+                quantity: 1,
+            },
             acceptance_logic: {
                 type: 'automatic',
                 rule: { "and": [{ ">=": [{ "var": "capacity.skills.level" }, 5] }] }
             }
-        } as ProfferSlot // Verification: Type assertion to ensure it matches schema
-    ],
-    effects: [
+        },
+        // Effect / Completion requirement
         {
-            type: 'social_experience',
-            description: 'Guests enjoyed live music'
+            id: 'slot-effect-music-01',
+            name: 'Audience Enjoyment Verification',
+            phase: 'completion',
+            status: 'empty',
+            input: {
+                kind: 'generic',
+                data_type: 'boolean',
+                description: 'Did the guests enjoy the live music?'
+            }
         }
     ]
 };
 
 // 2. Define the Main Proffer: "Dinner Party"
-// Needs: Food, Venue, AND the Entertainment Proffer
 const dinnerPartyProffer: ProfferV2 = {
     id: 'proffer-dinner-01',
     name: 'Annual Charity Dinner',
@@ -53,52 +58,96 @@ const dinnerPartyProffer: ProfferV2 = {
     status: 'draft',
     slots: [
         {
-            id: 'slot-venue-01',
-            type_id: 'resource-type-venue',
-            name: 'Event Hall',
-            quantity: 1,
+            id: 'slot-theme-01',
+            name: 'Event Theme',
+            phase: 'proposal',
             status: 'empty',
+            input: {
+                kind: 'generic',
+                data_type: 'string',
+                description: 'The creative theme for the dinner'
+            }
+        },
+        {
+            id: 'slot-venue-01',
+            name: 'Event Hall',
+            phase: 'proposal',
+            status: 'empty',
+            input: {
+                kind: 'resource',
+                type_id: 'resource-type-venue',
+                quantity: 1
+            },
             acceptance_logic: {
                 type: 'automatic',
                 rule: { "var": "capacity.attributes.has_kitchen" }
             }
-        } as ProfferSlot,
+        },
         {
             id: 'slot-catering-01',
-            type_id: 'resource-type-catering',
             name: 'Catering Service',
-            quantity: 50,
-            unit: 'guests',
-            status: 'empty'
-        } as ProfferSlot,
-        {
-            // This slot is filled by the Entertainment Proffer
-            id: 'slot-entertainment-01',
-            type_id: 'resource-type-service', // Generic service type
-            name: 'Evening Entertainment',
-            quantity: 1,
+            phase: 'proposal',
             status: 'empty',
-            nested_proffer_id: entertainmentProffer.id // Linking to nested proffer
-        } as ProfferSlot
+            input: {
+                kind: 'resource',
+                type_id: 'resource-type-catering',
+                quantity: 50,
+                unit: 'guests'
+            }
+        },
+        {
+            // Nested Proffer as Input!
+            id: 'slot-entertainment-01',
+            name: 'Evening Entertainment',
+            phase: 'proposal',
+            status: 'empty',
+            input: {
+                kind: 'proffer',
+                proffer_id: entertainmentProffer.id
+            }
+        }
     ]
 };
 
-console.log("✅ Defined Proffers using Need-Slot V2 Schema");
+console.log("✅ Defined Proffers using Elegant V2 Schema (Slot + Input)");
 console.log("------------------------------------------------");
 console.log(`Main Proffer: ${dinnerPartyProffer.name}`);
 console.log(`Needs:`);
+
 dinnerPartyProffer.slots.forEach(slot => {
-    console.log(` - [${slot.status}] ${slot.name} (${slot.quantity} ${slot.unit || 'units'})`);
-    if (slot.nested_proffer_id) {
-        console.log(`   -> Composed of Proffer: ${slot.nested_proffer_id}`);
+    const phaseLabel = `[${slot.phase}]`;
+    const input = slot.input;
+
+    if (input.kind === 'resource') {
+        console.log(` - ${phaseLabel} [${slot.status}] (Resource Need) ${slot.name} (${input.quantity} ${input.unit || 'units'})`);
+    } else if (input.kind === 'generic') {
+        console.log(` - ${phaseLabel} [${slot.status}] (Data Need) ${slot.name} [Type: ${input.data_type}]`);
+    } else if (input.kind === 'proffer') {
+        console.log(` - ${phaseLabel} [${slot.status}] (Proffer Need) ${slot.name}`);
+        console.log(`   -> Target Proffer ID: ${input.proffer_id || 'template:' + input.template_id}`);
     }
 });
 
-// Verification: Ensure the objects actually pass the Zod validation
+// Verification loop
 try {
     ProfferV2Schema.parse(entertainmentProffer);
     ProfferV2Schema.parse(dinnerPartyProffer);
     console.log("\n✅ Schema Validation Passed");
+
+    // Test Registry Logic
+    globalProfferV2Registry.addProffer(entertainmentProffer);
+    globalProfferV2Registry.addProffer(dinnerPartyProffer);
+
+    const dagValidation = globalProfferV2Registry.validateAllDAGs();
+    if (dagValidation.isValid) {
+        console.log("✅ DAG Validation Passed (No Cycles)");
+    } else {
+        console.error("❌ DAG Validation Failed:", dagValidation.errors);
+    }
+
+    const progress = globalProfferV2Registry.calculateProgress(dinnerPartyProffer);
+    console.log(`✅ Progress Calculation: ${progress.completionPercentage}% Complete`);
+
 } catch (e) {
     console.error("\n❌ Schema Validation Failed:", e);
     process.exit(1);

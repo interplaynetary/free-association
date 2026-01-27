@@ -108,6 +108,7 @@
 		"@mblaney/holster": "1.0.35",
 		"@paralleldrive/cuid2": "^3.0.6",
 		"@playnet/free-association": "^1.0.8",
+		"@svar-ui/svelte-filter": "^2.4.0",
 		"@svelte-maplibre-gl/deckgl": "^1.0.3",
 		"@types/bcryptjs": "^3.0.0",
 		"@types/better-sqlite3": "^7.6.12",

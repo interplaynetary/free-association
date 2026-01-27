@@ -452,38 +452,7 @@ export function calculateAvailabilityIntersection(
 	};
 }
 
-/**
- * Helper to flatten any window structure into a uniform array of UTC DaySchedules
- */
-function flattenWindowToUTCDaySchedules(
-	window: AvailabilityWindow,
-	timezone?: string,
-	sampleDate: string = '2024-01-01'
-): Array<{ day: DayOfWeek; timeRanges: TimeRange[] }> {
-	const result: Array<{ day: DayOfWeek; timeRanges: TimeRange[] }> = [];
 
-	// Handle day_schedules
-	if (window.day_schedules) {
-		for (const sched of window.day_schedules) {
-			result.push(...convertDayScheduleToUTC(sched, sampleDate, timezone));
-		}
-	}
-
-	// Handle time_ranges (assumed to apply to ALL days if no day specified, 
-	// OR to the specific sampleDate provided for context)
-	if (window.time_ranges && window.time_ranges.length > 0) {
-		// Construct a synthetic DaySchedule for the sampleDate's day
-		// This ensures we can intersect even simple time-range-only slots
-		const dayName = getDayOfWeekFromDate(sampleDate);
-		const syntheticSchedule: DaySchedule = {
-			days: [dayName],
-			time_ranges: window.time_ranges
-		};
-		result.push(...convertDayScheduleToUTC(syntheticSchedule, sampleDate, timezone));
-	}
-
-	return result;
-}
 
 /**
  * Get a date string (YYYY-MM-DD) that falls on the specified day of week,
@@ -754,55 +723,131 @@ export function availabilityWindowsOverlapWithTimezone(
 		return true; // Be optimistic
 	}
 
-	// If both are UTC or no timezone specified, use the standard comparison
-	if ((!timezone1 || timezone1 === 'UTC') && (!timezone2 || timezone2 === 'UTC')) {
-		return availabilityWindowsOverlap(window1, window2);
+
+
+	// Convert both windows to comparable UTC day schedules for the sample date
+	const dayScheds1UTC = flattenWindowToUTCDaySchedules(window1, timezone1, sampleDate);
+	const dayScheds2UTC = flattenWindowToUTCDaySchedules(window2, timezone2, sampleDate);
+
+	// If no schedules found for this date (e.g. wrong month), assuming no overlap for this specific date
+	if (dayScheds1UTC.length === 0 || dayScheds2UTC.length === 0) {
+		// Edge case: if a window is completely empty (no constraints), it implies always available?
+		// But flattenWindow returns empty if constraints don't match.
+		// If window has no constraints at all, flattenWindow should probably return "All days"?
+		// Currently flattenWindow returns [] if no schedules match.
+		// We should check if windows *have* constraints.
+		const w1HasConstraints = window1.month_schedules || window1.week_schedules || window1.day_schedules || window1.time_ranges;
+		const w2HasConstraints = window2.month_schedules || window2.week_schedules || window2.day_schedules || window2.time_ranges;
+
+		if (!w1HasConstraints && !w2HasConstraints) return true;
+		if (!w1HasConstraints && dayScheds2UTC.length > 0) return true; // W1 open -> W2 UTC valid
+		if (!w2HasConstraints && dayScheds1UTC.length > 0) return true;
+
+		return false;
 	}
 
-	// Convert both windows' day_schedules to UTC
-	// For simplicity, we'll focus on day_schedules (most common use case)
-	let dayScheds1UTC: Array<{ day: DayOfWeek; timeRanges: TimeRange[] }> = [];
-	let dayScheds2UTC: Array<{ day: DayOfWeek; timeRanges: TimeRange[] }> = [];
+	// Find common days in UTC
+	const days1 = new Set(dayScheds1UTC.map(d => d.day));
+	const days2 = new Set(dayScheds2UTC.map(d => d.day));
 
-	// Extract day schedules from window1
-	if (window1.day_schedules && window1.day_schedules.length > 0) {
-		for (const sched of window1.day_schedules) {
-			const convertedScheds = convertDayScheduleToUTC(sched, sampleDate, timezone1);
-			dayScheds1UTC.push(...convertedScheds);
-		}
-	}
+	// Optimization: Intersect day sets
+	for (const day of days1) {
+		if (days2.has(day)) {
+			// This day appears in both - check if times overlap
+			const ranges1 = dayScheds1UTC.filter(d => d.day === day).flatMap(d => d.timeRanges);
+			const ranges2 = dayScheds2UTC.filter(d => d.day === day).flatMap(d => d.timeRanges);
 
-	// Extract day schedules from window2
-	if (window2.day_schedules && window2.day_schedules.length > 0) {
-		for (const sched of window2.day_schedules) {
-			const convertedScheds = convertDayScheduleToUTC(sched, sampleDate, timezone2);
-			dayScheds2UTC.push(...convertedScheds);
-		}
-	}
-
-	// If we have converted day schedules, check for overlaps
-	if (dayScheds1UTC.length > 0 && dayScheds2UTC.length > 0) {
-		// Find common days in UTC
-		const days1 = new Set(dayScheds1UTC.map(d => d.day));
-		const days2 = new Set(dayScheds2UTC.map(d => d.day));
-
-		for (const day of days1) {
-			if (days2.has(day)) {
-				// This day appears in both - check if times overlap
-				const ranges1 = dayScheds1UTC.filter(d => d.day === day).flatMap(d => d.timeRanges);
-				const ranges2 = dayScheds2UTC.filter(d => d.day === day).flatMap(d => d.timeRanges);
-
-				if (anyTimeRangesOverlap(ranges1, ranges2)) {
-					return true; // Found overlapping day and time in UTC
-				}
+			if (anyTimeRangesOverlap(ranges1, ranges2)) {
+				return true; // Found overlapping day and time in UTC
 			}
 		}
-
-		return false; // No overlapping days or times
 	}
 
-	// Fallback to standard comparison if no day_schedules
-	return availabilityWindowsOverlap(window1, window2);
+	return false; // No overlapping days or times
+}
+
+/**
+ * Helper to flatten any window structure into a uniform array of UTC DaySchedules
+ * for a specific reference date
+ */
+function flattenWindowToUTCDaySchedules(
+	window: AvailabilityWindow,
+	timezone?: string,
+	sampleDate: string = '2024-01-01'
+): Array<{ day: DayOfWeek; timeRanges: TimeRange[] }> {
+	const result: Array<{ day: DayOfWeek; timeRanges: TimeRange[] }> = [];
+
+	// Helper to process day schedules
+	const processDaySchedules = (schedules: DaySchedule[]) => {
+		for (const sched of schedules) {
+			result.push(...convertDayScheduleToUTC(sched, sampleDate, timezone));
+		}
+	};
+
+	// LEVEL 1: Month Schedules
+	if (window.month_schedules && window.month_schedules.length > 0) {
+		const month = parseInt(sampleDate.split('-')[1]);
+		const matchingMonth = window.month_schedules.find(m => m.month === month);
+
+		if (matchingMonth) {
+			// Found matching month, check deeper
+			if (matchingMonth.week_schedules && matchingMonth.week_schedules.length > 0) {
+				const dayOfMonth = parseInt(sampleDate.split('-')[2]);
+				const week = Math.ceil(dayOfMonth / 7);
+
+				const matchingWeeks = matchingMonth.week_schedules.filter(w => w.weeks.includes(week));
+				for (const wSched of matchingWeeks) {
+					processDaySchedules(wSched.day_schedules);
+				}
+			} else if (matchingMonth.day_schedules && matchingMonth.day_schedules.length > 0) {
+				processDaySchedules(matchingMonth.day_schedules);
+			} else if (matchingMonth.time_ranges) {
+				// Month matches, but defines generic time ranges
+				const dayName = getDayOfWeekFromDate(sampleDate);
+				const syntheticSchedule: DaySchedule = {
+					days: [dayName],
+					time_ranges: matchingMonth.time_ranges
+				};
+				processDaySchedules([syntheticSchedule]);
+			}
+		}
+		// If month schedules exist but don't match sampleDate, we return nothing from this branch
+		// (Assuming stricter schedules override broader ones? The schema is additive or hierarchical?)
+		// availabilityWindowsOverlap treats them as hierarchical priorities.
+		// If month_schedules are present, they are the source of truth.
+		return result;
+	}
+
+	// LEVEL 2: Week Schedules
+	if (window.week_schedules && window.week_schedules.length > 0) {
+		const dayOfMonth = parseInt(sampleDate.split('-')[2]);
+		const week = Math.ceil(dayOfMonth / 7);
+
+		const matchingWeeks = window.week_schedules.filter(w => w.weeks.includes(week));
+		for (const wSched of matchingWeeks) {
+			processDaySchedules(wSched.day_schedules);
+		}
+		return result;
+	}
+
+	// LEVEL 3: Day Schedules
+	if (window.day_schedules && window.day_schedules.length > 0) {
+		processDaySchedules(window.day_schedules);
+		return result;
+	}
+
+	// LEVEL 4: Time Ranges (applies to all days/the sample day)
+	if (window.time_ranges && window.time_ranges.length > 0) {
+		// Construct a synthetic DaySchedule for the sampleDate's day
+		const dayName = getDayOfWeekFromDate(sampleDate);
+		const syntheticSchedule: DaySchedule = {
+			days: [dayName],
+			time_ranges: window.time_ranges
+		};
+		processDaySchedules([syntheticSchedule]);
+	}
+
+	return result;
 }
 
 /**
@@ -1577,7 +1622,7 @@ export function calculateMaxContiguousDuration(
 ): number {
 	// If either lacks availability info, assume optimistic full continuity implies sufficient duration
 	// (or should we be pessimistic? For physics floor, optimistic is probably safer for now unless detailed)
-	if (!needSlot.availability_window && !needSlot.start_time) return Infinity; // Infinite theoretical overlap
+	if (!needSlot.availability_window && !(needSlot as any).start_time) return Infinity; // Infinite theoretical overlap
 	if (!availabilitySlot.availability_window) return Infinity;
 
 	// Simplification: We only check explicit TimeRange intersections for now.
@@ -1717,8 +1762,8 @@ function getEarliestMatchTime(
 		// Refine with time info
 		if (needSlot.availability_window?.time_ranges?.length) {
 			timeStr = needSlot.availability_window.time_ranges[0].start_time;
-		} else if (needSlot.start_time) {
-			timeStr = needSlot.start_time;
+		} else if ((needSlot as any).start_time) {
+			timeStr = (needSlot as any).start_time;
 		}
 
 		// Parse (assuming local time or matched timezone for simplicity in this heuristic)

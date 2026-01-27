@@ -122,3 +122,94 @@ describe('Time Intersection', () => {
         });
     });
 });
+
+describe('Complex Schedules & Timezones', () => {
+    const { availabilityWindowsOverlapWithTimezone } = require('../match');
+
+    it('should respect Month-Specific patterns', () => {
+        // Window available ONLY in February
+        const w1: AvailabilityWindow = {
+            month_schedules: [{
+                month: 2, // February
+                day_schedules: [{
+                    days: ['monday'],
+                    time_ranges: [{ start_time: '09:00', end_time: '17:00' }]
+                }]
+            }]
+        };
+
+        const w2: AvailabilityWindow = {
+            time_ranges: [{ start_time: '09:00', end_time: '17:00' }] // "Every day"
+        };
+
+        // Test on a Monday in February (2024-02-05) -> Should Match
+        const matchFeb = availabilityWindowsOverlapWithTimezone(w1, w2, 'UTC', 'UTC', '2024-02-05');
+        expect(matchFeb).toBe(true);
+
+        // Test on a Monday in March (2024-03-04) -> Should NOT Match
+        const matchMar = availabilityWindowsOverlapWithTimezone(w1, w2, 'UTC', 'UTC', '2024-03-04');
+        expect(matchMar).toBe(false);
+    });
+
+    it('should respect Week-Specific patterns', () => {
+        // Window available ONLY in 1st Week
+        const w1: AvailabilityWindow = {
+            week_schedules: [{
+                weeks: [1],
+                day_schedules: [{
+                    days: ['monday'],
+                    time_ranges: [{ start_time: '09:00', end_time: '17:00' }]
+                }]
+            }]
+        };
+
+        const w2: AvailabilityWindow = {
+            day_schedules: [{ days: ['monday'], time_ranges: [{ start_time: '09:00', end_time: '17:00' }] }]
+        };
+
+        // Test on 1st Monday of Month (2024-02-05) -> Should Match (Feb 5 is in first 7 days? Week 1 usually days 1-7)
+        // 2024-02-05 is day 5. Week = ceil(5/7) = 1.
+        const matchWeek1 = availabilityWindowsOverlapWithTimezone(w1, w2, 'UTC', 'UTC', '2024-02-05');
+        expect(matchWeek1).toBe(true);
+
+        // Test on 2nd Monday (2024-02-12) -> Should NOT Match
+        // 2024-02-12 is day 12. Week = ceil(12/7) = 2.
+        const matchWeek2 = availabilityWindowsOverlapWithTimezone(w1, w2, 'UTC', 'UTC', '2024-02-12');
+        expect(matchWeek2).toBe(false);
+    });
+
+    it('should handle Timezone Day-Shifts', () => {
+        // Provider: Los Angeles (UTC-8), Mondays 11pm (23:00)
+        // Local: Mon 23:00 -> UTC: Tue 07:00 (next day)
+        const wLA: AvailabilityWindow = {
+            day_schedules: [{
+                days: ['monday'],
+                time_ranges: [{ start_time: '23:00', end_time: '23:59' }]
+            }]
+        };
+
+        // Seeker: London (UTC+0), Tuesdays 7am (07:00)
+        const wLondon: AvailabilityWindow = {
+            day_schedules: [{
+                days: ['tuesday'],
+                time_ranges: [{ start_time: '07:00', end_time: '08:00' }]
+            }]
+        };
+
+        // Check overlap using a sample date.
+        // We need a sample date where "Monday in LA" corresponds to "Tuesday in London".
+        // e.g. Mon Feb 5th LA -> Tue Feb 6th London.
+        // Using '2024-02-05' (Monday).
+
+        const overlaps = availabilityWindowsOverlapWithTimezone(
+            wLA,
+            wLondon,
+            'America/Los_Angeles',
+            'Europe/London',
+            '2024-02-05'
+        );
+
+        expect(overlaps).toBe(true);
+    });
+});
+
