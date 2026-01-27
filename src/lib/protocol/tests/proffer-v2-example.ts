@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import { ProfferV2Schema, type ProfferV2, type Slot, globalProfferV2Registry } from '../proffer-v2';
+import { ProfferSchema, type Proffer, type Slot, globalProfferRegistry } from '../proffer-v2';
 
 function createId() {
     return Math.random().toString(36).substring(7);
 }
 
 // 1. Define a Nested Proffer: "Entertainment"
-const entertainmentProffer: ProfferV2 = {
+const entertainmentProffer: Proffer = {
     id: 'proffer-entertainment-01',
     name: 'Live Music Entertainment',
     description: {
@@ -16,18 +16,19 @@ const entertainmentProffer: ProfferV2 = {
     },
     created_at: new Date(),
     updated_at: new Date(),
-    status: 'draft',
+    status: 'potential',
     slots: [
         {
             id: 'slot-musician-01',
             name: 'Jazz Pianist',
             phase: 'proposal',
-            status: 'empty',
+            status: 'potential',
             input: {
                 kind: 'resource',
                 type_id: 'resource-type-musician',
                 quantity: 1,
             },
+            optional: false,
             acceptance_logic: {
                 type: 'automatic',
                 rule: { "and": [{ ">=": [{ "var": "capacity.skills.level" }, 5] }] }
@@ -38,46 +39,49 @@ const entertainmentProffer: ProfferV2 = {
             id: 'slot-effect-music-01',
             name: 'Audience Enjoyment Verification',
             phase: 'completion',
-            status: 'empty',
+            status: 'potential',
             input: {
                 kind: 'generic',
                 data_type: 'boolean',
                 description: 'Did the guests enjoy the live music?'
-            }
+            },
+            optional: false
         }
     ]
 };
 
 // 2. Define the Main Proffer: "Dinner Party"
-const dinnerPartyProffer: ProfferV2 = {
+const dinnerPartyProffer: Proffer = {
     id: 'proffer-dinner-01',
     name: 'Annual Charity Dinner',
     description: 'A gala dinner for 50 guests',
     created_at: new Date(),
     updated_at: new Date(),
-    status: 'draft',
+    status: 'potential',
     slots: [
         {
             id: 'slot-theme-01',
             name: 'Event Theme',
             phase: 'proposal',
-            status: 'empty',
+            status: 'potential',
             input: {
                 kind: 'generic',
                 data_type: 'string',
                 description: 'The creative theme for the dinner'
-            }
+            },
+            optional: false
         },
         {
             id: 'slot-venue-01',
             name: 'Event Hall',
             phase: 'proposal',
-            status: 'empty',
+            status: 'potential',
             input: {
                 kind: 'resource',
                 type_id: 'resource-type-venue',
                 quantity: 1
             },
+            optional: false,
             acceptance_logic: {
                 type: 'automatic',
                 rule: { "var": "capacity.attributes.has_kitchen" }
@@ -87,24 +91,26 @@ const dinnerPartyProffer: ProfferV2 = {
             id: 'slot-catering-01',
             name: 'Catering Service',
             phase: 'proposal',
-            status: 'empty',
+            status: 'potential',
             input: {
                 kind: 'resource',
                 type_id: 'resource-type-catering',
                 quantity: 50,
                 unit: 'guests'
-            }
+            },
+            optional: false
         },
         {
             // Nested Proffer as Input!
             id: 'slot-entertainment-01',
             name: 'Evening Entertainment',
             phase: 'proposal',
-            status: 'empty',
+            status: 'potential',
             input: {
                 kind: 'proffer',
                 proffer_id: entertainmentProffer.id
-            }
+            },
+            optional: false
         }
     ]
 };
@@ -130,22 +136,22 @@ dinnerPartyProffer.slots.forEach(slot => {
 
 // Verification loop
 try {
-    ProfferV2Schema.parse(entertainmentProffer);
-    ProfferV2Schema.parse(dinnerPartyProffer);
+    ProfferSchema.parse(entertainmentProffer);
+    ProfferSchema.parse(dinnerPartyProffer);
     console.log("\n✅ Schema Validation Passed");
 
     // Test Registry Logic
-    globalProfferV2Registry.addProffer(entertainmentProffer);
-    globalProfferV2Registry.addProffer(dinnerPartyProffer);
+    globalProfferRegistry.addProffer(entertainmentProffer);
+    globalProfferRegistry.addProffer(dinnerPartyProffer);
 
-    const dagValidation = globalProfferV2Registry.validateAllDAGs();
+    const dagValidation = globalProfferRegistry.validateAllDAGs();
     if (dagValidation.isValid) {
         console.log("✅ DAG Validation Passed (No Cycles)");
     } else {
         console.error("❌ DAG Validation Failed:", dagValidation.errors);
     }
 
-    const progress = globalProfferV2Registry.calculateProgress(dinnerPartyProffer);
+    const progress = globalProfferRegistry.calculateProgress(dinnerPartyProffer);
     console.log(`✅ Progress Calculation: ${progress.completionPercentage}% Complete`);
 
 } catch (e) {

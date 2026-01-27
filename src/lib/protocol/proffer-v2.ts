@@ -118,6 +118,22 @@ export const InputDefinitionSchema = z.union([
 
 export type InputDefinition = z.infer<typeof InputDefinitionSchema>;
 
+// Generic allocation schema, as compose schema?
+// Offer of compose
+// ???????
+export const ComposeSchema = z.object({
+    id: z.string(),
+    from: z.string(),
+    to: z.string(),
+    context: z.string(), // complexity explosion here
+})
+
+// Automation of Cooperation!!!
+// Event -> PatternMatch -> Effect Map
+// Phase -> Effect Map
+// Completion -> Effect Map !
+// DSLs
+
 // =============================================================================
 // SLOT CONTAINER
 // =============================================================================
@@ -129,17 +145,21 @@ export const SlotSchema = z.object({
 
     // The Input Definition (What is needed?)
     input: InputDefinitionSchema,
-
-    // Logic & timing
-    phase: SlotTimingSchema.default('proposal'),
     optional: z.boolean().default(false),
     acceptance_logic: AcceptanceLogicSchema.optional(),
 
+    // In the case of multi-provider Need fulfillment, we need a mapping of capacity-ids -> quantities
+    // Peraps also CONTEXT as to why compose (For consideration purposes)
+    potential_filled_by_refs: z.record(z.string(), z.union([z.boolean(), z.number(), z.string()]).optional()).optional(),
+
+    // In the case of multi-provider Need fulfillment, we need a mapping of capacity-ids -> quantities
+    actually_filled_by_refs: z.record(z.string(), z.union([z.boolean(), z.number(), z.string()]).optional()).optional(), // ID of Capacity, Resource, or Proffer Completion Event
+
+    // Logic & timing
+    phase: SlotTimingSchema.default('proposal'), // this is currently unused, we are treating as manual,but it should be progress checking (derived)
+
     // State
-    status: z.enum(['empty', 'tentative', 'filled', 'verified']).default('empty'),
-    filled_by_ref: z.string().optional(), // ID of Capacity, Resource, or Proffer Completion Event
-    tentative_ref: z.string().optional(),
-    value: z.any().optional() // For generic inputs
+    status: z.enum(['potential', 'actual']).default('potential'),
 });
 
 export type Slot = z.infer<typeof SlotSchema>;
@@ -148,7 +168,7 @@ export type Slot = z.infer<typeof SlotSchema>;
 // PROFFER V2
 // =============================================================================
 
-export const ProfferV2Schema = z.object({
+export const ProfferSchema = z.object({
     id: z.string(),
     name: z.string(),
     description: ProfferDescriptionSchema.optional(),
@@ -157,37 +177,96 @@ export const ProfferV2Schema = z.object({
     slots: z.array(SlotSchema),
 
     // Proffer State
-    status: z.enum(['draft', 'offered', 'tentative', 'active', 'completed', 'cancelled']).default('draft'),
+    status: z.enum(['potential', 'actual']).default('potential'),
     progress: ProgressSchema.optional(),
 
     // Metadata
     created_at: z.date(),
-    updated_at: z.date()
+    updated_at: z.date(),
+    // track execution?
+    executed_at: z.date().optional(),
 });
 
-export type ProfferV2 = z.infer<typeof ProfferV2Schema>;
+export type Proffer = z.infer<typeof ProfferSchema>;
 
 // =============================================================================
 // REGISTRY / MANANGER
 // =============================================================================
 
-export class ProfferV2Manager {
-    private registry: Map<string, ProfferV2> = new Map();
+export class ProfferManager {
+    private registry: Map<string, Proffer> = new Map();
+    private statusCache: Map<string, 'potential' | 'actual'> = new Map();
+    private dependentsIndex: Map<string, Set<string>> = new Map(); // ChildID -> Set<ParentID>
 
-    addProffer(proffer: ProfferV2): void {
+    addProffer(proffer: Proffer): void {
         this.registry.set(proffer.id, proffer);
+        this.indexDependencies(proffer);
+        this.invalidateStatus(proffer.id);
     }
 
-    getProffer(id: string): ProfferV2 | undefined {
+    updateProffer(proffer: Proffer): void {
+        // Just overwrite for now, but ensure we re-index and invalidate
+        this.registry.set(proffer.id, proffer);
+
+        // Re-indexing is tricky if dependencies CHANGED (removed).
+        // For now, we just Add new indices. Garbage collecting old indices is harder without diffing.
+        // Assuming strict add-only or simple replacement for this prototype.
+        this.indexDependencies(proffer);
+
+        // CRITICAL: Invalidate this proffer's status (and its parents)
+        this.invalidateStatus(proffer.id);
+    }
+
+    getProffer(id: string): Proffer | undefined {
         return this.registry.get(id);
     }
 
-    getAllProffers(): ProfferV2[] {
+    getAllProffers(): Proffer[] {
         return Array.from(this.registry.values());
     }
 
     removeProffer(id: string): boolean {
+        // We should also cleanup dependentsIndex but looking up parents is hard without iterating?
+        // Actually we can iterate registry or just lazy clean.
+        // For strictness, let's keep it simple for now and just delete.
+        this.statusCache.delete(id);
+        // We should notify parents that a dependency is gone?
+        // Ideally we check usageIndex to see who relied on this.
+        const parents = this.dependentsIndex.get(id);
+        if (parents) {
+            parents.forEach(p => this.invalidateStatus(p));
+            this.dependentsIndex.delete(id);
+        }
         return this.registry.delete(id);
+    }
+
+    private indexDependencies(proffer: Proffer) {
+        // Who does THIS proffer depend on?
+        // We iterate slots -> actually_filled_by_refs
+        proffer.slots.forEach(slot => {
+            if (slot.actually_filled_by_refs) {
+                Object.keys(slot.actually_filled_by_refs).forEach(refId => {
+                    // refId (Child) -> proffer.id (Parent)
+                    if (!this.dependentsIndex.has(refId)) {
+                        this.dependentsIndex.set(refId, new Set());
+                    }
+                    this.dependentsIndex.get(refId)?.add(proffer.id);
+                });
+            }
+        });
+    }
+
+    // Invalidate status and climb up the dependency tree
+    invalidateStatus(id: string) {
+        if (this.statusCache.has(id)) {
+            this.statusCache.delete(id);
+        }
+
+        // Notify parents (Dependents)
+        const parents = this.dependentsIndex.get(id);
+        if (parents) {
+            parents.forEach(parentId => this.invalidateStatus(parentId));
+        }
     }
 
     clear(): void {
@@ -241,8 +320,66 @@ export class ProfferV2Manager {
         return { isValid: true };
     }
 
+    // Derive Slot Status based on fills
+    deriveSlotStatus(slot: Slot): 'potential' | 'actual' {
+        // 1. Must have references
+        if (!slot.actually_filled_by_refs || Object.keys(slot.actually_filled_by_refs).length === 0) {
+            return 'potential';
+        }
+
+        // 2. All references must be "actual"
+        // If ref is a Proffer ID, we check its status.
+        // If ref is something else (Resource?), we assume ACTUAL if it exists (for now).
+        for (const refId of Object.keys(slot.actually_filled_by_refs)) {
+            // Check cache FIRST if it's a known proffer (Optimization)
+            if (this.statusCache.has(refId)) {
+                if (this.statusCache.get(refId) === 'potential') {
+                    return 'potential';
+                }
+                continue; // It's actual, check next ref
+            }
+
+            const potentialProffer = this.getProffer(refId);
+            if (potentialProffer) {
+                const childStatus = this.deriveProfferStatus(potentialProffer);
+                if (childStatus === 'potential') {
+                    return 'potential';
+                }
+            }
+            // If not found in proffer registry, assume it's a leaf resource -> 'actual'
+        }
+
+        return 'actual';
+    }
+
+    // Derive Proffer Status (Memoized)
+    deriveProfferStatus(proffer: Proffer): 'potential' | 'actual' {
+        // 1. Check Cache
+        if (this.statusCache.has(proffer.id)) {
+            return this.statusCache.get(proffer.id)!;
+        }
+
+        // 2. Compute
+        let status: 'potential' | 'actual' = 'actual';
+        for (const slot of proffer.slots) {
+            if (!slot.optional) {
+                // Note: deriveSlotStatus will recursively call deriveProfferStatus for dependencies.
+                // Since this DAG is validated (no cycles), this recursion terminates.
+                const slotStatus = this.deriveSlotStatus(slot);
+                if (slotStatus === 'potential') {
+                    status = 'potential';
+                    break;
+                }
+            }
+        }
+
+        // 3. Cache
+        this.statusCache.set(proffer.id, status);
+        return status;
+    }
+
     // Calculate Progress
-    calculateProgress(proffer: ProfferV2): Progress {
+    calculateProgress(proffer: Proffer): Progress {
         let requiredFilled = 0;
         let totalRequired = 0;
         let optionalFilled = 0;
@@ -252,7 +389,8 @@ export class ProfferV2Manager {
         let nestedSlotCount = 0;
 
         proffer.slots.forEach(slot => {
-            const isFilled = slot.status === 'filled' || slot.status === 'verified';
+            const slotStatus = this.deriveSlotStatus(slot);
+            const isFilled = slotStatus === 'actual';
 
             if (slot.optional) {
                 totalOptional++;
@@ -276,21 +414,14 @@ export class ProfferV2Manager {
 
         const basePercentage = totalRequired > 0 ? (requiredFilled / totalRequired) * 100 : 100;
 
-        let finalPercentage = basePercentage;
-        if (nestedSlotCount > 0) {
-            const avgNested = totalNestedProgress / nestedSlotCount;
-            // Weighted 50/50 for now
-            finalPercentage = (basePercentage + avgNested) / 2;
-        }
-
         return {
             requiredSlotsFilled: requiredFilled,
             totalRequiredSlots: totalRequired,
             optionalSlotsFilled: optionalFilled,
             totalOptionalSlots: totalOptional,
-            completionPercentage: Math.round(finalPercentage)
+            completionPercentage: Math.round(basePercentage)
         };
     }
 }
 
-export const globalProfferV2Registry = new ProfferV2Manager();
+export const globalProfferRegistry = new ProfferManager();
