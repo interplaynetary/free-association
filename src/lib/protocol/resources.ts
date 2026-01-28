@@ -154,33 +154,37 @@ export const BaseSlotSchema = z.object({
     type_id: z.string().min(1),
     emoji: z.string().optional(),
     description: z.string().optional(),
-    offered_by: z.string().optional(), // ID of Contact/Org
+
+    author: z.string().optional(), // DID of the slot creator
+    offerer: z.string().optional(), // ID of Contact/Org author attests is offering
 
     quantity: z.number().gte(0),
     unit: z.string().optional(),
 
-    required_skills: z.array(SkillSchema).optional(), // Skills required by this slot
-    filter_rule: z.any().optional(),
-    search_radius_km: z.number().gte(0).optional(), // for matching
-
-    // for collective-slots?
-    members: z.array(z.string()).optional(),
-
-    // Generalized Constraints (v6)
+    // Throughput Constraints
     min_atomic_size: z.number().positive().optional(), // Granularity (e.g. min duration or min qty)
     max_participation: z.number().int().positive().optional(), // Total unique agents allowed (Fan-In)
     max_concurrency: z.number().int().positive().optional(), // Max simultaneous agents (Bandwidth)
     min_calendar_duration: z.number().positive().optional(), // Physics floor (Min total time)
+    
+    required_skills: z.array(SkillSchema).optional(), // Skills required by this slot
+    filter_rule: z.any().optional(),
+
+    // for collective-slots? // We are currently using this wrong
+    // we should remove this from match.ts
+    members: z.array(z.string()).optional(),
 
     // time constraints
-    advance_notice_hours: z.number().gte(0).optional(),
-    booking_window_hours: z.number().gte(0).optional(),
     time_zone: z.string().optional(),
     start_date: z.string().nullable().optional(),
     end_date: z.string().nullable().optional(),
     availability_window: AvailabilityWindowSchema.optional(),
     recurrence: z.enum(['daily', 'weekly', 'monthly', 'yearly']).nullable().optional(),
+    advance_notice_hours: z.number().gte(0).optional(),
+    booking_window_hours: z.number().gte(0).optional(),
 
+    // space constraints
+    search_radius_km: z.number().gte(0).optional(), // for matching
     hidden_until_request_accepted: z.boolean().optional(), // only reveal specific location after provider accepts
     location_type: z.string().optional(),
     longitude: z.number().min(-180).max(180).optional(),

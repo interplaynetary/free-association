@@ -340,8 +340,8 @@ export function calculateFeasibility(
         // Usually "Does Seeker trust Provider?" AND "Does Provider trust Seeker?"
         // We take the MINIMUM (bottleneck).
         affinity: Math.min(
-            scoreAffinity(capacity.offered_by, context.seekerWeights), // Seeker -> Provider
-            scoreAffinity(need.offered_by, context.providerWeights)    // Provider -> Seeker
+            scoreAffinity(capacity.offerer, context.seekerWeights), // Seeker -> Provider
+            scoreAffinity(need.offerer, context.providerWeights)    // Provider -> Seeker
         ),
 
         continuity: scoreContinuity(need, capacity)

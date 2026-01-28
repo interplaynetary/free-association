@@ -2,6 +2,56 @@ import { z } from 'zod';
 import jsonLogic from 'json-logic-js';
 import { NeedSlotSchema } from './resources';
 
+
+// =============================================================================
+// CONTENT ADDRESSING (TEMPLATE HASHING)
+// =============================================================================
+
+// Canonicalize an object to a stable JSON string (sorted keys)
+function canonicalize(obj: any): string {
+    if (Array.isArray(obj)) {
+        return '[' + obj.map(canonicalize).join(',') + ']';
+    } else if (obj && typeof obj === 'object' && obj.constructor === Object) {
+        return '{' + Object.keys(obj).sort().map(
+            k => JSON.stringify(k) + ':' + canonicalize(obj[k])
+        ).join(',') + '}';
+    } else {
+        return JSON.stringify(obj);
+    }
+}
+
+// Hash a string using SHA-256 and return hex
+async function sha256Hex(str: string): Promise<string> {
+    if (typeof window !== 'undefined' && window.crypto?.subtle) {
+        // Browser/Web Crypto API
+        const buf = new TextEncoder().encode(str);
+        const hashBuf = await window.crypto.subtle.digest('SHA-256', buf);
+        return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    } else {
+        // Node.js
+        const { createHash } = await import('crypto');
+        return createHash('sha256').update(str).digest('hex');
+    }
+}
+
+/**
+ * Generate a content-addressed template ID for a Proffer template.
+ * @param proffer The Proffer template object (no instance/derived state)
+ * @returns Promise<string> SHA-256 hex hash of canonicalized template
+ */
+export async function getProfferTemplateId(proffer: Proffer): Promise<string> {
+    // Remove the id field for pure content addressing, if desired:
+    // const { id, ...rest } = proffer;
+    // const canonical = canonicalize(rest);
+    // But if id is part of the template, keep it:
+    const canonical = canonicalize(proffer);
+    return sha256Hex(canonical);
+}
+
+// =============================================================================
+// ACCEPTANCE LOGIC
+// =============================================================================
+
 // Reuse the Acceptance Logic from V1
 const AutomaticAcceptanceSchema = z.object({
     type: z.literal('automatic'),
@@ -138,100 +188,102 @@ export const ComposeSchema = z.object({
 // SLOT CONTAINER
 // =============================================================================
 
+
+// Pure Slot Template (no instance/derived state)
 export const SlotSchema = z.object({
     id: z.string(),
     name: z.string(),
     description: z.string().optional(),
-
-    // The Input Definition (What is needed?)
     input: InputDefinitionSchema,
     optional: z.boolean().default(false),
     acceptance_logic: AcceptanceLogicSchema.optional(),
-
-    // In the case of multi-provider Need fulfillment, we need a mapping of capacity-ids -> quantities
-    // Peraps also CONTEXT as to why compose (For consideration purposes)
-    potential_filled_by_refs: z.record(z.string(), z.union([z.boolean(), z.number(), z.string()]).optional()).optional(),
-
-    // In the case of multi-provider Need fulfillment, we need a mapping of capacity-ids -> quantities
-    actually_filled_by_refs: z.record(z.string(), z.union([z.boolean(), z.number(), z.string()]).optional()).optional(), // ID of Capacity, Resource, or Proffer Completion Event
-
-    // Logic & timing
-    phase: SlotTimingSchema.default('proposal'), // this is currently unused, we are treating as manual,but it should be progress checking (derived)
-
-    // State
-    status: z.enum(['potential', 'actual']).default('potential'),
+    phase: SlotTimingSchema.default('proposal'),
 });
 
 export type Slot = z.infer<typeof SlotSchema>;
+
+// SlotInstance holds instance/derived state for a slot
+export const SlotInstanceSchema = z.object({
+    slot_id: z.string(), // reference to SlotSchema.id
+    potential_filled_by_refs: z.record(z.string(), z.union([z.boolean(), z.number(), z.string()]).optional()).optional(),
+    actually_filled_by_refs: z.record(z.string(), z.union([z.boolean(), z.number(), z.string()]).optional()).optional(),
+    status: z.enum(['potential', 'actual']).default('potential'),
+});
+
+export type SlotInstance = z.infer<typeof SlotInstanceSchema>;
 
 // =============================================================================
 // PROFFER V2
 // =============================================================================
 
+
+// Pure Proffer Template (Content Addressable)
 export const ProfferSchema = z.object({
     id: z.string(),
     name: z.string(),
     description: ProfferDescriptionSchema.optional(),
 
+    author: z.string(), // DID of the author
+    offerer: z.string().optional(), // ID of Contact/Org author attests is offering
+
     // The molecular structure of needs
     slots: z.array(SlotSchema),
-
-    // Proffer State
-    status: z.enum(['potential', 'actual']).default('potential'),
-    progress: ProgressSchema.optional(),
-
-    // Metadata
-    created_at: z.date(),
-    updated_at: z.date(),
-    // track execution?
-    executed_at: z.date().optional(),
 });
 
 export type Proffer = z.infer<typeof ProfferSchema>;
+
+// Instance Metadata Wrapper (for stateful/derived fields)
+
+// ProfferInstance holds the template and all instance/derived state, including slot instances
+export const ProfferInstanceSchema = z.object({
+    proffer: ProfferSchema,
+    slotInstances: z.record(z.string(), SlotInstanceSchema), // slot_id -> SlotInstance
+    status: z.enum(['potential', 'actual']).default('potential'),
+    progress: ProgressSchema.optional(),
+    created_at: z.date(),
+    updated_at: z.date(),
+    executed_at: z.date().optional(),
+});
+
+export type ProfferInstance = z.infer<typeof ProfferInstanceSchema>;
 
 // =============================================================================
 // REGISTRY / MANANGER
 // =============================================================================
 
+
+
 export class ProfferManager {
-    private registry: Map<string, Proffer> = new Map();
+    private registry: Map<string, ProfferInstance> = new Map();
     private statusCache: Map<string, 'potential' | 'actual'> = new Map();
     private dependentsIndex: Map<string, Set<string>> = new Map(); // ChildID -> Set<ParentID>
 
-    addProffer(proffer: Proffer): void {
-        this.registry.set(proffer.id, proffer);
-        this.indexDependencies(proffer);
-        this.invalidateStatus(proffer.id);
+    addProfferInstance(instance: ProfferInstance): void {
+        this.registry.set(instance.proffer.id, instance);
+        this.indexDependencies(instance);
+        this.invalidateStatus(instance.proffer.id);
     }
 
-    updateProffer(proffer: Proffer): void {
-        // Just overwrite for now, but ensure we re-index and invalidate
-        this.registry.set(proffer.id, proffer);
-
-        // Re-indexing is tricky if dependencies CHANGED (removed).
-        // For now, we just Add new indices. Garbage collecting old indices is harder without diffing.
-        // Assuming strict add-only or simple replacement for this prototype.
-        this.indexDependencies(proffer);
-
-        // CRITICAL: Invalidate this proffer's status (and its parents)
-        this.invalidateStatus(proffer.id);
+    updateProfferInstance(instance: ProfferInstance): void {
+        this.registry.set(instance.proffer.id, instance);
+        this.indexDependencies(instance);
+        this.invalidateStatus(instance.proffer.id);
     }
 
-    getProffer(id: string): Proffer | undefined {
+    getProfferInstance(id: string): ProfferInstance | undefined {
         return this.registry.get(id);
     }
 
-    getAllProffers(): Proffer[] {
+    getProffer(id: string): Proffer | undefined {
+        return this.registry.get(id)?.proffer;
+    }
+
+    getAllProfferInstances(): ProfferInstance[] {
         return Array.from(this.registry.values());
     }
 
     removeProffer(id: string): boolean {
-        // We should also cleanup dependentsIndex but looking up parents is hard without iterating?
-        // Actually we can iterate registry or just lazy clean.
-        // For strictness, let's keep it simple for now and just delete.
         this.statusCache.delete(id);
-        // We should notify parents that a dependency is gone?
-        // Ideally we check usageIndex to see who relied on this.
         const parents = this.dependentsIndex.get(id);
         if (parents) {
             parents.forEach(p => this.invalidateStatus(p));
@@ -240,29 +292,24 @@ export class ProfferManager {
         return this.registry.delete(id);
     }
 
-    private indexDependencies(proffer: Proffer) {
-        // Who does THIS proffer depend on?
-        // We iterate slots -> actually_filled_by_refs
-        proffer.slots.forEach(slot => {
-            if (slot.actually_filled_by_refs) {
-                Object.keys(slot.actually_filled_by_refs).forEach(refId => {
-                    // refId (Child) -> proffer.id (Parent)
+    private indexDependencies(instance: ProfferInstance) {
+        // For each slotInstance, check actually_filled_by_refs for dependencies
+        Object.values(instance.slotInstances).forEach(slotInstance => {
+            if (slotInstance.actually_filled_by_refs) {
+                Object.keys(slotInstance.actually_filled_by_refs).forEach(refId => {
                     if (!this.dependentsIndex.has(refId)) {
                         this.dependentsIndex.set(refId, new Set());
                     }
-                    this.dependentsIndex.get(refId)?.add(proffer.id);
+                    this.dependentsIndex.get(refId)?.add(instance.proffer.id);
                 });
             }
         });
     }
 
-    // Invalidate status and climb up the dependency tree
     invalidateStatus(id: string) {
         if (this.statusCache.has(id)) {
             this.statusCache.delete(id);
         }
-
-        // Notify parents (Dependents)
         const parents = this.dependentsIndex.get(id);
         if (parents) {
             parents.forEach(parentId => this.invalidateStatus(parentId));
@@ -273,10 +320,9 @@ export class ProfferManager {
         this.registry.clear();
     }
 
-    // Validate DAG structure
     validateAllDAGs(): { isValid: boolean; errors: string[] } {
         const errors: string[] = [];
-        this.registry.forEach((_, id) => {
+        this.registry.forEach((instance, id) => {
             const validation = this.validateProfferDAG(id);
             if (!validation.isValid) {
                 errors.push(`Proffer ${id}: ${validation.cyclePath?.join(' → ')}`);
@@ -300,18 +346,20 @@ export class ProfferManager {
 
         if (visited.has(profferId)) return { isValid: true };
 
-        const proffer = this.getProffer(profferId);
-        if (!proffer) return { isValid: false, cyclePath: [`Unknown Proffer: ${profferId}`] };
+        const instance = this.getProfferInstance(profferId);
+        if (!instance) return { isValid: false, cyclePath: [`Unknown Proffer: ${profferId}`] };
+        const proffer = instance.proffer;
 
         visiting.add(profferId);
 
         for (const slot of proffer.slots) {
-            // Check if input is a proffer reference
+            const slotInstance = instance.slotInstances[slot.id];
             if (slot.input.kind === 'proffer' && slot.input.proffer_id) {
                 const nestedId = slot.input.proffer_id;
                 const validation = this.validateProfferDAG(nestedId, visited, visiting, currentPath);
                 if (!validation.isValid) return validation;
             }
+            // Optionally, check slotInstance for further dependencies if needed
         }
 
         visiting.delete(profferId);
@@ -320,25 +368,17 @@ export class ProfferManager {
         return { isValid: true };
     }
 
-    // Derive Slot Status based on fills
-    deriveSlotStatus(slot: Slot): 'potential' | 'actual' {
-        // 1. Must have references
-        if (!slot.actually_filled_by_refs || Object.keys(slot.actually_filled_by_refs).length === 0) {
+    deriveSlotStatus(slotInstance: SlotInstance): 'potential' | 'actual' {
+        if (!slotInstance.actually_filled_by_refs || Object.keys(slotInstance.actually_filled_by_refs).length === 0) {
             return 'potential';
         }
-
-        // 2. All references must be "actual"
-        // If ref is a Proffer ID, we check its status.
-        // If ref is something else (Resource?), we assume ACTUAL if it exists (for now).
-        for (const refId of Object.keys(slot.actually_filled_by_refs)) {
-            // Check cache FIRST if it's a known proffer (Optimization)
+        for (const refId of Object.keys(slotInstance.actually_filled_by_refs)) {
             if (this.statusCache.has(refId)) {
                 if (this.statusCache.get(refId) === 'potential') {
                     return 'potential';
                 }
-                continue; // It's actual, check next ref
+                continue;
             }
-
             const potentialProffer = this.getProffer(refId);
             if (potentialProffer) {
                 const childStatus = this.deriveProfferStatus(potentialProffer);
@@ -346,52 +386,56 @@ export class ProfferManager {
                     return 'potential';
                 }
             }
-            // If not found in proffer registry, assume it's a leaf resource -> 'actual'
         }
-
         return 'actual';
     }
 
-    // Derive Proffer Status (Memoized)
     deriveProfferStatus(proffer: Proffer): 'potential' | 'actual' {
-        // 1. Check Cache
         if (this.statusCache.has(proffer.id)) {
             return this.statusCache.get(proffer.id)!;
         }
-
-        // 2. Compute
+        const instance = this.getProfferInstance(proffer.id);
+        if (!instance) return 'potential';
         let status: 'potential' | 'actual' = 'actual';
         for (const slot of proffer.slots) {
             if (!slot.optional) {
-                // Note: deriveSlotStatus will recursively call deriveProfferStatus for dependencies.
-                // Since this DAG is validated (no cycles), this recursion terminates.
-                const slotStatus = this.deriveSlotStatus(slot);
+                const slotInstance = instance.slotInstances[slot.id];
+                if (!slotInstance) {
+                    status = 'potential';
+                    break;
+                }
+                const slotStatus = this.deriveSlotStatus(slotInstance);
                 if (slotStatus === 'potential') {
                     status = 'potential';
                     break;
                 }
             }
         }
-
-        // 3. Cache
         this.statusCache.set(proffer.id, status);
         return status;
     }
 
-    // Calculate Progress
     calculateProgress(proffer: Proffer): Progress {
+        const instance = this.getProfferInstance(proffer.id);
+        if (!instance) {
+            return {
+                requiredSlotsFilled: 0,
+                totalRequiredSlots: proffer.slots.filter(s => !s.optional).length,
+                optionalSlotsFilled: 0,
+                totalOptionalSlots: proffer.slots.filter(s => s.optional).length,
+                completionPercentage: 0
+            };
+        }
         let requiredFilled = 0;
         let totalRequired = 0;
         let optionalFilled = 0;
         let totalOptional = 0;
-
         let totalNestedProgress = 0;
         let nestedSlotCount = 0;
-
         proffer.slots.forEach(slot => {
-            const slotStatus = this.deriveSlotStatus(slot);
+            const slotInstance = instance.slotInstances[slot.id];
+            const slotStatus = slotInstance ? this.deriveSlotStatus(slotInstance) : 'potential';
             const isFilled = slotStatus === 'actual';
-
             if (slot.optional) {
                 totalOptional++;
                 if (isFilled) optionalFilled++;
@@ -399,21 +443,18 @@ export class ProfferManager {
                 totalRequired++;
                 if (isFilled) requiredFilled++;
             }
-
             if (slot.input.kind === 'proffer' && slot.input.proffer_id) {
                 const nested = this.getProffer(slot.input.proffer_id);
-                if (nested && nested.progress) {
-                    // Only count nested progress towards the weighted average if the slot is REQUIRED
+                if (nested) {
                     if (!slot.optional) {
                         nestedSlotCount++;
-                        totalNestedProgress += nested.progress.completionPercentage;
+                        const nestedProgress = this.calculateProgress(nested);
+                        totalNestedProgress += nestedProgress.completionPercentage;
                     }
                 }
             }
         });
-
         const basePercentage = totalRequired > 0 ? (requiredFilled / totalRequired) * 100 : 100;
-
         return {
             requiredSlotsFilled: requiredFilled,
             totalRequiredSlots: totalRequired,

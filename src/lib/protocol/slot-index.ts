@@ -634,7 +634,7 @@ export class SlotIndex {
 			// Filter candidates by qualified offered_by
 			if (qualifiedContacts && qualifiedContacts.size > 0) {
 				candidates = candidates.filter(slot =>
-					slot.offered_by && qualifiedContacts!.has(slot.offered_by)
+					slot.offerer && qualifiedContacts!.has(slot.offerer)
 				);
 			} else {
 				// Requirements exist but no one qualifies -> 0 matches

@@ -8,7 +8,7 @@ const baseNeed: NeedSlot = {
     type_id: 'type-1',
     name: 'Need',
     quantity: 1,
-    offered_by: 'seeker-1',
+    offerer: 'seeker-1',
     time_zone: 'UTC'
 };
 
@@ -17,7 +17,7 @@ const baseCapacity: AvailabilitySlot = {
     type_id: 'type-1',
     name: 'Capacity',
     quantity: 1,
-    offered_by: 'provider-1',
+    offerer: 'provider-1',
     time_zone: 'UTC'
 };
 
