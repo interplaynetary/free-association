@@ -1686,12 +1686,7 @@ export function checkFlowConstraints(
 	}
 
 	// 2. **Fan-In / Participation (max_participation)**
-	// Static check only: If Need declares explicit members, do they fit?
-	if (availabilitySlot.max_participation !== undefined) {
-		if (needSlot.members && needSlot.members.length > availabilitySlot.max_participation) {
-			return false;
-		}
-	}
+	// Static check only: Requires understanding of potential!!
 
 	// 3. **Physics Floor (min_calendar_duration)**
 	// Do they overlap for long enough to do the thing?

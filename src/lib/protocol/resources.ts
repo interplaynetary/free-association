@@ -166,13 +166,13 @@ export const BaseSlotSchema = z.object({
     max_participation: z.number().int().positive().optional(), // Total unique agents allowed (Fan-In)
     max_concurrency: z.number().int().positive().optional(), // Max simultaneous agents (Bandwidth)
     min_calendar_duration: z.number().positive().optional(), // Physics floor (Min total time)
-    
+
     required_skills: z.array(SkillSchema).optional(), // Skills required by this slot
     filter_rule: z.any().optional(),
 
     // for collective-slots? // We are currently using this wrong
     // we should remove this from match.ts
-    members: z.array(z.string()).optional(),
+    // members: z.array(z.string()).optional(),
 
     // time constraints
     time_zone: z.string().optional(),
@@ -198,7 +198,6 @@ export const BaseSlotSchema = z.object({
     h3_index: z.string().optional(),
     h3_resolution: z.number().int().min(0).max(15).optional(),
 
-    parent_slot_id: z.string().optional(),
     mutual_agreement_required: z.boolean().default(false).optional(),
     priority: z.number().optional(),
 
