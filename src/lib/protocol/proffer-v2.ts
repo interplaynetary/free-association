@@ -348,6 +348,196 @@ class ProfferManager {
     this.rebuildDependencyIndex();
   }
 
+  /**
+   * Unfill a slot (transition from actual → potential) and propagate changes to dependents.
+   * This intelligently updates derived state for all proffers that required this slot.
+   * 
+   * @param profferInstanceId - The proffer instance containing the slot
+   * @param slotId - The slot template ID to unfill
+   * @returns Array of affected proffer instance IDs (including the original)
+   */
+  unfillSlot(profferInstanceId: NanoId, slotId: CID): NanoId[] {
+    const stored = this.registry.get(profferInstanceId);
+    if (!stored) {
+      throw new Error(`Proffer instance ${profferInstanceId} not found`);
+    }
+
+    const slotInstance = stored.slotInstances[slotId];
+    if (!slotInstance) {
+      throw new Error(`Slot ${slotId} not found in proffer instance ${profferInstanceId}`);
+    }
+
+    // Clear the actual fills and set status to potential
+    slotInstance.actually_filled_by_refs = undefined;
+    slotInstance.status = 'potential';
+
+    // Update the stored instance
+    const updatedMeta: ProfferInstanceMeta = {
+      ...stored,
+      updated_at: new Date()
+    };
+    this.updateProfferInstance(stored, updatedMeta);
+
+    // Recursively propagate to all dependents
+    const affected = new Set<NanoId>([profferInstanceId]);
+    this.propagateUnfillToDependents(profferInstanceId, affected);
+
+    return Array.from(affected);
+  }
+
+  /**
+   * Fill a slot (transition from potential → actual) and propagate changes to dependents.
+   * This intelligently updates derived state for all proffers that can now become actual.
+   * 
+   * @param profferInstanceId - The proffer instance containing the slot
+   * @param slotId - The slot template ID to fill
+   * @param filledByRefs - References to what fills this slot (proffer instance IDs or resource refs)
+   * @returns Array of affected proffer instance IDs (including the original)
+   */
+  fillSlot(
+    profferInstanceId: NanoId,
+    slotId: CID,
+    filledByRefs: Record<string, boolean | number | string | undefined>
+  ): NanoId[] {
+    const stored = this.registry.get(profferInstanceId);
+    if (!stored) {
+      throw new Error(`Proffer instance ${profferInstanceId} not found`);
+    }
+
+    const slotInstance = stored.slotInstances[slotId];
+    if (!slotInstance) {
+      throw new Error(`Slot ${slotId} not found in proffer instance ${profferInstanceId}`);
+    }
+
+    // Set the actual fills and update status
+    slotInstance.actually_filled_by_refs = filledByRefs;
+    slotInstance.status = 'actual';
+
+    // Update the stored instance
+    const updatedMeta: ProfferInstanceMeta = {
+      ...stored,
+      updated_at: new Date()
+    };
+    this.updateProfferInstance(stored, updatedMeta);
+
+    // Recursively propagate to all dependents
+    const affected = new Set<NanoId>([profferInstanceId]);
+    this.propagateFillToDependents(profferInstanceId, affected);
+
+    return Array.from(affected);
+  }
+
+  /**
+   * Recursively propagate unfill status to all proffers that depend on the given proffer.
+   * This ensures derived state (status, progress) is consistent across the DAG.
+   */
+  private propagateUnfillToDependents(profferInstanceId: NanoId, affected: Set<NanoId>) {
+    const dependents = this.dependentsIndex.get(profferInstanceId);
+    if (!dependents) return;
+
+    for (const dependentId of dependents) {
+      if (affected.has(dependentId)) continue; // Avoid cycles
+
+      const dependent = this.registry.get(dependentId);
+      if (!dependent) continue;
+
+      // Check if this dependent has any slots that reference the unfilled proffer
+      let needsUpdate = false;
+      for (const [slotId, slotInstance] of Object.entries(dependent.slotInstances)) {
+        // Check if this slot was filled by the unfilled proffer
+        if (slotInstance.actually_filled_by_refs?.[profferInstanceId]) {
+          // Unfill this slot as well since its dependency is now only potential
+          slotInstance.actually_filled_by_refs = {
+            ...slotInstance.actually_filled_by_refs
+          };
+          delete slotInstance.actually_filled_by_refs[profferInstanceId];
+
+          // If no more actual fills, mark as potential
+          if (Object.keys(slotInstance.actually_filled_by_refs).length === 0) {
+            slotInstance.actually_filled_by_refs = undefined;
+            slotInstance.status = 'potential';
+          }
+
+          needsUpdate = true;
+        }
+      }
+
+      if (needsUpdate) {
+        // Update the dependent with new timestamp
+        const updatedMeta: ProfferInstanceMeta = {
+          ...dependent,
+          updated_at: new Date()
+        };
+        this.registry.set(dependentId, { ...dependent, ...updatedMeta });
+        affected.add(dependentId);
+
+        // Recursively propagate to dependents of this dependent
+        this.propagateUnfillToDependents(dependentId, affected);
+      }
+    }
+  }
+
+  /**
+   * Recursively propagate fill status to all proffers that depend on the given proffer.
+   * This checks if dependent proffers can now transition to actual status.
+   */
+  private propagateFillToDependents(profferInstanceId: NanoId, affected: Set<NanoId>) {
+    const dependents = this.dependentsIndex.get(profferInstanceId);
+    if (!dependents) return;
+
+    for (const dependentId of dependents) {
+      if (affected.has(dependentId)) continue; // Avoid cycles
+
+      const dependent = this.registry.get(dependentId);
+      if (!dependent) continue;
+
+      // Check if this dependent has any slots that could now be filled
+      let needsUpdate = false;
+      for (const slotTemplate of dependent.proffer.slots) {
+        const slotInstance = dependent.slotInstances[slotTemplate.id];
+        if (!slotInstance) continue;
+
+        // Check if this slot references the filled proffer and is currently potential
+        if (slotInstance.status === 'potential') {
+          // Check if slot has potential fills that include the now-filled proffer
+          if (slotInstance.potential_filled_by_refs?.[profferInstanceId]) {
+            // Move from potential to actual if the dependency is now actual
+            const filledProffer = this.registry.get(profferInstanceId);
+            if (filledProffer) {
+              const filledProfferStatus = this.computeDerived(filledProffer).status;
+              if (filledProfferStatus === 'actual') {
+                // Promote potential to actual
+                slotInstance.actually_filled_by_refs = {
+                  ...slotInstance.actually_filled_by_refs,
+                  [profferInstanceId]: slotInstance.potential_filled_by_refs[profferInstanceId]
+                };
+
+                // Re-derive slot status to see if it's now fully actual
+                const newSlotStatus = this.deriveSlotStatus(slotTemplate.id, dependent.slotInstances);
+                slotInstance.status = newSlotStatus;
+
+                needsUpdate = true;
+              }
+            }
+          }
+        }
+      }
+
+      if (needsUpdate) {
+        // Update the dependent with new timestamp
+        const updatedMeta: ProfferInstanceMeta = {
+          ...dependent,
+          updated_at: new Date()
+        };
+        this.registry.set(dependentId, { ...dependent, ...updatedMeta });
+        affected.add(dependentId);
+
+        // Recursively propagate to dependents of this dependent
+        this.propagateFillToDependents(dependentId, affected);
+      }
+    }
+  }
+
   removeProfferInstance(instanceId: NanoId): boolean {
     this.dependentsIndex.delete(instanceId);
     return this.registry.delete(instanceId);
