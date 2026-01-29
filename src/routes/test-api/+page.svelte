@@ -128,10 +128,15 @@
 				headers['Authorization'] = `Bearer ${masterApiKey}`;
 			}
 			
-			const response = await fetch('/api/keys/health/openrouter', { headers });
-			const data = await response.json();
+			// Use POST method for key pool status
+			const response = await fetch('/api/keys/status', {
+				method: 'POST',
+				headers,
+				body: JSON.stringify({})
+			});
 			
 			if (response.ok) {
+				const data = await response.json();
 				const totalKeys = data.totalKeys || 0;
 				const healthyKeys = data.health?.healthy || 0;
 				
@@ -151,10 +156,11 @@
 					};
 				}
 			} else {
+				const errorText = await response.text();
 				tests[2] = {
 					name: 'OpenRouter Keys',
 					status: 'error',
-					message: `✗ Status ${response.status}`,
+					message: `✗ Status ${response.status}: ${errorText.substring(0, 100)}`,
 					duration: Date.now() - start
 				};
 			}
@@ -183,7 +189,7 @@
 				method: 'POST',
 				headers,
 				body: JSON.stringify({
-					prompt: 'Test',
+					messages: [{ role: 'user', content: 'Test' }],
 					maxTokens: 10
 				})
 			});
@@ -193,7 +199,7 @@
 				tests[3] = {
 					name: 'LLM Routing',
 					status: 'success',
-					message: `✓ Routing works (model: ${data.model || 'unknown'})`,
+					message: `✓ Routing works (flow: ${data.flow?.name || 'default'})`,
 					duration: Date.now() - start
 				};
 			} else if (response.status === 401) {
@@ -204,10 +210,11 @@
 					duration: Date.now() - start
 				};
 			} else {
+				const errorText = await response.text();
 				tests[3] = {
 					name: 'LLM Routing',
 					status: 'error',
-					message: `✗ Status ${response.status}`,
+					message: `✗ Status ${response.status}: ${errorText.substring(0, 100)}`,
 					duration: Date.now() - start
 				};
 			}

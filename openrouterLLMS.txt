@@ -1,0 +1,180 @@
+# OpenRouter | Documentation
+
+## Docs
+
+- [Quickstart](https://openrouter.ai/docs/quickstart.mdx): Get started with OpenRouter's unified API for hundreds of AI models. Learn how to integrate using OpenAI SDK, direct API calls, or third-party frameworks.
+- [Principles](https://openrouter.ai/docs/guides/overview/principles.mdx): Learn about OpenRouter's guiding principles and mission. Understand our commitment to price optimization, standardized APIs, and high availability in AI model deployment.
+- [Models](https://openrouter.ai/docs/guides/overview/models.mdx): Access all major language models (LLMs) through OpenRouter's unified API. Browse available models, compare capabilities, and integrate with your preferred provider.
+- [Multimodal Capabilities](https://openrouter.ai/docs/guides/overview/multimodal/overview.mdx): Send images, PDFs, audio, and video to OpenRouter models through our unified API.
+- [Image Inputs](https://openrouter.ai/docs/guides/overview/multimodal/images.mdx): Send images to vision models through the OpenRouter API.
+- [Image Generation](https://openrouter.ai/docs/guides/overview/multimodal/image-generation.mdx): Generate images using AI models through the OpenRouter API.
+- [PDF Inputs](https://openrouter.ai/docs/guides/overview/multimodal/pdfs.mdx): Send PDF documents to any model on OpenRouter.
+- [Audio Inputs](https://openrouter.ai/docs/guides/overview/multimodal/audio.mdx): Send audio files to speech-capable models through the OpenRouter API.
+- [Video Inputs](https://openrouter.ai/docs/guides/overview/multimodal/videos.mdx): Send video files to video-capable models through the OpenRouter API.
+- [OAuth PKCE](https://openrouter.ai/docs/guides/overview/auth/oauth.mdx): Implement secure user authentication with OpenRouter using OAuth PKCE. Complete guide to setting up and managing OAuth authentication flows.
+- [Provisioning API Keys](https://openrouter.ai/docs/guides/overview/auth/provisioning-api-keys.mdx): Manage OpenRouter API keys programmatically through dedicated management endpoints. Create, read, update, and delete API keys for automated key distribution and control.
+- [BYOK](https://openrouter.ai/docs/guides/overview/auth/byok.mdx): Learn how to use your existing AI provider keys with OpenRouter. Integrate your own API keys while leveraging OpenRouter's unified interface and features.
+- [Frequently Asked Questions](https://openrouter.ai/docs/faq.mdx): Find answers to commonly asked questions about OpenRouter's unified API, model access, pricing, and integration.
+- [Report Feedback](https://openrouter.ai/docs/guides/overview/report-feedback.mdx): Learn how to report issues with AI generations on OpenRouter using the Report Feedback feature in the Chatroom and Activity page.
+- [Model Fallbacks](https://openrouter.ai/docs/guides/routing/model-fallbacks.mdx): Configure automatic failover between AI models when providers are down, rate-limited, or refuse requests.
+- [Provider Routing](https://openrouter.ai/docs/guides/routing/provider-selection.mdx): Route AI model requests across multiple providers intelligently. Learn how to optimize for cost, performance, and reliability with OpenRouter's provider routing.
+- [Free Variant](https://openrouter.ai/docs/guides/routing/model-variants/free.mdx): Access free models using the :free variant suffix.
+- [Extended Variant](https://openrouter.ai/docs/guides/routing/model-variants/extended.mdx): Access extended context window versions of models using the :extended variant.
+- [Exacto Variant](https://openrouter.ai/docs/guides/routing/model-variants/exacto.mdx): Learn how to target OpenRouter-selected providers by using the :exacto model variant.
+- [Thinking Variant](https://openrouter.ai/docs/guides/routing/model-variants/thinking.mdx): Enable extended reasoning capabilities using the :thinking variant.
+- [Online Variant](https://openrouter.ai/docs/guides/routing/model-variants/online.mdx): Enable real-time web search capabilities using the :online variant.
+- [Nitro Variant](https://openrouter.ai/docs/guides/routing/model-variants/nitro.mdx): Access high-speed model inference using the :nitro variant.
+- [Auto Router](https://openrouter.ai/docs/guides/routing/routers/auto-router.mdx): Automatically select the best AI model for your prompts using OpenRouter's Auto Router powered by NotDiamond.
+- [Body Builder](https://openrouter.ai/docs/guides/routing/routers/body-builder.mdx): Use natural language to generate multiple OpenRouter API requests for parallel model execution.
+- [Presets](https://openrouter.ai/docs/guides/features/presets.mdx): Learn how to use OpenRouter's presets to manage model configurations, system prompts, and parameters across your applications.
+- [Tool & Function Calling](https://openrouter.ai/docs/guides/features/tool-calling.mdx): Use tools (or functions) in your prompts with OpenRouter. Learn how to use tools with OpenAI, Anthropic, and other models that support tool calling.
+- [Plugins](https://openrouter.ai/docs/guides/features/plugins/overview.mdx): Enable powerful plugins like web search, PDF processing, and response healing to extend any model's capabilities on OpenRouter.
+- [Web Search](https://openrouter.ai/docs/guides/features/plugins/web-search.mdx): Enable real-time web search capabilities in your AI model responses. Add factual, up-to-date information to any model's output with OpenRouter's web search feature.
+- [Response Healing](https://openrouter.ai/docs/guides/features/plugins/response-healing.mdx): Automatically validate and repair malformed JSON responses from AI models. Ensure your responses match your schema even when models return imperfect formatting.
+- [Structured Outputs](https://openrouter.ai/docs/guides/features/structured-outputs.mdx): Enforce JSON Schema validation on AI model responses. Get consistent, type-safe outputs and avoid parsing errors with OpenRouter's structured output feature.
+- [Message Transforms](https://openrouter.ai/docs/guides/features/message-transforms.mdx): Transform and optimize messages before sending them to AI models. Learn about middle-out compression and context window optimization with OpenRouter.
+- [Zero Completion Insurance](https://openrouter.ai/docs/guides/features/zero-completion-insurance.mdx): Learn how OpenRouter protects users from being charged for failed or empty AI responses with zero completion insurance.
+- [Zero Data Retention](https://openrouter.ai/docs/guides/features/zdr.mdx): Learn how OpenRouter gives you control over your data
+- [App Attribution](https://openrouter.ai/docs/app-attribution.mdx): Learn how to attribute your API usage to your app and appear in OpenRouter's app rankings and model analytics.
+- [Guardrails](https://openrouter.ai/docs/guides/features/guardrails.mdx): Set spending limits, restrict model access, and enforce data policies for your organization members and API keys with OpenRouter guardrails.
+- [Broadcast](https://openrouter.ai/docs/guides/features/broadcast/overview.mdx): Connect your LLM observability platforms to automatically receive traces from your OpenRouter requests. Supports Langfuse, Datadog, Braintrust, and more.
+- [Arize AI](https://openrouter.ai/docs/guides/features/broadcast/arize.mdx): Connect Arize AI to automatically receive traces from your OpenRouter requests. Step-by-step setup guide for Arize integration.
+- [Braintrust](https://openrouter.ai/docs/guides/features/broadcast/braintrust.mdx): Connect Braintrust to automatically receive traces from your OpenRouter requests. Step-by-step setup guide for Braintrust integration.
+- [ClickHouse](https://openrouter.ai/docs/guides/features/broadcast/clickhouse.mdx): Connect ClickHouse to automatically receive traces from your OpenRouter requests. Step-by-step setup guide for ClickHouse integration.
+- [Comet Opik](https://openrouter.ai/docs/guides/features/broadcast/opik.mdx): Connect Comet Opik to automatically receive traces from your OpenRouter requests. Step-by-step setup guide for Opik integration.
+- [Datadog](https://openrouter.ai/docs/guides/features/broadcast/datadog.mdx): Connect Datadog LLM Observability to automatically receive traces from your OpenRouter requests. Step-by-step setup guide for Datadog integration.
+- [Grafana Cloud](https://openrouter.ai/docs/guides/features/broadcast/grafana.mdx): Connect Grafana Cloud to automatically receive traces from your OpenRouter requests. Step-by-step setup guide for Grafana Cloud integration.
+- [Langfuse](https://openrouter.ai/docs/guides/features/broadcast/langfuse.mdx): Connect Langfuse to automatically receive traces from your OpenRouter requests. Step-by-step setup guide for Langfuse integration.
+- [LangSmith](https://openrouter.ai/docs/guides/features/broadcast/langsmith.mdx): Connect LangSmith to automatically receive traces from your OpenRouter requests. Step-by-step setup guide for LangSmith integration.
+- [New Relic](https://openrouter.ai/docs/guides/features/broadcast/newrelic.mdx): Connect New Relic to automatically receive traces from your OpenRouter requests. Step-by-step setup guide for New Relic integration.
+- [OpenTelemetry Collector](https://openrouter.ai/docs/guides/features/broadcast/otel-collector.mdx): Connect any OpenTelemetry-compatible backend to automatically receive traces from your OpenRouter requests. Step-by-step setup guide for OTLP integration.
+- [PostHog](https://openrouter.ai/docs/guides/features/broadcast/posthog.mdx): Connect PostHog to automatically receive traces from your OpenRouter requests. Step-by-step setup guide for PostHog integration.
+- [S3 / S3-Compatible](https://openrouter.ai/docs/guides/features/broadcast/s3.mdx): Connect Amazon S3 or S3-compatible storage to automatically receive traces from your OpenRouter requests. Step-by-step setup guide for S3 integration.
+- [Sentry](https://openrouter.ai/docs/guides/features/broadcast/sentry.mdx): Connect Sentry to automatically receive traces from your OpenRouter requests. Step-by-step setup guide for Sentry integration.
+- [Snowflake](https://openrouter.ai/docs/guides/features/broadcast/snowflake.mdx): Connect Snowflake to automatically receive traces from your OpenRouter requests. Step-by-step setup guide for Snowflake integration.
+- [W&B Weave](https://openrouter.ai/docs/guides/features/broadcast/weave.mdx): Connect W&B Weave to automatically receive traces from your OpenRouter requests. Step-by-step setup guide for W&B Weave integration.
+- [Webhook](https://openrouter.ai/docs/guides/features/broadcast/webhook.mdx): Connect any HTTP endpoint to automatically receive traces from your OpenRouter requests. Step-by-step setup guide for Webhook integration.
+- [Data Collection](https://openrouter.ai/docs/guides/privacy/data-collection.mdx): Learn what data OpenRouter collects and how it's used.
+- [Logging](https://openrouter.ai/docs/guides/privacy/logging.mdx): Understand how AI providers handle logging and data retention when you use OpenRouter.
+- [Latency and Performance](https://openrouter.ai/docs/guides/best-practices/latency-and-performance.mdx): Learn about OpenRouter's performance characteristics, latency optimizations, and best practices for achieving optimal response times.
+- [Prompt Caching](https://openrouter.ai/docs/guides/best-practices/prompt-caching.mdx): Reduce your AI model costs with OpenRouter's prompt caching feature. Learn how to cache and reuse responses across OpenAI, Anthropic Claude, and DeepSeek models.
+- [Uptime Optimization](https://openrouter.ai/docs/guides/best-practices/uptime-optimization.mdx): Learn how OpenRouter maximizes AI model uptime through real-time monitoring, intelligent routing, and automatic fallbacks across multiple providers.
+- [Reasoning Tokens](https://openrouter.ai/docs/guides/best-practices/reasoning-tokens.mdx): Learn how to use reasoning tokens to enhance AI model outputs. Implement step-by-step reasoning traces for better decision making and transparency.
+- [Enterprise Quickstart](https://openrouter.ai/docs/enterprise-quickstart.mdx): A comprehensive guide for enterprise customers to get started with OpenRouter. Learn about organizations, API key management, security controls, and observability.
+- [API Key Rotation](https://openrouter.ai/docs/guides/guides/api-key-rotation.mdx): Learn how to securely rotate your OpenRouter API keys using the key minting API. Includes best practices and BYOK advantages for simplified key management.
+- [Crypto API](https://openrouter.ai/docs/guides/guides/crypto-api.mdx): Learn how to purchase OpenRouter credits using cryptocurrency. Complete guide to Coinbase integration, supported chains, and automated credit purchases.
+- [Using MCP Servers with OpenRouter](https://openrouter.ai/docs/guides/guides/mcp-servers.mdx): Learn how to use MCP Servers with OpenRouter
+- [Claude Code](https://openrouter.ai/docs/guides/guides/claude-code-integration.mdx): Learn how to use Claude Code with OpenRouter for improved reliability, provider failover, and organizational controls.
+- [Organization Management](https://openrouter.ai/docs/use-cases/organization-management.mdx): Learn how to create and manage organizations on OpenRouter for team collaboration, shared credits, and centralized API management.
+- [Provider Integration](https://openrouter.ai/docs/guides/guides/for-providers.mdx): Learn how to integrate your AI models with OpenRouter. Complete guide for providers to make their models available through OpenRouter's unified API.
+- [Usage Accounting](https://openrouter.ai/docs/guides/guides/usage-accounting.mdx): Learn how to track AI model usage including prompt tokens, completion tokens, and cached tokens without additional API calls.
+- [Activity Export](https://openrouter.ai/docs/guides/guides/activity-export.mdx): Learn how to export your OpenRouter usage data as CSV or PDF reports, grouped by API key, model, or organization member.
+- [User Tracking](https://openrouter.ai/docs/guides/guides/user-tracking.mdx): Learn how to use the user parameter to track your own user IDs with OpenRouter. Improve caching performance and get detailed reporting on your sub-users.
+- [Distillation](https://openrouter.ai/docs/guides/guides/distillation.mdx): Learn how to use the distillable filter to ensure compliance with provider and model creator policies when using model outputs for training or distillation.
+- [Frameworks and Integrations Overview](https://openrouter.ai/docs/guides/community/frameworks-and-integrations-overview.mdx): Integrate OpenRouter using popular frameworks and SDKs. Complete guides for OpenAI SDK, LangChain, PydanticAI, and Vercel AI SDK integration.
+- [Awesome OpenRouter](https://openrouter.ai/docs/guides/community/awesome-openrouter.mdx): Discover community-built projects and apps powered by OpenRouter. Submit your own project to the awesome-openrouter list.
+- [Effect AI SDK](https://openrouter.ai/docs/guides/community/effect-ai-sdk.mdx): Integrate OpenRouter using the Effect AI SDK. Complete guide for integrating the Effect AI SDK with OpenRouter.
+- [Arize](https://openrouter.ai/docs/guides/community/arize.mdx): Integrate OpenRouter using Arize for observability and tracing. Complete guide for Arize integration with OpenRouter for Python and JavaScript applications.
+- [LangChain](https://openrouter.ai/docs/guides/community/langchain.mdx): Integrate OpenRouter using LangChain framework. Complete guide for LangChain integration with OpenRouter for Python and JavaScript.
+- [LiveKit](https://openrouter.ai/docs/guides/community/livekit.mdx): Integrate OpenRouter using LiveKit Agents framework. Complete guide for LiveKit integration with OpenRouter to build voice AI agents with access to 300+ models.
+- [Langfuse](https://openrouter.ai/docs/guides/community/langfuse.mdx): Integrate OpenRouter using Langfuse for observability and tracing. Complete guide for Langfuse integration with OpenRouter for Python applications.
+- [Mastra](https://openrouter.ai/docs/guides/community/mastra.mdx): Integrate OpenRouter using Mastra framework. Complete guide for Mastra integration with OpenRouter for unified AI model access.
+- [OpenAI SDK](https://openrouter.ai/docs/guides/community/openai-sdk.mdx): Integrate OpenRouter using the official OpenAI SDK. Complete guide for OpenAI SDK integration with OpenRouter for Python and TypeScript.
+- [Anthropic Agent SDK](https://openrouter.ai/docs/guides/community/anthropic-agent-sdk.mdx): Integrate OpenRouter using the Anthropic Agent SDK. Complete guide for building AI agents with OpenRouter in Python and TypeScript.
+- [PydanticAI](https://openrouter.ai/docs/guides/community/pydantic-ai.mdx): Integrate OpenRouter using PydanticAI framework. Complete guide for PydanticAI integration with OpenRouter for Python applications.
+- [TanStack AI](https://openrouter.ai/docs/guides/community/tanstack-ai.mdx): Integrate OpenRouter using TanStack AI. Complete guide for TanStack AI integration with OpenRouter for React, Solid, and Preact applications.
+- [Vercel AI SDK](https://openrouter.ai/docs/guides/community/vercel-ai-sdk.mdx): Integrate OpenRouter using Vercel AI SDK. Complete guide for Vercel AI SDK integration with OpenRouter for Next.js applications.
+- [Xcode](https://openrouter.ai/docs/guides/community/xcode.mdx): Integrate OpenRouter with Apple Intelligence in Xcode 26. Complete setup guide for accessing hundreds of AI models directly in your Xcode development environment.
+- [Zapier](https://openrouter.ai/docs/guides/community/zapier.mdx): Build powerful AI automations by connecting OpenRouter with 8000+ apps through Zapier. Access 300+ AI models in your workflows.
+- [API Reference](https://openrouter.ai/docs/api/reference/overview.mdx): Comprehensive guide to OpenRouter's API. Learn about request/response schemas, authentication, parameters, and integration with multiple AI model providers.
+- [Streaming](https://openrouter.ai/docs/api/reference/streaming.mdx): Learn how to implement streaming responses with OpenRouter's API. Complete guide to Server-Sent Events (SSE) and real-time model outputs.
+- [Embeddings](https://openrouter.ai/docs/api/reference/embeddings.mdx): Generate vector embeddings from text using OpenRouter's unified embeddings API. Access multiple embedding models from different providers with a single interface.
+- [Limits](https://openrouter.ai/docs/api/reference/limits.mdx): Learn about OpenRouter's API rate limits, credit-based quotas, and DDoS protection. Configure and monitor your model usage limits effectively.
+- [Authentication](https://openrouter.ai/docs/api/reference/authentication.mdx): Learn how to authenticate with OpenRouter using API keys and Bearer tokens. Complete guide to secure authentication methods and best practices.
+- [Parameters](https://openrouter.ai/docs/api/reference/parameters.mdx): Learn about all available parameters for OpenRouter API requests. Configure temperature, max tokens, top_p, and other model-specific settings.
+- [Errors and Debugging](https://openrouter.ai/docs/api/reference/errors-and-debugging.mdx): Learn how to handle errors and debug requests in OpenRouter API interactions. Comprehensive guide to error codes, messages, debugging options, and best practices.
+- [Responses API Beta](https://openrouter.ai/docs/api/reference/responses/overview.mdx): Beta version of OpenRouter's OpenAI-compatible Responses API. Stateless transformation layer with support for reasoning, tool calling, and web search.
+- [Basic Usage](https://openrouter.ai/docs/api/reference/responses/basic-usage.mdx): Learn the basics of OpenRouter's Responses API Beta with simple text input examples and response handling.
+- [Reasoning](https://openrouter.ai/docs/api/reference/responses/reasoning.mdx): Access advanced reasoning capabilities with configurable effort levels and encrypted reasoning chains using OpenRouter's Responses API Beta.
+- [Tool Calling](https://openrouter.ai/docs/api/reference/responses/tool-calling.mdx): Integrate function calling with support for parallel execution and complex tool interactions using OpenRouter's Responses API Beta.
+- [Web Search](https://openrouter.ai/docs/api/reference/responses/web-search.mdx): Enable web search capabilities with real-time information retrieval and citation annotations using OpenRouter's Responses API Beta.
+- [Error Handling](https://openrouter.ai/docs/api/reference/responses/error-handling.mdx): Learn how to handle errors in OpenRouter's Responses API Beta with the basic error response format.
+- [Agentic Usage](https://openrouter.ai/docs/sdks/agentic-usage.mdx): Add OpenRouter SDK skills to AI coding assistants like Claude Code, Cursor, GitHub Copilot, and more. Enable your AI to code with the OpenRouter SDK.
+- [DevTools](https://openrouter.ai/docs/sdks/dev-tools/devtools.mdx): Comprehensive development tools for the OpenRouter SDK. Capture telemetry, visualize requests, and debug your AI applications with ease.
+- [TypeScript SDK](https://openrouter.ai/docs/sdks/typescript/overview.mdx): Complete guide to using the OpenRouter TypeScript SDK. Learn how to integrate AI models into your TypeScript applications.
+- [Call Model (Typescript)](https://openrouter.ai/docs/sdks/typescript/call-model/overview.mdx): Learn how to use callModel for text generation, streaming, and tool calling with automatic execution. Access 300+ LLMs through a single API.
+- [Working with Items](https://openrouter.ai/docs/sdks/typescript/call-model/working-with-items.mdx): Learn the items-based streaming paradigm for callModel. Replace items by ID instead of accumulating chunks for simpler React state management.
+- [API Reference](https://openrouter.ai/docs/sdks/typescript/call-model/api-reference.mdx): Complete API reference for callModel, ModelResult, tool types, and helper functions in the OpenRouter SDK.
+- [Dynamic Parameters](https://openrouter.ai/docs/sdks/typescript/call-model/dynamic-parameters.mdx): Use async functions to dynamically compute callModel parameters. Adapt model selection, temperature, and instructions based on conversation state.
+- [Next Turn Params](https://openrouter.ai/docs/sdks/typescript/call-model/next-turn-params.mdx): Build encapsulated, context-aware tools with nextTurnParams. Create skills systems, plugins, and adaptive multi-turn agents.
+- [Stop Conditions](https://openrouter.ai/docs/sdks/typescript/call-model/stop-conditions.mdx): Control multi-turn execution with stopWhen. Use built-in helpers or custom conditions to stop by step count, tool calls, cost, or tokens.
+- [Streaming](https://openrouter.ai/docs/sdks/typescript/call-model/streaming.mdx): Learn to stream LLM responses with callModel. Covers text streaming, reasoning streams, message updates, and concurrent consumers.
+- [Text Generation](https://openrouter.ai/docs/sdks/typescript/call-model/text-generation.mdx): Learn how to generate text with callModel. Covers input formats, model selection, system instructions, and response handling.
+- [Message Formats](https://openrouter.ai/docs/sdks/typescript/call-model/message-formats.mdx): Convert between OpenAI chat format, Anthropic Claude format, and OpenResponses format. Easy migration from other SDKs.
+- [Tools](https://openrouter.ai/docs/sdks/typescript/call-model/tools.mdx): Create strongly-typed tools for LLMs with Zod schemas. Learn about regular tools, generator tools with progress, manual tools, and automatic multi-turn execution.
+- [Weather Tool](https://openrouter.ai/docs/sdks/typescript/call-model/examples/weather-tool.mdx): Build a weather tool with external API integration, Zod validation, error handling, and environment configuration.
+- [Skills Loader](https://openrouter.ai/docs/sdks/typescript/call-model/examples/skills-loader.mdx): Build a complete skills system like Claude Code using nextTurnParams for context injection, idempotency, and multi-skill loading.
+- [Analytics - TypeScript SDK](https://openrouter.ai/docs/sdks/typescript/api-reference/analytics.mdx): Analytics method documentation for the OpenRouter TypeScript SDK. Learn how to use this API endpoint with code examples.
+- [APIKeys - TypeScript SDK](https://openrouter.ai/docs/sdks/typescript/api-reference/apikeys.mdx): APIKeys method documentation for the OpenRouter TypeScript SDK. Learn how to use this API endpoint with code examples.
+- [Chat - TypeScript SDK](https://openrouter.ai/docs/sdks/typescript/api-reference/chat.mdx): Chat method documentation for the OpenRouter TypeScript SDK. Learn how to use this API endpoint with code examples.
+- [Credits - TypeScript SDK](https://openrouter.ai/docs/sdks/typescript/api-reference/credits.mdx): Credits method documentation for the OpenRouter TypeScript SDK. Learn how to use this API endpoint with code examples.
+- [Embeddings - TypeScript SDK](https://openrouter.ai/docs/sdks/typescript/api-reference/embeddings.mdx): Embeddings method documentation for the OpenRouter TypeScript SDK. Learn how to use this API endpoint with code examples.
+- [Endpoints - TypeScript SDK](https://openrouter.ai/docs/sdks/typescript/api-reference/endpoints.mdx): Endpoints method documentation for the OpenRouter TypeScript SDK. Learn how to use this API endpoint with code examples.
+- [Generations - TypeScript SDK](https://openrouter.ai/docs/sdks/typescript/api-reference/generations.mdx): Generations method documentation for the OpenRouter TypeScript SDK. Learn how to use this API endpoint with code examples.
+- [Guardrails - TypeScript SDK](https://openrouter.ai/docs/sdks/typescript/api-reference/guardrails.mdx): Guardrails method documentation for the OpenRouter TypeScript SDK. Learn how to use this API endpoint with code examples.
+- [Models - TypeScript SDK](https://openrouter.ai/docs/sdks/typescript/api-reference/models/models.mdx): Models method documentation for the OpenRouter TypeScript SDK. Learn how to use this API endpoint with code examples.
+- [OAuth - TypeScript SDK](https://openrouter.ai/docs/sdks/typescript/api-reference/oauth.mdx): OAuth method documentation for the OpenRouter TypeScript SDK. Learn how to use this API endpoint with code examples.
+- [Providers - TypeScript SDK](https://openrouter.ai/docs/sdks/typescript/api-reference/providers.mdx): Providers method documentation for the OpenRouter TypeScript SDK. Learn how to use this API endpoint with code examples.
+- [Beta.Responses - TypeScript SDK](https://openrouter.ai/docs/sdks/typescript/api-reference/responses.mdx): Beta.Responses method documentation for the OpenRouter TypeScript SDK. Learn how to use this API endpoint with code examples.
+- [Python SDK](https://openrouter.ai/docs/sdks/python/overview.mdx): Complete guide to using the OpenRouter Python SDK. Learn how to integrate AI models into your Python applications.
+- [Analytics - Python SDK](https://openrouter.ai/docs/sdks/python/api-reference/analytics.mdx): Analytics method documentation for the OpenRouter Python SDK. Learn how to use this API endpoint with code examples.
+- [APIKeys - Python SDK](https://openrouter.ai/docs/sdks/python/api-reference/apikeys.mdx): APIKeys method documentation for the OpenRouter Python SDK. Learn how to use this API endpoint with code examples.
+- [Chat - Python SDK](https://openrouter.ai/docs/sdks/python/api-reference/chat.mdx): Chat method documentation for the OpenRouter Python SDK. Learn how to use this API endpoint with code examples.
+- [Credits - Python SDK](https://openrouter.ai/docs/sdks/python/api-reference/credits.mdx): Credits method documentation for the OpenRouter Python SDK. Learn how to use this API endpoint with code examples.
+- [Embeddings - Python SDK](https://openrouter.ai/docs/sdks/python/api-reference/embeddings.mdx): Embeddings method documentation for the OpenRouter Python SDK. Learn how to use this API endpoint with code examples.
+- [Endpoints - Python SDK](https://openrouter.ai/docs/sdks/python/api-reference/endpoints.mdx): Endpoints method documentation for the OpenRouter Python SDK. Learn how to use this API endpoint with code examples.
+- [Generations - Python SDK](https://openrouter.ai/docs/sdks/python/api-reference/generations.mdx): Generations method documentation for the OpenRouter Python SDK. Learn how to use this API endpoint with code examples.
+- [Guardrails - Python SDK](https://openrouter.ai/docs/sdks/python/api-reference/guardrails.mdx): Guardrails method documentation for the OpenRouter Python SDK. Learn how to use this API endpoint with code examples.
+- [Models - Python SDK](https://openrouter.ai/docs/sdks/python/api-reference/models/models.mdx): Models method documentation for the OpenRouter Python SDK. Learn how to use this API endpoint with code examples.
+- [OAuth - Python SDK](https://openrouter.ai/docs/sdks/python/api-reference/oauth.mdx): OAuth method documentation for the OpenRouter Python SDK. Learn how to use this API endpoint with code examples.
+- [Providers - Python SDK](https://openrouter.ai/docs/sdks/python/api-reference/providers.mdx): Providers method documentation for the OpenRouter Python SDK. Learn how to use this API endpoint with code examples.
+- [Responses - Python SDK](https://openrouter.ai/docs/sdks/python/api-reference/responses.mdx): Responses method documentation for the OpenRouter Python SDK. Learn how to use this API endpoint with code examples.
+
+## API Docs
+
+- API Reference > Responses [Create a response](https://openrouter.ai/docs/api/api-reference/responses/create-responses.mdx)
+- API Reference > OAuth [Exchange authorization code for API key](https://openrouter.ai/docs/api/api-reference/o-auth/exchange-auth-code-for-api-key.mdx)
+- API Reference > OAuth [Create authorization code](https://openrouter.ai/docs/api/api-reference/o-auth/create-auth-keys-code.mdx)
+- API Reference > Anthropic Messages [Create a message](https://openrouter.ai/docs/api/api-reference/anthropic-messages/create-messages.mdx)
+- API Reference > Analytics [Get user activity grouped by endpoint](https://openrouter.ai/docs/api/api-reference/analytics/get-user-activity.mdx)
+- API Reference > Credits [Get remaining credits](https://openrouter.ai/docs/api/api-reference/credits/get-credits.mdx)
+- API Reference > Credits [Create a Coinbase charge for crypto payment](https://openrouter.ai/docs/api/api-reference/credits/create-coinbase-charge.mdx)
+- API Reference > Embeddings [Submit an embedding request](https://openrouter.ai/docs/api/api-reference/embeddings/create-embeddings.mdx)
+- API Reference > Embeddings [List all embeddings models](https://openrouter.ai/docs/api/api-reference/embeddings/list-embeddings-models.mdx)
+- API Reference > Generations [Get request & usage metadata for a generation](https://openrouter.ai/docs/api/api-reference/generations/get-generation.mdx)
+- API Reference > Models [Get total count of available models](https://openrouter.ai/docs/api/api-reference/models/list-models-count.mdx)
+- API Reference > Models [List all models and their properties](https://openrouter.ai/docs/api/api-reference/models/get-models.mdx)
+- API Reference > Models [List models filtered by user provider preferences, privacy settings, and guardrails](https://openrouter.ai/docs/api/api-reference/models/list-models-user.mdx)
+- API Reference > Endpoints [List all endpoints for a model](https://openrouter.ai/docs/api/api-reference/endpoints/list-endpoints.mdx)
+- API Reference > Endpoints [Preview the impact of ZDR on the available endpoints](https://openrouter.ai/docs/api/api-reference/endpoints/list-endpoints-zdr.mdx)
+- API Reference > Providers [List all providers](https://openrouter.ai/docs/api/api-reference/providers/list-providers.mdx)
+- API Reference > API Keys [List API keys](https://openrouter.ai/docs/api/api-reference/api-keys/list.mdx)
+- API Reference > API Keys [Create a new API key](https://openrouter.ai/docs/api/api-reference/api-keys/create-keys.mdx)
+- API Reference > API Keys [Get a single API key](https://openrouter.ai/docs/api/api-reference/api-keys/get-key.mdx)
+- API Reference > API Keys [Delete an API key](https://openrouter.ai/docs/api/api-reference/api-keys/delete-keys.mdx)
+- API Reference > API Keys [Update an API key](https://openrouter.ai/docs/api/api-reference/api-keys/update-keys.mdx)
+- API Reference > API Keys [Get current API key](https://openrouter.ai/docs/api/api-reference/api-keys/get-current-key.mdx)
+- API Reference > Guardrails [List guardrails](https://openrouter.ai/docs/api/api-reference/guardrails/list-guardrails.mdx)
+- API Reference > Guardrails [Create a guardrail](https://openrouter.ai/docs/api/api-reference/guardrails/create-guardrail.mdx)
+- API Reference > Guardrails [Get a guardrail](https://openrouter.ai/docs/api/api-reference/guardrails/get-guardrail.mdx)
+- API Reference > Guardrails [Delete a guardrail](https://openrouter.ai/docs/api/api-reference/guardrails/delete-guardrail.mdx)
+- API Reference > Guardrails [Update a guardrail](https://openrouter.ai/docs/api/api-reference/guardrails/update-guardrail.mdx)
+- API Reference > Guardrails [List all key assignments](https://openrouter.ai/docs/api/api-reference/guardrails/list-key-assignments.mdx)
+- API Reference > Guardrails [List all member assignments](https://openrouter.ai/docs/api/api-reference/guardrails/list-member-assignments.mdx)
+- API Reference > Guardrails [List key assignments for a guardrail](https://openrouter.ai/docs/api/api-reference/guardrails/list-guardrail-key-assignments.mdx)
+- API Reference > Guardrails [Bulk assign keys to a guardrail](https://openrouter.ai/docs/api/api-reference/guardrails/bulk-assign-keys-to-guardrail.mdx)
+- API Reference > Guardrails [List member assignments for a guardrail](https://openrouter.ai/docs/api/api-reference/guardrails/list-guardrail-member-assignments.mdx)
+- API Reference > Guardrails [Bulk assign members to a guardrail](https://openrouter.ai/docs/api/api-reference/guardrails/bulk-assign-members-to-guardrail.mdx)
+- API Reference > Guardrails [Bulk unassign keys from a guardrail](https://openrouter.ai/docs/api/api-reference/guardrails/bulk-unassign-keys-from-guardrail.mdx)
+- API Reference > Guardrails [Bulk unassign members from a guardrail](https://openrouter.ai/docs/api/api-reference/guardrails/bulk-unassign-members-from-guardrail.mdx)
+- API Reference > Chat [Create a chat completion](https://openrouter.ai/docs/api/api-reference/chat/send-chat-completion-request.mdx)
