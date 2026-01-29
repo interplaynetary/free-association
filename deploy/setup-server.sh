@@ -32,7 +32,6 @@ sudo chown -R $USER:$USER /var/www/free-association
 
 # Create data directories
 echo "📁 Creating data directories..."
-mkdir -p /var/www/free-association/gun-data
 mkdir -p /var/www/free-association/holster-data
 mkdir -p /var/backups/free-association-data
 
@@ -47,7 +46,7 @@ cat > /var/www/free-association/.env << 'EOF'
 # Free Association - Production Environment
 NODE_ENV=production
 PORT=3000
-APP_URL=https://your-domain.com
+APP_URL=https://free.playnet.lol
 
 # Generate these secrets!
 JWT_SECRET=CHANGE_ME_$(openssl rand -base64 32)
@@ -57,13 +56,6 @@ MASTER_API_KEY=CHANGE_ME_$(openssl rand -hex 32)
 OPENROUTER_KEYS=your-keys-here
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
 
-# Gun Relay
-GUN_RELAY_HOST=0.0.0.0
-GUN_RELAY_PORT=8765
-GUN_RELAY_STORE=true
-GUN_RELAY_PATH=gun-data
-GUN_RELAY_SHOW_QR=false
-
 # Holster Relay
 HOLSTER_RELAY_HOST=0.0.0.0
 HOLSTER_RELAY_PORT=8766
@@ -71,8 +63,8 @@ HOLSTER_RELAY_STORAGE=true
 HOLSTER_RELAY_STORAGE_PATH=./holster-data
 HOLSTER_MAX_CONNECTIONS=500
 
-# CORS (your GitHub Pages domain)
-ALLOWED_ORIGINS=https://YOUR_USERNAME.github.io,https://your-custom-domain.com
+# CORS (your frontend domain)
+ALLOWED_ORIGINS=https://free.playnet.lol
 EOF
 
 echo "⚠️  IMPORTANT: Edit /var/www/free-association/.env and set your secrets!"
@@ -90,7 +82,7 @@ sudo tee /etc/nginx/sites-available/free-association > /dev/null << 'EOF'
 # Free Association API Server
 server {
     listen 80;
-    server_name api.your-domain.com;  # Change this!
+    server_name api.free.playnet.lol;  # Update if using different subdomain
 
     # Apply rate limiting
     limit_req zone=api_limit burst=20 nodelay;
@@ -120,16 +112,6 @@ server {
         if ($request_method = OPTIONS) {
             return 204;
         }
-    }
-
-    # Gun relay WebSocket
-    location /gun {
-        proxy_pass http://localhost:8765;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "Upgrade";
-        proxy_set_header Host $host;
-        proxy_read_timeout 86400;
     }
 
     # Holster relay WebSocket
@@ -162,7 +144,6 @@ sudo ufw allow 22/tcp
 sudo ufw allow 80/tcp
 sudo ufw allow 443/tcp
 sudo ufw allow 3000/tcp  # SvelteKit server
-sudo ufw allow 8765/tcp  # Gun relay
 sudo ufw allow 8766/tcp  # Holster relay
 sudo ufw --force enable
 
@@ -175,11 +156,6 @@ cat > /tmp/backup-free-association.sh << 'EOF'
 BACKUP_DIR="/var/backups/free-association-data"
 DATE=$(date +%Y%m%d_%H%M%S)
 RETENTION_DAYS=7
-
-# Backup Gun data
-if [ -d "/var/www/free-association/gun-data" ]; then
-    tar -czf "$BACKUP_DIR/gun-data-$DATE.tar.gz" -C /var/www/free-association gun-data
-fi
 
 # Backup Holster data
 if [ -d "/var/www/free-association/holster-data" ]; then
@@ -205,7 +181,7 @@ echo "📋 Next steps:"
 echo "1. Edit /var/www/free-association/.env with your secrets"
 echo "2. Update deploy/free-association.service with your user"
 echo "3. Update Nginx config with your domain"
-echo "4. Set up SSL: sudo certbot --nginx -d api.your-domain.com"
+echo "4. Set up SSL: sudo certbot --nginx -d api.free.playnet.lol"
 echo "5. Add GitHub secrets to your repository:"
 echo "   - DROPLET_HOST: your server IP or domain"
 echo "   - DROPLET_USER: your SSH username"

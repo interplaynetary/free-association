@@ -35,7 +35,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/www/free-association/gun-data /var/www/free-association/holster-data /var/log/free-association
+ReadWritePaths=/var/www/free-association/holster-data /var/log/free-association
 
 # Resource limits
 LimitNOFILE=65536

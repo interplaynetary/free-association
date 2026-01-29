@@ -1,28 +1,40 @@
+#
+# Digital Ocean App Platform Configuration
+# 
+# Monolithic deployment using Bun adapter
+# - Full SvelteKit app with API routes
+# - Holster WebSocket support
+# - Everything runs on App Platform
+#
+
 name: free-association
 region: nyc
+
 services:
   - name: web
-    # DigitalOcean App Platform configuration
-    environment_slug: node-js
+    environment_slug: bun
     github:
       repo: interplaynetary/free-association
       branch: main
       deploy_on_push: true
     
-    # Build configuration
-    build_command: BUILD_TARGET=server npm install && npm run build:server
+    # Build with Bun
+    build_command: bun install && bun run build
     
-    # Run command - points to the server build
-    run_command: node build-server/index.js
+    # Run with Bun
+    run_command: bun run ./build/index.js
     
     # Environment variables
     envs:
       - key: NODE_ENV
         value: "production"
+      - key: ORIGIN
+        value: "https://free.playnet.lol"
+        scope: RUN_TIME
     
     # Health check
     health_check:
-      http_path: /
+      http_path: /api/health
       initial_delay_seconds: 30
       period_seconds: 10
       timeout_seconds: 5
@@ -33,6 +45,11 @@ services:
     instance_count: 1
     instance_size_slug: basic-xxs
     
-    # Source directory
-    source_dir: /
+    # HTTP port
+    http_port: 3000
 
+# Domain configuration
+domains:
+  - domain: free.playnet.lol
+    type: PRIMARY
+    zone: playnet.lol
