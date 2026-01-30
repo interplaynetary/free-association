@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import jsonLogic from 'json-logic-js';
-import { NeedSlotSchema } from './resources';
+import { SkillSchema, AvailabilityWindowSchema } from './resources';
 import { nanoid } from 'nanoid';
 
 // =============================================================================
@@ -105,6 +105,17 @@ export async function createCommonsWithId(commonsData: Omit<z.infer<typeof Commo
     return { ...commonsData, id } as CommonsWithId;
 }
 
+// Helper to go from raw slot data directly to a complete, hashed commons template.
+// Eliminates the async dance of hashing each slot individually before assembling.
+export async function createCommonsFromSlots(
+    name: string,
+    slots: Omit<z.infer<typeof Slot>, 'id'>[],
+    description?: CommonsDescription,
+): Promise<CommonsWithId> {
+    const slotsWithIds = await Promise.all(slots.map(createSlotWithId));
+    return createCommonsWithId({ name, description, slots: slotsWithIds });
+}
+
 // =============================================================================
 // ACCEPTANCE LOGIC
 // =============================================================================
@@ -203,18 +214,75 @@ const InputGeneric = z.object({
     description: z.string().optional()
 });
 
-// 2. Resource Demand (Extracted from NeedSlot)
-// NOTE: We cannot use .omit() here because NeedSlot is a ZodEffect (due to .refine in resources.ts).
-// So we re-define the shape required using zod.infer for type safety if needed, 
-// OR we just assume the structure.
-// Commons V2 Resource Demand IS A Need Slot.
-// We use the fields from NeedSlot but remove ID/Name which belong to the Slot container
-const InputResource = NeedSlotSchema.omit({
-    id: true,
-    name: true,
-    // Remove other slot-container-like fields if necessary, but NeedSlot is mostly content
-    // We'll add the discriminator 'kind'
-}).extend({
+// 2. Resource Demand — split into Template (hashable) and Context (instance-specific)
+//
+// BaseSlotSchema in resources.ts mixes structural identity with contextual binding.
+// For content-addressing, only the structural definition of WHAT is needed gets hashed.
+// WHERE/WHEN/WHO specifics live on the SlotInstance as ResourceContext.
+
+// ResourceTemplate: the hashable, content-addressable definition of a resource need.
+// These fields define WHAT is needed and the SHAPE of cooperation.
+export const ResourceTemplate = z.object({
+    type_id: z.string().min(1),
+    quantity: z.number().gte(0),
+    unit: z.string().optional(),
+    emoji: z.string().optional(),
+    description: z.string().optional(),
+
+    // Throughput constraints (structural shape of cooperation)
+    min_atomic_size: z.number().positive().optional(),
+    max_participation: z.number().int().positive().optional(),
+    max_concurrency: z.number().int().positive().optional(),
+    min_calendar_duration: z.number().positive().optional(),
+
+    // Capability requirements
+    required_skills: z.array(SkillSchema).optional(),
+    filter_rule: z.any().optional(),
+
+    // Governance
+    mutual_agreement_required: z.boolean().default(false).optional(),
+});
+export type ResourceTemplate = z.infer<typeof ResourceTemplate>;
+
+// ResourceContext: instance-specific binding — WHERE/WHEN/WHO.
+// These fields specify the particular circumstances of an instantiation.
+// They do NOT affect the content-addressed hash of the template.
+export const ResourceContext = z.object({
+    // Identity
+    author: z.string().optional(),
+    offerer: z.string().optional(),
+
+    // Time constraints
+    time_zone: z.string().optional(),
+    start_date: z.string().nullable().optional(),
+    end_date: z.string().nullable().optional(),
+    availability_window: AvailabilityWindowSchema.optional(),
+    recurrence: z.enum(['daily', 'weekly', 'monthly', 'yearly']).nullable().optional(),
+    advance_notice_hours: z.number().gte(0).optional(),
+    booking_window_hours: z.number().gte(0).optional(),
+
+    // Space constraints
+    search_radius_km: z.number().gte(0).optional(),
+    hidden_until_request_accepted: z.boolean().optional(),
+    location_type: z.string().optional(),
+    longitude: z.number().min(-180).max(180).optional(),
+    latitude: z.number().min(-90).max(90).optional(),
+    street_address: z.string().optional(),
+    city: z.string().optional(),
+    state_province: z.string().optional(),
+    postal_code: z.string().optional(),
+    country: z.string().optional(),
+    online_link: z.string().url().or(z.string().length(0)).optional(),
+    h3_index: z.string().optional(),
+    h3_resolution: z.number().int().min(0).max(15).optional(),
+
+    // Instance-specific weighting
+    priority: z.number().optional(),
+    priority_distribution: z.record(z.string(), z.number().min(0).max(1)).optional(),
+});
+export type ResourceContext = z.infer<typeof ResourceContext>;
+
+const InputResource = ResourceTemplate.extend({
     kind: z.literal('resource').default('resource')
 });
 
@@ -282,6 +350,7 @@ export type SlotWithId = z.infer<typeof SlotWithId>;
 export const SlotInstance = z.object({
     slot_id: CID, // Reference to the Slot template's id
     instance_id: NanoId, // Unique instance identifier
+    resource_context: ResourceContext.optional(), // Instance-specific resource binding (WHERE/WHEN/WHO)
     potential_filled_by_refs: z.record(z.string(), z.union([z.boolean(), z.number(), z.string()]).optional()).optional(),
     actually_filled_by_refs: z.record(z.string(), z.union([z.boolean(), z.number(), z.string()]).optional()).optional(),
     status: z.enum(['potential', 'actual']).default('potential'),
@@ -289,8 +358,22 @@ export const SlotInstance = z.object({
 
 export type SlotInstance = z.infer<typeof SlotInstance>;
 
+// Helper to create a slot instance from a template slot ID + optional resource context
+// Mirrors createSlotWithId on the template side
+export function createSlotInstance(
+    slot_id: CID,
+    context?: ResourceContext
+): SlotInstance {
+    return SlotInstance.parse({
+        slot_id,
+        instance_id: nanoid(),
+        resource_context: context,
+        status: 'potential',
+    });
+}
+
 // =============================================================================
-// COMMONS (formerly PROFFER V2)
+// COMMONS
 // =============================================================================
 // A commons is:
 //   - A template describing communal needs (slots)
@@ -361,11 +444,39 @@ export type CommonsInstance = z.infer<typeof CommonsInstance>;
 // REGISTRY / MANANGER
 // =============================================================================
 
-
-
 class CommonsManager {
     private registry = new Map<NanoId, CommonsInstanceCore & CommonsInstanceMeta>();
     private dependentsIndex = new Map<NanoId, Set<NanoId>>();
+
+    // The clean entry point: template + context → instance.
+    // Template defines WHAT (hashable). Context binds WHERE/WHEN/WHO (per-slot).
+    instantiate(
+        commons: CommonsWithId,
+        author: string,
+        slotContexts?: Partial<Record<CID, ResourceContext>>,
+        offerer?: string,
+    ): CommonsInstance {
+        const slotInstances: Record<string, SlotInstance> = {};
+        for (const slot of commons.slots) {
+            slotInstances[slot.id] = createSlotInstance(
+                slot.id,
+                slotContexts?.[slot.id]
+            );
+        }
+
+        const core = CommonsInstanceCore.parse({
+            instance_id: nanoid(),
+            commons,
+            author,
+            offerer,
+            slotInstances,
+        });
+
+        const now = new Date();
+        const meta: CommonsInstanceMeta = { created_at: now, updated_at: now };
+        this.addCommonsInstance(core, meta);
+        return this.getCommonsInstance(core.instance_id)!;
+    }
 
     getCommonsInstance(id: string): CommonsInstance | undefined {
         const stored = this.registry.get(id);
@@ -445,11 +556,23 @@ class CommonsManager {
             throw new Error(`Slot ${slotId} not found in commons instance ${commonsInstanceId}`);
         }
 
-        // Set the actual fills and update status
+        // Tentatively apply fill
+        const prevRefs = slotInstance.actually_filled_by_refs;
+        const prevStatus = slotInstance.status;
         slotInstance.actually_filled_by_refs = filledByRefs;
         slotInstance.status = 'actual';
 
-        // Update the stored instance
+        // Validate DAG integrity before committing
+        this.rebuildDependencyIndex();
+        const validation = this.validateInstanceDAG(commonsInstanceId);
+        if (!validation.isValid) {
+            slotInstance.actually_filled_by_refs = prevRefs;
+            slotInstance.status = prevStatus;
+            this.rebuildDependencyIndex();
+            throw new Error(`Fill would create cycle: ${validation.cyclePath?.join(' → ')}`);
+        }
+
+        // Commit
         const updatedMeta: CommonsInstanceMeta = {
             ...stored,
             updated_at: new Date()
