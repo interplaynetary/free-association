@@ -56,8 +56,8 @@ radata-*
 # Docker service data directories
 gun-relay/node_modules
 gun-relay/store
-holster-relay/node_modules
-holster-relay/holster-data
+mesh-relay/node_modules
+mesh-relay/mesh-data
 data-api/node_modules
 
 # Docker environment

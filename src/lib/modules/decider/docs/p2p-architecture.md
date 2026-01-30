@@ -1,8 +1,8 @@
-# P2P Decider Architecture with Holster
+# P2P Decider Architecture with Mesh
 
 ## Overview
 
-The P2P Decider implements a distributed consensus system where each player operates independently while synchronizing data through Holster's user space. Unlike the centralized architecture where a single Decider orchestrates all players, the P2P architecture has each player writing to their own user space and reading from all other players' spaces.
+The P2P Decider implements a distributed consensus system where each player operates independently while synchronizing data through Mesh's user space. Unlike the centralized architecture where a single Decider orchestrates all players, the P2P architecture has each player writing to their own user space and reading from all other players' spaces.
 
 ## Core Principles
 
@@ -10,7 +10,7 @@ The P2P Decider implements a distributed consensus system where each player oper
 2. **Public Readable**: All data is readable by other participants
 3. **No Central Coordinator**: Each player independently executes the decision flow
 4. **Eventual Consistency**: Players synchronize by reading from all participants
-5. **Identity-Based**: Players are identified by their Holster public keys
+5. **Identity-Based**: Players are identified by their Mesh public keys
 
 ## Data Path Structure
 
@@ -262,7 +262,7 @@ This ensures eventual consistency without complex synchronization protocols. Eac
 
 ```typescript
 // Player 1 (Creator)
-const user1 = holster.user();
+const user1 = mesh.user();
 await user1.auth('player1', 'password');
 
 const decider1 = new P2PDecider(user1, 'game-123');
@@ -272,7 +272,7 @@ await decider1.createGame(
 );
 
 // Player 2 (Joiner)
-const user2 = holster.user();
+const user2 = mesh.user();
 await user2.auth('player2', 'password');
 
 const decider2 = new P2PDecider(user2, 'game-123');

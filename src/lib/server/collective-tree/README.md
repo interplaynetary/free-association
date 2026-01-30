@@ -8,7 +8,7 @@ This module provides scheduled server-side computations for collective tree oper
 
 ### 1. Tree Merging (Every 1 hour by default)
 Combines individual contributor trees into collective trees based on mutual recognition:
-- Fetches contributor trees from Holster
+- Fetches contributor trees from Mesh
 - Merges using weighted recognition shares
 - Resolves name collisions automatically
 - Stores resulting collective trees
@@ -28,13 +28,13 @@ Distributes individual capacities across collective tree nodes:
 ## Architecture
 
 ```
-Individual Trees (Holster)
+Individual Trees (Mesh)
     ↓
-Tree Merging ─→ Collective Trees (Holster)
+Tree Merging ─→ Collective Trees (Mesh)
     ↓
-Collective Recognition ─→ Recognition Results (Holster)
+Collective Recognition ─→ Recognition Results (Mesh)
     ↓
-Capacity Allocation ─→ Allocation Results (Holster)
+Capacity Allocation ─→ Allocation Results (Mesh)
 ```
 
 ## Configuration
@@ -83,10 +83,10 @@ POST /api/collective-tree/trigger-allocation    # Force capacity allocation now
 
 ### Tree Merge Flow
 
-1. **Fetch Collective Definitions**: Query Holster for collectives with `auto_merge: true`
+1. **Fetch Collective Definitions**: Query Mesh for collectives with `auto_merge: true`
 2. **Fetch Contributor Trees**: Get recognition trees for each contributor
 3. **Merge Trees**: Use `mergeContributorTrees()` from collective-tree.svelte.ts
-4. **Save Results**: Store merged tree and merge statistics in Holster
+4. **Save Results**: Store merged tree and merge statistics in Mesh
 
 ### Collective Recognition Flow
 
@@ -101,13 +101,13 @@ POST /api/collective-tree/trigger-allocation    # Force capacity allocation now
 3. **Compute Allocation**: Use `calculateCollectiveCapacityAllocation()`
 4. **Save Results**: Store allocation maps and efficiency metrics
 
-## Holster Data Structure
+## Mesh Data Structure
 
 ### Input Data
 
 ```javascript
 // Collective definitions
-holster['collective_definitions'][collectiveId] = {
+mesh['collective_definitions'][collectiveId] = {
   id: string,
   name: string,
   contributor_ids: string[],
@@ -118,45 +118,45 @@ holster['collective_definitions'][collectiveId] = {
 }
 
 // Individual recognition trees
-holster['trees'][userId]['recognition_tree'] = Node
+mesh['trees'][userId]['recognition_tree'] = Node
 ```
 
 ### Output Data
 
 ```javascript
 // Merged collective trees
-holster['collective_trees'][collectiveId] = CollectiveTree
+mesh['collective_trees'][collectiveId] = CollectiveTree
 
 // Tree merge history
-holster['collective_tree_merge_history'][`${collectiveId}_${timestamp}`] = {
+mesh['collective_tree_merge_history'][`${collectiveId}_${timestamp}`] = {
   collective_id: string,
   merge_stats: {...},
   timestamp: string
 }
 
 // Collective recognition results
-holster['collective_recognition_results'][`${treeId}_${timestamp}`] = {
+mesh['collective_recognition_results'][`${treeId}_${timestamp}`] = {
   tree_id: string,
   recognition: {...},
   timestamp: string
 }
 
 // Latest pointers for quick access
-holster['collective_recognition_latest'][treeId] = {
+mesh['collective_recognition_latest'][treeId] = {
   result_key: string,
   timestamp: string,
   node_count: number
 }
 
 // Capacity allocation results
-holster['collective_capacity_allocations'][`${treeId}_${timestamp}`] = {
+mesh['collective_capacity_allocations'][`${treeId}_${timestamp}`] = {
   tree_id: string,
   allocation: {...},
   timestamp: string
 }
 
 // Computation logs
-holster['collective_tree_computation_logs'][`${event}_${timestamp}`] = {
+mesh['collective_tree_computation_logs'][`${event}_${timestamp}`] = {
   event: string,
   data: {...},
   timestamp: string
@@ -259,7 +259,7 @@ const collectiveDefinition = {
   last_merge: null
 };
 
-// Save to Holster
+// Save to Mesh
 await user.get('collective_definitions').next(collectiveDefinition.id).put(collectiveDefinition);
 
 // The scheduler will automatically:
@@ -276,7 +276,7 @@ await user.get('collective_definitions').next(collectiveDefinition.id).put(colle
 
 **Check**:
 - Do you have collective definitions with `auto_merge: true`?
-- Do contributors have recognition trees in Holster?
+- Do contributors have recognition trees in Mesh?
 - Are there at least `MINIMUM_COLLECTIVE_CONTRIBUTORS`?
 
 **Fix**:
@@ -289,7 +289,7 @@ curl http://localhost:3000/api/collective-tree/validate
 **Check**:
 - Is scheduler running? Check `/api/collective-tree/status`
 - Check server logs for errors
-- Verify Holster data exists
+- Verify Mesh data exists
 
 **Fix**:
 ```bash

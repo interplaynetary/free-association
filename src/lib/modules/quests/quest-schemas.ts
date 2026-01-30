@@ -93,33 +93,33 @@ export const QuestSchema = z.object({
 	id: z.string().min(1),
 	title: z.string().min(1),
 	description: z.string(),
-	
+
 	// Classification
 	type: QuestTypeSchema.default('side'),
 	difficulty: QuestDifficultySchema,
 	scale: QuestScaleSchema,
-	
+
 	// Origin tracking
 	origin: QuestOriginSchema,
-	
+
 	// Location context
 	location: QuestLocationSchema.optional(),
-	
+
 	// Rewards
 	rewards: z.array(QuestRewardSchema).optional(),
-	
+
 	// Completion tracking
 	completion: QuestCompletionSchema.default({ completed: false }),
-	
+
 	// Additional metadata
 	tags: z.array(z.string()).optional(),
 	relatedCapacities: z.array(z.string()).optional(), // IDs of relevant capacities
 	relatedNeeds: z.array(z.string()).optional(), // IDs of relevant needs
 	relatedTreeNodes: z.array(z.string()).optional(), // IDs of relevant tree nodes
-	
+
 	// P2P sync
 	stamp: ITCStampSchema.optional(), // ITC causality tracking
-	_updatedAt: z.number().optional() // Holster timestamp
+	_updatedAt: z.number().optional() // Mesh timestamp
 });
 
 export type Quest = z.infer<typeof QuestSchema>;

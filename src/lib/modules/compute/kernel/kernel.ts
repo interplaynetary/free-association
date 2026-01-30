@@ -1,5 +1,5 @@
 /**
- * Holster User Space Schemas - Unified Export
+ * Mesh User Space Schemas - Unified Export
  * 
  * This file provides backwards-compatible exports from the split kernel modules:
  * - kernel-core.ts (language-agnostic infrastructure)
@@ -63,7 +63,7 @@ export {
 	CausalityNamespaceSchema,
 	EncryptedReplicationDataSchema,
 	ReplicationNamespaceSchema,
-	
+
 	// Types
 	type ProgramMetadata,
 	type ProgramStatus,
@@ -87,13 +87,13 @@ export {
 	type CausalityNamespace,
 	type EncryptedReplicationData,
 	type ReplicationNamespace,
-	
+
 	// Helpers
 	parseGenericProgramRegistryEntry,
 	parseSubscriptionsNamespace,
 	parseNodeEntry,
 	parseCausalityNamespace,
-	
+
 	// Paths
 	CorePaths
 } from './kernel-core';
@@ -114,10 +114,10 @@ export {
 	ProvenanceEntrySchema,
 	ComputeNamespaceSchema,
 	AllComputeNamespacesSchema,
-	
+
 	// Backwards compatibility
 	ProgramRegistryEntrySchema, // Alias for RDLProgramRegistryEntrySchema
-	
+
 	// Types
 	type RDLProgramDefinition,
 	type RDLProgramRegistryEntry,
@@ -129,10 +129,10 @@ export {
 	type ProvenanceEntry,
 	type ComputeNamespace,
 	type AllComputeNamespaces,
-	
+
 	// Backwards compatibility
 	type ProgramRegistryEntry, // Alias for RDLProgramRegistryEntry
-	
+
 	// Helpers
 	wrapRDLProgram,
 	unwrapRDLProgram,
@@ -140,10 +140,10 @@ export {
 	parseRDLProgramRegistryEntry,
 	parseComputeNamespace,
 	parseProvenanceEntry,
-	
+
 	// Backwards compatibility
 	parseProgramRegistryEntry, // Alias for parseRDLProgramRegistryEntry
-	
+
 	// Paths
 	RDLPaths
 } from './kernel-rdl';
@@ -157,16 +157,16 @@ export {
 	NetworkPeerAllocationSchema,
 	AllocationNamespaceSchema,
 	TreesNamespaceSchema,
-	
+
 	// Types
 	type NetworkPeerAllocation,
 	type AllocationNamespace,
 	type TreesNamespace,
-	
+
 	// Helpers
 	parseAllocationNamespace,
 	parseTreesNamespace,
-	
+
 	// Paths
 	DomainPaths
 } from './kernel-domain';

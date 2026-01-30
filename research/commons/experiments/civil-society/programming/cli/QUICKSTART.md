@@ -1,6 +1,6 @@
 # Quickstart Guide
 
-Get started with Holster + Git CLI in 5 minutes.
+Get started with Mesh + Git CLI in 5 minutes.
 
 ## Prerequisites
 
@@ -41,7 +41,7 @@ bun cli/cli.ts git-init hello-world
 ```bash
 # Write a README
 bun cli/cli.ts git-write hello-world README.md "# Hello World
-This is my first Holster + Git repo!"
+This is my first Mesh + Git repo!"
 
 # Stage it
 bun cli/cli.ts git-add hello-world README.md
@@ -50,13 +50,13 @@ bun cli/cli.ts git-add hello-world README.md
 bun cli/cli.ts git-commit hello-world "My first commit"
 ```
 
-### 5. Push to Holster Network
+### 5. Push to Mesh Network
 
 ```bash
 bun cli/cli.ts git-push hello-world
 ```
 
-🎉 **Done!** Your repo is now distributed across the Holster network.
+🎉 **Done!** Your repo is now distributed across the Mesh network.
 
 ---
 
@@ -90,7 +90,7 @@ bun cli/cli.ts git-pull their-project SE2G7xyz789...
 ./cli/example.sh
 ```
 
-This creates a complete demo project and pushes it to Holster.
+This creates a complete demo project and pushes it to Mesh.
 
 ---
 
@@ -166,7 +166,7 @@ You can also use Git operations in your SvelteKit app:
   }
 </script>
 
-<button onclick={save}>Save to Holster</button>
+<button onclick={save}>Save to Mesh</button>
 ```
 
 ---
@@ -184,7 +184,7 @@ bun cli/cli.ts auth alice myPassword123
 **"Timeout"**
 
 - Check internet connection
-- Verify Holster peers are reachable
+- Verify Mesh peers are reachable
 - Wait a few seconds and retry
 
 ---

@@ -5,16 +5,16 @@
 	import { goto } from '$app/navigation';
 	import { get } from 'svelte/store';
 	import { base } from '$app/paths';
-	// V5: Import from holster.svelte (Holster-only)
+	// V5: Import from mesh.svelte (Mesh-only)
 	import {
-		holsterUserAlias as userAlias,
-		holsterUserPub as userPub,
+		meshUserAlias as userAlias,
+		meshUserPub as userPub,
 		login,
 		signup,
 		signout,
-		isHolsterAuthenticating as isAuthenticating,
+		isMeshAuthenticating as isAuthenticating,
 		// changePassword
-	} from '$lib/network/holster.svelte';
+	} from '$lib/network/mesh.svelte';
 
     console.log('[TRACE] src/lib/components/Header.svelte: <module scope>');
 
@@ -222,6 +222,20 @@
 	let isPreviewingSearchResult = $state(false);
 	let recursionCounter = $state(0);
 
+	// Dev Mode Logic
+	let isDevMode = $state(false);
+	let devModeClickCount = $state(0);
+
+	function handleDemoMessageClick() {
+		devModeClickCount++;
+		console.log('[DEBUG] Dev mode click count:', devModeClickCount);
+		
+		if (devModeClickCount >= 3) {
+			isDevMode = true;
+			globalState.showToast('Dev Mode Enabled: Login unlocked', 'info');
+		}
+	}
+
 	// Initialize error state with URL error message if present
 	$effect(() => {
 		const urlError = page.url.searchParams.get('error');
@@ -243,7 +257,7 @@
 
 	// Check auth status and show login automatically
 	onMount(() => {
-		// V5: Holster auto-persists, no need for manual persistence checking
+		// V5: Mesh auto-persists, no need for manual persistence checking
 		// isTreePersisting state is maintained for UI purposes but doesn't need polling
 
 		// Add click/touch outside handler
@@ -307,7 +321,7 @@
 			document.removeEventListener('mousedown', handleClickOutside);
 			document.removeEventListener('touchstart', handleClickOutside);
 			clearLoginPanelTimer();
-			// V5: No persistence interval to clean up (Holster auto-persists)
+			// V5: No persistence interval to clean up (Mesh auto-persists)
 		};
 	});
 
@@ -1220,160 +1234,168 @@
 			{:else}
 				<!-- Login/Register form -->
 				<div class="login-form">
-					<h3>Demo Mode</h3>
-					<div class="auth-message">
-						This is a demo, for networked pilot deployment contact <a href="mailto:info@openassociation.org?subject=Pilot%20Deployment%20Inquiry&body=Hello%20Free%20Association%20Team%2C%0A%0AI%20am%20interested%20in%20learning%20more%20about%20the%20networked%20pilot%20deployment.%0A%0ABest%2C">info@openassociation.org</a>
-					</div>
-					<!--
-					<h3>{isRegisterMode ? $t('auth.create_account') : $t('auth.sign_in')}</h3>
-					{#if errorMessage}
-						<div class="error-message">{errorMessage}</div>
-					{/if}
 
-					{#if authMessage}
-						<div class="auth-message">{authMessage}</div>
-					{/if}
-
-					<form method="post" onsubmit={handleSubmit}>
-						<div class="form-group">
-							<label for="username">{$t('auth.username')}</label>
-							<input
-								type="text"
-								id="username"
-								name="username"
-								bind:value={usernameInput}
-								placeholder={$t('auth.username')}
-								disabled={isLoading}
-								autocomplete="username"
-								required
-								oninput={() => showLoginPanel && startLoginPanelTimer()}
-							/>
-							{#if isRegisterMode}
-								<div class="form-info">
-									{$t('auth.username_warning')}
-								</div>
-							{/if}
+					{#if !isDevMode}
+						<h3>Demo Mode</h3>
+						<!-- svelte-ignore a11y_click_events_have_key_events -->
+						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<div class="auth-message" onclick={handleDemoMessageClick} style="cursor: pointer; user-select: none;">
+							This is a demo, for networked pilot deployment contact <a href="mailto:info@openassociation.org?subject=Pilot%20Deployment%20Inquiry&body=Hello%20Free%20Association%20Team%2C%0A%0AI%20am%20interested%20in%20learning%20more%20about%20the%20networked%20pilot%20deployment.%0A%0ABest%2C">info@openassociation.org</a>
 						</div>
+					{:else}
+						<div class="dev-mode-badge" style="background-color: #f59e0b; color: #000; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; margin-bottom: 1rem; text-align: center; text-transform: uppercase; letter-spacing: 1px;">
+							DEV MODE: LOGIN UNLOCKED
+						</div>
+						
+						<h3>{isRegisterMode ? $t('auth.create_account') : $t('auth.sign_in')}</h3>
+						{#if errorMessage}
+							<div class="error-message">{errorMessage}</div>
+						{/if}
 
-						<div class="form-group password-group">
-							<label for="password">{$t('auth.password')}</label>
-							<div class="password-input-container">
+						{#if authMessage}
+							<div class="auth-message">{authMessage}</div>
+						{/if}
+
+						<form method="post" onsubmit={handleSubmit}>
+							<div class="form-group">
+								<label for="username">{$t('auth.username')}</label>
 								<input
-									type={showPassword ? 'text' : 'password'}
-									id="password"
-									name="password"
-									bind:value={password}
-									placeholder={$t('auth.password')}
+									type="text"
+									id="username"
+									name="username"
+									bind:value={usernameInput}
+									placeholder={$t('auth.username')}
 									disabled={isLoading}
-									autocomplete={isRegisterMode ? 'new-password' : 'current-password'}
+									autocomplete="username"
 									required
 									oninput={() => showLoginPanel && startLoginPanelTimer()}
 								/>
-								<button
-									type="button"
-									class="toggle-password"
-									onclick={togglePasswordVisibility}
-									title={showPassword ? $t('auth.hide_password') : $t('auth.show_password')}
-								>
-									<span>{showPassword ? '🙈' : '🐵'}</span>
-								</button>
+								{#if isRegisterMode}
+									<div class="form-info">
+										{$t('auth.username_warning')}
+									</div>
+								{/if}
 							</div>
-						</div>
 
-						{#if isRegisterMode}
 							<div class="form-group password-group">
-								<label for="confirmPassword">{$t('auth.confirm_password')}</label>
+								<label for="password">{$t('auth.password')}</label>
 								<div class="password-input-container">
 									<input
-										type={showConfirmPassword ? 'text' : 'password'}
-										id="confirmPassword"
-										name="confirmPassword"
-										bind:value={confirmPassword}
-										placeholder={$t('auth.confirm_password')}
+										type={showPassword ? 'text' : 'password'}
+										id="password"
+										name="password"
+										bind:value={password}
+										placeholder={$t('auth.password')}
 										disabled={isLoading}
-										autocomplete="new-password"
+										autocomplete={isRegisterMode ? 'new-password' : 'current-password'}
 										required
 										oninput={() => showLoginPanel && startLoginPanelTimer()}
 									/>
 									<button
 										type="button"
 										class="toggle-password"
-										onclick={toggleConfirmPasswordVisibility}
-										title={showConfirmPassword ? $t('auth.hide_password') : $t('auth.show_password')}
+										onclick={togglePasswordVisibility}
+										title={showPassword ? $t('auth.hide_password') : $t('auth.show_password')}
 									>
-										<span>{showConfirmPassword ? '🙈' : '🐵'}</span>
+										<span>{showPassword ? '🙈' : '🐵'}</span>
 									</button>
 								</div>
 							</div>
-							{#if isRegisterMode}
-								<div class="form-info">{$t('auth.password_warning')}</div>
-							{/if}
 
-							<div class="form-group checkbox-group">
-								<label class="checkbox-label">
-									<input
-										type="checkbox"
-										id="agreedToTerms"
-										bind:checked={agreedToTerms}
-										disabled={isLoading}
-									/>
-									<span class="checkbox-text">
-										{$t('auth.terms_agreement')} <a href="{base}/privacy" target="_blank" class="terms-link"
-											>{$t('auth.privacy_policy')}</a
+							{#if isRegisterMode}
+								<div class="form-group password-group">
+									<label for="confirmPassword">{$t('auth.confirm_password')}</label>
+									<div class="password-input-container">
+										<input
+											type={showConfirmPassword ? 'text' : 'password'}
+											id="confirmPassword"
+											name="confirmPassword"
+											bind:value={confirmPassword}
+											placeholder={$t('auth.confirm_password')}
+											disabled={isLoading}
+											autocomplete="new-password"
+											required
+											oninput={() => showLoginPanel && startLoginPanelTimer()}
+										/>
+										<button
+											type="button"
+											class="toggle-password"
+											onclick={toggleConfirmPasswordVisibility}
+											title={showConfirmPassword ? $t('auth.hide_password') : $t('auth.show_password')}
 										>
-										{$t('auth.and')} <a href="{base}/terms" target="_blank" class="terms-link">{$t('auth.terms_of_use')}</a>
-									</span>
-								</label>
-							</div>
-
-							<div class="form-group checkbox-group">
-								<label class="checkbox-label">
-									<input
-										type="checkbox"
-										id="agreedToDataPublic"
-										bind:checked={agreedToDataPublic}
-										disabled={isLoading}
-									/>
-									<span class="checkbox-text">
-										I understand that all data I share will be public and potentially permanent
-									</span>
-								</label>
-							</div>
-						{/if}
-
-						<div class="actions">
-							<button
-								type="submit"
-								class={isRegisterMode ? 'signup-btn' : 'login-btn'}
-								disabled={isLoading ||
-									!usernameInput ||
-									!password ||
-									(isRegisterMode && (!confirmPassword || !agreedToTerms || !agreedToDataPublic))}
-							>
-								{#if isLoading}
-									<div class="spinner small"></div>
-									{isRegisterMode ? $t('auth.creating_account') : $t('auth.signing_in')}
-								{:else}
-									{isRegisterMode ? $t('auth.create_account') : $t('auth.sign_in')}
+											<span>{showConfirmPassword ? '🙈' : '🐵'}</span>
+										</button>
+									</div>
+								</div>
+								{#if isRegisterMode}
+									<div class="form-info">{$t('auth.password_warning')}</div>
 								{/if}
-							</button>
-						</div>
 
-						<div class="toggle-auth-mode">
-							{#if isRegisterMode}
-								{$t('auth.already_have_account')}
-								<button type="button" class="text-link" onclick={toggleAuthMode}>
-									{$t('auth.sign_in_instead')}
-								</button>
-							{:else}
-								{$t('auth.dont_have_account')}
-								<button type="button" class="text-link" onclick={toggleAuthMode}>
-									{$t('auth.create_one_now')}
-								</button>
+								<div class="form-group checkbox-group">
+									<label class="checkbox-label">
+										<input
+											type="checkbox"
+											id="agreedToTerms"
+											bind:checked={agreedToTerms}
+											disabled={isLoading}
+										/>
+										<span class="checkbox-text">
+											{$t('auth.terms_agreement')} <a href="{base}/privacy" target="_blank" class="terms-link"
+												>{$t('auth.privacy_policy')}</a
+											>
+											{$t('auth.and')} <a href="{base}/terms" target="_blank" class="terms-link">{$t('auth.terms_of_use')}</a>
+										</span>
+									</label>
+								</div>
+
+								<div class="form-group checkbox-group">
+									<label class="checkbox-label">
+										<input
+											type="checkbox"
+											id="agreedToDataPublic"
+											bind:checked={agreedToDataPublic}
+											disabled={isLoading}
+										/>
+										<span class="checkbox-text">
+											I understand that all data I share will be public and potentially permanent
+										</span>
+									</label>
+								</div>
 							{/if}
-						</div>
-					</form>
-					-->
+
+							<div class="actions">
+								<button
+									type="submit"
+									class={isRegisterMode ? 'signup-btn' : 'login-btn'}
+									disabled={isLoading ||
+										!usernameInput ||
+										!password ||
+										(isRegisterMode && (!confirmPassword || !agreedToTerms || !agreedToDataPublic))}
+								>
+									{#if isLoading}
+										<div class="spinner small"></div>
+										{isRegisterMode ? $t('auth.creating_account') : $t('auth.signing_in')}
+									{:else}
+										{isRegisterMode ? $t('auth.create_account') : $t('auth.sign_in')}
+									{/if}
+								</button>
+							</div>
+
+							<div class="toggle-auth-mode">
+								{#if isRegisterMode}
+									{$t('auth.already_have_account')}
+									<button type="button" class="text-link" onclick={toggleAuthMode}>
+										{$t('auth.sign_in_instead')}
+									</button>
+								{:else}
+									{$t('auth.dont_have_account')}
+									<button type="button" class="text-link" onclick={toggleAuthMode}>
+										{$t('auth.create_one_now')}
+									</button>
+								{/if}
+							</div>
+						</form>
+					{/if}
 				</div>
 			{/if}
 		</div>

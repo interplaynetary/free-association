@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Reactive P2P Decider uses **Svelte stores** to provide real-time, reactive game state management. As data arrives from the network through Holster, stores automatically update and the UI reactively re-renders.
+The Reactive P2P Decider uses **Svelte stores** to provide real-time, reactive game state management. As data arrives from the network through Mesh, stores automatically update and the UI reactively re-renders.
 
 ## Architecture
 
@@ -44,9 +44,9 @@ These stores automatically compute aggregated views from the raw data:
 ## Data Flow
 
 ```
-Holster Network
+Mesh Network
     ↓
-Holster Listener (listenAtPath)
+Mesh Listener (listenAtPath)
     ↓
 Writable Store Update
     ↓
@@ -393,7 +393,7 @@ For 3 participants:
 // set up proposal listeners only after join
 ```
 
-2. **Batch Updates**: Holster batches network updates automatically
+2. **Batch Updates**: Mesh batches network updates automatically
 
 3. **Derived Store Memoization**: Svelte only recalculates derived stores when dependencies change
 

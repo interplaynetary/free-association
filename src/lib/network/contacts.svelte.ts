@@ -1,5 +1,5 @@
 /**
- * Contacts Module - Holster Implementation (V5 Pattern)
+ * Contacts Module - Mesh Implementation (V5 Pattern)
  *
  * Now using createStore() for consistency with protocol stores!
  * - Automatic timestamp tracking and conflict resolution
@@ -29,17 +29,17 @@ console.log('[TRACE] src/lib/network/contacts.svelte.ts: <module scope>');
  * ✅ Schema validation
  */
 export const contactsStore = createStore({
-	holsterPath: 'contacts',
+	meshPath: 'contacts',
 	schema: ContactsCollectionSchema,
 	persistDebounce: 100 // Debounce rapid contact updates
 });
 
-// Export as holsterContacts for backwards compatibility
-export const holsterContacts = contactsStore;
+// Export as meshContacts for backwards compatibility
+export const meshContacts = contactsStore;
 
 // Loading flag (backwards compatibility) - derived from store state
-export const isLoadingHolsterContacts = derived(
-	holsterContacts,
+export const isLoadingMeshContacts = derived(
+	meshContacts,
 	($contacts) => $contacts === null
 );
 
@@ -55,22 +55,22 @@ export const isLoadingHolsterContacts = derived(
  * Initialize contacts when user logs in
  * Just calls store.initialize() - that's it!
  */
-export function initializeHolsterContacts() {
-	console.log('[TRACE] [ENTER] src/lib/network/contacts.svelte.ts: initializeHolsterContacts');
+export function initializeMeshContacts() {
+	console.log('[TRACE] [ENTER] src/lib/network/contacts.svelte.ts: initializeMeshContacts');
 	console.log('[CONTACTS-V5] Initializing...');
 	contactsStore.initialize();
-	console.log('[TRACE] [EXIT] src/lib/network/contacts.svelte.ts: initializeHolsterContacts');
+	console.log('[TRACE] [EXIT] src/lib/network/contacts.svelte.ts: initializeMeshContacts');
 }
 
 /**
  * Cleanup on logout
  * Just calls store.cleanup() - that's it!
  */
-export async function cleanupHolsterContacts() {
-	console.log('[TRACE] [ENTER] src/lib/network/contacts.svelte.ts: cleanupHolsterContacts');
+export async function cleanupMeshContacts() {
+	console.log('[TRACE] [ENTER] src/lib/network/contacts.svelte.ts: cleanupMeshContacts');
 	console.log('[CONTACTS-V5] Cleaning up...');
 	await contactsStore.cleanup();
-	console.log('[TRACE] [EXIT] src/lib/network/contacts.svelte.ts: cleanupHolsterContacts');
+	console.log('[TRACE] [EXIT] src/lib/network/contacts.svelte.ts: cleanupMeshContacts');
 }
 
 /**
@@ -79,7 +79,7 @@ export async function cleanupHolsterContacts() {
 export function resetInitialization() {
 	console.log('[TRACE] [ENTER] src/lib/network/contacts.svelte.ts: resetInitialization');
 	console.log('[CONTACTS-V5] Resetting...');
-	cleanupHolsterContacts();
+	cleanupMeshContacts();
 	console.log('[TRACE] [EXIT] src/lib/network/contacts.svelte.ts: resetInitialization');
 }
 
@@ -91,15 +91,15 @@ export function resetInitialization() {
  * Persist contacts - now just a wrapper around store.set()
  * The store handles everything: timestamps, conflict resolution, debouncing!
  */
-export async function persistHolsterContacts(
+export async function persistMeshContacts(
 	contacts?: ContactsCollection
 ): Promise<void> {
-	console.log('[TRACE] [ENTER] src/lib/network/contacts.svelte.ts: persistHolsterContacts');
-	const contactsToSave = contacts || get(holsterContacts);
+	console.log('[TRACE] [ENTER] src/lib/network/contacts.svelte.ts: persistMeshContacts');
+	const contactsToSave = contacts || get(meshContacts);
 
 	if (!contactsToSave || Object.keys(contactsToSave).length === 0) {
 		console.log('[CONTACTS-V5] No contacts to persist');
-		console.log('[TRACE] [EXIT] src/lib/network/contacts.svelte.ts: persistHolsterContacts (empty)');
+		console.log('[TRACE] [EXIT] src/lib/network/contacts.svelte.ts: persistMeshContacts (empty)');
 		return;
 	}
 
@@ -108,7 +108,7 @@ export async function persistHolsterContacts(
 
 	// Wait for persistence to complete
 	await contactsStore.waitForPersistence();
-	console.log('[TRACE] [EXIT] src/lib/network/contacts.svelte.ts: persistHolsterContacts');
+	console.log('[TRACE] [EXIT] src/lib/network/contacts.svelte.ts: persistMeshContacts');
 }
 
 // ============================================================================
@@ -119,13 +119,13 @@ export async function persistHolsterContacts(
  * Delete a contact
  * Just remove from collection and store.set() - automatic persistence!
  */
-export async function deleteHolsterContact(contactId: string): Promise<void> {
-	console.log('[TRACE] [ENTER] src/lib/network/contacts.svelte.ts: deleteHolsterContact', { contactId });
+export async function deleteMeshContact(contactId: string): Promise<void> {
+	console.log('[TRACE] [ENTER] src/lib/network/contacts.svelte.ts: deleteMeshContact', { contactId });
 	console.log('[CONTACTS-V5] Deleting contact:', contactId);
 
-	const currentContacts = get(holsterContacts);
+	const currentContacts = get(meshContacts);
 	if (!currentContacts) {
-		console.log('[TRACE] [EXIT] src/lib/network/contacts.svelte.ts: deleteHolsterContact (no contacts)');
+		console.log('[TRACE] [EXIT] src/lib/network/contacts.svelte.ts: deleteMeshContact (no contacts)');
 		return;
 	}
 
@@ -137,18 +137,18 @@ export async function deleteHolsterContact(contactId: string): Promise<void> {
 
 	// Wait for persistence
 	await contactsStore.waitForPersistence();
-	console.log('[TRACE] [EXIT] src/lib/network/contacts.svelte.ts: deleteHolsterContact');
+	console.log('[TRACE] [EXIT] src/lib/network/contacts.svelte.ts: deleteMeshContact');
 }
 
 /**
  * Update the contacts store and persist
  * Now even simpler - just store.set()!
  */
-export async function updateHolsterContactsStore(
+export async function updateMeshContactsStore(
 	updatedContacts: ContactsCollection
 ): Promise<void> {
-	console.log('[TRACE] [ENTER] src/lib/network/contacts.svelte.ts: updateHolsterContactsStore');
+	console.log('[TRACE] [ENTER] src/lib/network/contacts.svelte.ts: updateMeshContactsStore');
 	contactsStore.set(updatedContacts);
 	await contactsStore.waitForPersistence();
-	console.log('[TRACE] [EXIT] src/lib/network/contacts.svelte.ts: updateHolsterContactsStore');
+	console.log('[TRACE] [EXIT] src/lib/network/contacts.svelte.ts: updateMeshContactsStore');
 }

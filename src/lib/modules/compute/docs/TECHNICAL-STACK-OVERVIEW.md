@@ -37,14 +37,14 @@
                            ↓
 ┌─────────────────────────────────────────────────────────────────┐
 │                  STORAGE LAYER                                   │
-│  Holster/Gun (P2P encrypted database)                          │
+│  Mesh/Gun (P2P encrypted database)                          │
 │  • IndexedDB (browser)  • Disk (node)  • P2P sync              │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Layer 1: Storage (Holster/Gun)
+## Layer 1: Storage (Mesh/Gun)
 
 ### Purpose
 Peer-to-peer encrypted database for distributed data storage.
@@ -59,15 +59,15 @@ Peer-to-peer encrypted database for distributed data storage.
 ### Key APIs
 ```typescript
 // Write data
-holster.get('~alice/data/item').put({ value: 42 });
+mesh.get('~alice/data/item').put({ value: 42 });
 
 // Read data
-holster.get('~alice/data/item').once((data) => {
+mesh.get('~alice/data/item').once((data) => {
   console.log(data.value);
 });
 
 // Subscribe to changes
-holster.get('~alice/data/item').on((data) => {
+mesh.get('~alice/data/item').on((data) => {
   console.log('Updated:', data.value);
 });
 ```
@@ -209,14 +209,14 @@ Cryptographic tracking of computation lineage with verification and privacy.
 provenance/
 ├─ provenance-event-schema.ts      # Zod schemas for events
 ├─ provenance-signing.svelte.ts    # SEA signatures + hashing
-├─ provenance-dag.svelte.ts        # DAG storage in Holster
+├─ provenance-dag.svelte.ts        # DAG storage in Mesh
 ├─ provenance-verification.svelte.ts # Verification engine
 ├─ provenance-proof.svelte.ts      # Proof construction
 ├─ provenance.svelte.ts            # High-level API
 └─ index.ts                        # Barrel exports
 ```
 
-### Storage in Holster
+### Storage in Mesh
 
 ```
 ~{pubKey}/provenance/
@@ -499,7 +499,7 @@ const { proof, totalAllocated } = await proveAllocationRollup([
 
 ```
 INTERNAL (your system):
-  ├─ Provenance DAG in Holster
+  ├─ Provenance DAG in Mesh
   ├─ Events are VISIBLE to you
   ├─ Traditional queries (fast)
   └─ NO zero-knowledge needed
@@ -784,7 +784,7 @@ console.log('Allocation:', allocationValid);  // ✅
 ### 1. Separation of Concerns
 
 ```
-Storage (Holster)
+Storage (Mesh)
   ↓ Provides: P2P encrypted database
 Kernel (User Space)
   ↓ Provides: Structured namespaces
@@ -831,7 +831,7 @@ EXTERNAL:
 ```
 Each layer provides primitives that compose:
 
-Holster.subscribe()
+Mesh.subscribe()
   ↓ triggers
 RDL.execute()
   ↓ creates
@@ -848,7 +848,7 @@ No tight coupling - each layer independent
 
 ## Performance Characteristics
 
-### Storage Layer (Holster)
+### Storage Layer (Mesh)
 - **Write**: O(1) - Local IndexedDB write
 - **Read**: O(1) - Local IndexedDB read
 - **Sync**: O(N) - N = changes since last sync
@@ -861,7 +861,7 @@ No tight coupling - each layer independent
 
 ### Provenance Layer
 - **Create event**: O(1) - Hash + sign
-- **Store event**: O(1) - Write to Holster
+- **Store event**: O(1) - Write to Mesh
 - **Verify event**: O(1) - Check hash + signature
 - **Traverse DAG**: O(D) - D = depth of traversal
 - **Build proof**: O(N) - N = events in proof
@@ -900,7 +900,7 @@ No tight coupling - each layer independent
 │  • Digital signatures (SEA/ECDSA)                           │
 │  • Merkle-DAG (hash-linking)                                │
 │  • ITC (causality tracking)                                 │
-│  • Storage in Holster                                       │
+│  • Storage in Mesh                                       │
 │  • Verification engine                                      │
 └─────────────────────────────────────────────────────────────┘
                             ↓ (optional)
@@ -921,7 +921,7 @@ No tight coupling - each layer independent
 └─────────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────────┐
-│ STORAGE: Holster/Gun P2P encrypted database                │
+│ STORAGE: Mesh/Gun P2P encrypted database                │
 │  • Local-first (IndexedDB/disk)                             │
 │  • P2P sync                                                 │
 │  • User spaces (~{pubKey}/)                                 │
@@ -963,7 +963,7 @@ src/lib/commons/
 ├─ utils/
 │   └─ itc.ts                       # ITC implementation
 └─ state/
-    └─ holster.svelte.ts            # Holster integration
+    └─ mesh.svelte.ts            # Mesh integration
 ```
 
 **This is the infrastructure for post-app-italism computing.** 🌍✨

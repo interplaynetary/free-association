@@ -10,7 +10,7 @@ import {
 	getAllAttributesForEntity,
 	getEntitiesWithAttribute
 } from '@playnet/free-association/attributes/attribute-recognition';
-import { holsterUserPub } from './holster.svelte';
+import { meshUserPub } from './mesh.svelte';
 import { getPublicKeyFromContactId } from './users.svelte';
 
 console.log('[TRACE] src/lib/network/entities.svelte.ts: <module scope>');
@@ -31,7 +31,7 @@ export function setEntityAttribute(
 	value: any
 ): void {
 	console.log('[TRACE] [ENTER] src/lib/network/entities.svelte.ts: setEntityAttribute', { entity_id, attribute_name });
-	const selfPubkey = get(holsterUserPub);
+	const selfPubkey = get(meshUserPub);
 	let current = get(myAttributeRecognitions) || { _timestamp: Date.now() };
 
 	current = updateAttributeInCollection(

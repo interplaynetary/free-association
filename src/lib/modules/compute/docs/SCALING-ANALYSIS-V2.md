@@ -55,7 +55,7 @@ User action → Compute (reactive) → Publish
 t=0s    User declares need
 t=0.05s Reactive computation triggers
 t=0.1s  Allocation published
-t=0.2s  Recipient sees allocation (Holster sync)
+t=0.2s  Recipient sees allocation (Mesh sync)
 Total: 200 milliseconds to full allocation visibility
 ```
 

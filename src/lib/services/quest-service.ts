@@ -5,7 +5,7 @@
  * - Gathers user data (tree, capacities, needs, location)
  * - Fetches peer quests if opt-in enabled
  * - Calls API endpoint
- * - Stores results in Holster
+ * - Stores results in Mesh
  */
 
 import { get } from 'svelte/store';
@@ -130,7 +130,7 @@ export async function generateQuests(
 		const mainQuests = result.quests.filter((q: Quest) => q.type === 'main');
 		const sideQuests = result.quests.filter((q: Quest) => q.type === 'side');
 
-		// 7. Store in Holster
+		// 7. Store in Mesh
 		await storeQuests(mainQuests, sideQuests);
 
 		// 8. Update shared quests if sharing is enabled
@@ -153,7 +153,7 @@ export async function generateQuests(
 }
 
 /**
- * Store quests in appropriate Holster stores
+ * Store quests in appropriate Mesh stores
  */
 async function storeQuests(mainQuests: Quest[], sideQuests: Quest[]): Promise<void> {
 	// Get existing quests

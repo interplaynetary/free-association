@@ -3,7 +3,7 @@
 	import { afterNavigate } from '$app/navigation';
 	import * as d3 from 'd3';
 	import { page } from '$app/state';
-	import { holsterUserAlias as userAlias, holsterUserPub as userPub } from '$lib/network/holster.svelte';
+	import { meshUserAlias as userAlias, meshUserPub as userPub } from '$lib/network/mesh.svelte';
 	// V5: Import from v5 stores
 	import { myRecognitionTreeStore as userTree } from '$lib/protocol/stores/stores.svelte';
 	import { writable } from 'svelte/store';
@@ -147,7 +147,7 @@
 			console.log('[TREE-SELECT] Org route detected, using demoTreeStore (View Store)');
 			return demoTreeStore.current;
 		} else {
-			// On homepage (Auth or Unauth), use the ONE user tree (which handles local/holster sync)
+			// On homepage (Auth or Unauth), use the ONE user tree (which handles local/mesh sync)
 			console.log('[TREE-SELECT] Homepage, using userTree');
 			return $userTree;
 		}
@@ -523,7 +523,7 @@
 	function handleCreateNewTree() {
 		console.log('[UI FLOW] handleCreateNewTree started');
 
-		// This function is only for authenticated users creating a Holster-synced tree
+		// This function is only for authenticated users creating a Mesh-synced tree
 		if (!isAuthenticated || !$userAlias || !$userPub) {
 			console.log('[UI FLOW] User not authenticated, prompting to log in');
 			globalState.showToast($t('tree.please_login'), 'info');
@@ -536,7 +536,7 @@
 			if (newTree) {
 				const populated = applyTemplate(newTree, selectedTemplateId);
 				if (populated) {
-					// For authenticated users, always use userTree (Holster-synced)
+					// For authenticated users, always use userTree (Mesh-synced)
 					userTree.set(populated);
 					const chosen = availableTemplates.find((t) => t.id === selectedTemplateId);
 					globalState.showToast(

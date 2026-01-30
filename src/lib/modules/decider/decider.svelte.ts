@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { derived, writable, type Readable, type Writable, get } from 'svelte/store';
-import { writeAtPath, readAtPath, listenAtPath } from '$lib/utils/data/holsterData';
+import { writeAtPath, readAtPath, listenAtPath } from '$lib/utils/data/meshData';
 import { createStore } from '$lib/utils/primitives/store.svelte';
 import { createVersionedStore, type VersionedStore } from '$lib/utils/primitives/v-store.svelte';
 import { jsonEquals } from '$lib/utils/primitives/v-store-equality-checkers';
@@ -12,7 +12,7 @@ import { seed as itcSeed, event as itcEvent, join as itcJoin, type Stamp as ITCS
 
 /**
  * Remove undefined fields from an object for Gun compatibility
- * Gun/Holster cannot handle undefined values, only null or defined values
+ * Gun/Mesh cannot handle undefined values, only null or defined values
  */
 function removeUndefinedFields<T extends Record<string, any>>(obj: T): Partial<T> {
 	const cleaned: any = {};
@@ -124,7 +124,7 @@ type Challenge = ChallengeData;
 type Comment = CommentData;
 type ModificationProposal = ModificationProposalData;
 
-type GamePhase = 
+type GamePhase =
 	| 'not_started'
 	| 'proposing'
 	| 'challenging'
@@ -147,26 +147,26 @@ function getEffectivePhaseTime(
 	agendaIndex?: number
 ): number {
 	if (phase === 'not_started' || phase === 'complete') return 0;
-	
+
 	const idx = agendaIndex ?? config.currentAgendaIndex;
 	const agendaItem = config.agenda[idx];
 	const normalized = agendaItem ? normalizeAgendaItem(agendaItem) : null;
-	
+
 	// 1. Check agenda-specific phase config
 	if (normalized?.phaseTimeConfig?.[phase]) {
 		return normalized.phaseTimeConfig[phase]!;
 	}
-	
+
 	// 2. Check global phase config
 	if (config.phaseTimeConfig?.[phase]) {
 		return config.phaseTimeConfig[phase]!;
 	}
-	
+
 	// 3. Check agenda-specific time window (divide by 4 phases)
 	if (normalized?.timeWindow) {
 		return Math.floor(normalized.timeWindow / 4);
 	}
-	
+
 	// 4. Use global time window (divide by 4 phases)
 	return Math.floor(config.timeWindow / 4);
 }
@@ -176,52 +176,52 @@ function getEffectiveTimeWindow(config: GameConfig, agendaIndex?: number): numbe
 	const idx = agendaIndex ?? config.currentAgendaIndex;
 	const agendaItem = config.agenda[idx];
 	const normalized = agendaItem ? normalizeAgendaItem(agendaItem) : null;
-	
+
 	return normalized?.timeWindow ?? config.timeWindow;
 }
 
 // Apply proposed config changes to a game config (used when a meta-proposal wins)
 function applyConfigChanges(
-	config: GameConfig, 
+	config: GameConfig,
 	proposedChanges: ProposedConfigChanges
 ): GameConfig {
 	const newConfig = { ...config };
-	
+
 	if (!proposedChanges) return newConfig;
-	
+
 	// Apply global changes
 	if (proposedChanges.timeWindow !== undefined) {
 		newConfig.timeWindow = proposedChanges.timeWindow;
 	}
-	
+
 	if (proposedChanges.phaseTimeConfig) {
 		newConfig.phaseTimeConfig = {
 			...newConfig.phaseTimeConfig,
 			...proposedChanges.phaseTimeConfig
 		};
 	}
-	
+
 	// Apply agenda-specific changes
 	if (proposedChanges.targetAgendaIndex !== undefined) {
 		const targetIdx = proposedChanges.targetAgendaIndex;
 		const agendaItem = newConfig.agenda[targetIdx];
-		
+
 		if (agendaItem) {
 			const normalized = normalizeAgendaItem(agendaItem);
-			
+
 			// Build updated agenda item
 			const updatedItem: { text: string; timeWindow?: number; phaseTimeConfig?: PhaseTimeConfig } = {
 				text: normalized.text,
 				timeWindow: proposedChanges.agendaItemTimeWindow ?? normalized.timeWindow,
 				phaseTimeConfig: proposedChanges.agendaItemPhaseConfig ?? normalized.phaseTimeConfig
 			};
-			
+
 			// Update agenda array
 			newConfig.agenda = [...newConfig.agenda];
 			newConfig.agenda[targetIdx] = updatedItem as AgendaItem;
 		}
 	}
-	
+
 	return newConfig;
 }
 
@@ -231,7 +231,7 @@ function applyConfigChanges(
 
 // Game configurations (persistent, keyed by gameId)
 const gameConfigsStore = createStore({
-	holsterPath: 'decider/games/configs',
+	meshPath: 'decider/games/configs',
 	schema: z.record(z.string(), GameConfigSchema),
 	persistDebounce: 200
 });
@@ -313,7 +313,7 @@ function getGameProposals(gameId: string): Readable<ProposalData[]> {
 function getGameChallenges(gameId: string): Readable<Map<string, ChallengeData[]>> {
 	return derived([networkChallenges.store], ([$challenges]) => {
 		const result = new Map<string, ChallengeData[]>();
-		
+
 		for (const [key, versionedEntity] of $challenges.entries()) {
 			if (key.startsWith(`${gameId}:`)) {
 				// Key format: gameId:participantPub:proposalAuthorPub
@@ -327,12 +327,12 @@ function getGameChallenges(gameId: string): Readable<Map<string, ChallengeData[]
 				}
 			}
 		}
-		
+
 		// Sort each array by timestamp
 		for (const [key, challenges] of result) {
 			result.set(key, challenges.sort((a, b) => a.timestamp - b.timestamp));
 		}
-		
+
 		return result;
 	});
 }
@@ -343,7 +343,7 @@ function getGameChallenges(gameId: string): Readable<Map<string, ChallengeData[]
 function getGameComments(gameId: string): Readable<Map<string, CommentData[]>> {
 	return derived([networkComments.store], ([$comments]) => {
 		const result = new Map<string, CommentData[]>();
-		
+
 		for (const [key, versionedEntity] of $comments.entries()) {
 			if (key.startsWith(`${gameId}:`)) {
 				const parts = key.split(':');
@@ -356,11 +356,11 @@ function getGameComments(gameId: string): Readable<Map<string, CommentData[]>> {
 				}
 			}
 		}
-		
+
 		for (const [key, comments] of result) {
 			result.set(key, comments.sort((a, b) => a.timestamp - b.timestamp));
 		}
-		
+
 		return result;
 	});
 }
@@ -371,7 +371,7 @@ function getGameComments(gameId: string): Readable<Map<string, CommentData[]>> {
 function getGameModifications(gameId: string): Readable<Map<string, ModificationProposalData[]>> {
 	return derived([networkModifications.store], ([$modifications]) => {
 		const result = new Map<string, ModificationProposalData[]>();
-		
+
 		for (const [key, versionedEntity] of $modifications.entries()) {
 			if (key.startsWith(`${gameId}:`)) {
 				const parts = key.split(':');
@@ -384,11 +384,11 @@ function getGameModifications(gameId: string): Readable<Map<string, Modification
 				}
 			}
 		}
-		
+
 		for (const [key, modifications] of result) {
 			result.set(key, modifications.sort((a, b) => a.timestamp - b.timestamp));
 		}
-		
+
 		return result;
 	});
 }
@@ -399,7 +399,7 @@ function getGameModifications(gameId: string): Readable<Map<string, Modification
 function getGameSupport(gameId: string): Readable<Map<string, SupportExpression[]>> {
 	return derived([networkSupportState], ([$supportState]) => {
 		const result = new Map<string, SupportExpression[]>();
-		
+
 		for (const [key, supportExpr] of $supportState.entries()) {
 			if (key.startsWith(`${gameId}:`)) {
 				const parts = key.split(':');
@@ -412,7 +412,7 @@ function getGameSupport(gameId: string): Readable<Map<string, SupportExpression[
 				}
 			}
 		}
-		
+
 		return result;
 	});
 }
@@ -425,37 +425,37 @@ function getGameSupport(gameId: string): Readable<Map<string, SupportExpression[
  */
 function getGamePhase(gameId: string): Readable<GamePhase> {
 	const proposals = getGameProposals(gameId);
-	
+
 	return derived(
 		[proposals, gameConfigsStore],
 		([$proposals, $configs]) => {
 			const config = $configs?.[gameId];
 			if (!config) return 'not_started';
-			
+
 			// Check for manual phase override
 			if (config.currentPhaseOverride) return config.currentPhaseOverride;
-			
+
 			// If no proposals yet, we're in proposing phase
 			if ($proposals.length === 0) return 'proposing';
-			
+
 			// If we have a phase start time, use time-based transitions
 			if (config.phaseStartTime) {
 				const now = Date.now();
 				const elapsed = now - config.phaseStartTime;
-				
+
 				const proposingTime = getEffectivePhaseTime(config, 'proposing');
 				const challengingTime = getEffectivePhaseTime(config, 'challenging');
 				const commentingTime = getEffectivePhaseTime(config, 'commenting');
 				const supportingTime = getEffectivePhaseTime(config, 'supporting');
-				
+
 				if (elapsed < proposingTime) return 'proposing';
 				if (elapsed < proposingTime + challengingTime) return 'challenging';
 				if (elapsed < proposingTime + challengingTime + commentingTime) return 'commenting';
 				if (elapsed < proposingTime + challengingTime + commentingTime + supportingTime) return 'supporting';
-				
+
 				return 'complete';
 			}
-			
+
 			// Fallback to heuristic-based phase detection
 			// (for games created before phase timing was implemented)
 			return 'proposing'; // Simplified fallback - just stay in proposing until phase start time is set
@@ -470,56 +470,56 @@ function getConsensusResults(gameId: string): Readable<Map<string, string>> {
 	const proposals = getGameProposals(gameId);
 	const modifications = getGameModifications(gameId);
 	const support = getGameSupport(gameId);
-	
+
 	return derived(
 		[proposals, modifications, support],
 		([$proposals, $modifications, $support]) => {
-		const results = new Map<string, string>();
-		
+			const results = new Map<string, string>();
+
 			for (const proposal of $proposals) {
-			const proposalAuthorPub = proposal.authorPub;
+				const proposalAuthorPub = proposal.authorPub;
 				const supportExpressions = $support.get(proposalAuthorPub) || [];
 				const proposalModifications = $modifications.get(proposalAuthorPub) || [];
-			
-			// If no support yet, use original content
-			if (supportExpressions.length === 0) {
-				results.set(proposalAuthorPub, proposal.content || '');
-				continue;
-			}
-			
-			// Calculate support for each candidate
-			const candidates = [
-				proposal.content!,
+
+				// If no support yet, use original content
+				if (supportExpressions.length === 0) {
+					results.set(proposalAuthorPub, proposal.content || '');
+					continue;
+				}
+
+				// Calculate support for each candidate
+				const candidates = [
+					proposal.content!,
 					...proposalModifications.map(m => m.content)
-			];
-			
-			const supportCounts = new Map<string, number>();
-			for (const candidate of candidates) {
-				supportCounts.set(candidate, 0);
-			}
-			
-			for (const supportExpr of supportExpressions) {
-				for (const [candidate, points] of Object.entries(supportExpr)) {
-					if (supportCounts.has(candidate)) {
-						supportCounts.set(candidate, supportCounts.get(candidate)! + points);
+				];
+
+				const supportCounts = new Map<string, number>();
+				for (const candidate of candidates) {
+					supportCounts.set(candidate, 0);
+				}
+
+				for (const supportExpr of supportExpressions) {
+					for (const [candidate, points] of Object.entries(supportExpr)) {
+						if (supportCounts.has(candidate)) {
+							supportCounts.set(candidate, supportCounts.get(candidate)! + points);
+						}
 					}
 				}
-			}
-			
-			// Find winner
-			let winner = proposal.content!;
-			let maxSupport = 0;
+
+				// Find winner
+				let winner = proposal.content!;
+				let maxSupport = 0;
 				for (const [candidate, supportCount] of supportCounts) {
 					if (supportCount > maxSupport) {
-					winner = candidate;
+						winner = candidate;
 						maxSupport = supportCount;
+					}
 				}
+
+				results.set(proposalAuthorPub, winner);
 			}
-			
-			results.set(proposalAuthorPub, winner);
-		}
-		
-		return results;
+
+			return results;
 		}
 	);
 }
@@ -533,14 +533,14 @@ function getConsensusResults(gameId: string): Readable<Map<string, string>> {
  */
 function getMergedGameITC(gameId: string, localITC?: ITCStamp): ITCStamp {
 	let merged = localITC || itcSeed();
-	
+
 	const proposalsMap = networkProposals.get();
 	for (const [key, versionedEntity] of proposalsMap.entries()) {
 		if (key.startsWith(`${gameId}:`) && versionedEntity.metadata.itcStamp) {
 			merged = itcJoin(merged, versionedEntity.metadata.itcStamp);
 		}
 	}
-	
+
 	return itcEvent(merged);
 }
 
@@ -555,13 +555,13 @@ function composeMyProposal(
 	proposedConfigChanges?: ProposedConfigChanges
 ): ProposalData {
 	const mergedITC = getMergedGameITC(gameId, existingProposal?.itcStamp);
-	
+
 	// Determine proposal type
 	let proposalType: 'content' | 'config' | 'hybrid' = 'content';
 	if (proposedConfigChanges) {
 		proposalType = content ? 'hybrid' : 'config';
 	}
-	
+
 	return {
 		content,
 		authorPub: myPub,
@@ -585,7 +585,7 @@ function composeMyChallenge(
 	content: string
 ): ChallengeData {
 	const mergedITC = getMergedGameITC(gameId);
-	
+
 	return {
 		content,
 		authorPub: myPub,
@@ -603,7 +603,7 @@ function composeMyComment(
 	content: string
 ): CommentData {
 	const mergedITC = getMergedGameITC(gameId);
-	
+
 	return {
 		content,
 		authorPub: myPub,
@@ -621,7 +621,7 @@ function composeMyModification(
 	content: string
 ): ModificationProposalData {
 	const mergedITC = getMergedGameITC(gameId);
-	
+
 	return {
 		content,
 		authorPub: myPub,
@@ -640,7 +640,7 @@ function subscribeToGameParticipant(
 	agendaIndex: number
 ): () => void {
 	const unsubscribers: Array<() => void> = [];
-	
+
 	// Subscribe to their proposal
 	const unsubProposal = listenAtPath(
 		user,
@@ -655,12 +655,12 @@ function subscribeToGameParticipant(
 		true
 	);
 	unsubscribers.push(unsubProposal);
-	
+
 	// Get config to know all participants
 	const configs = get(gameConfigsStore);
 	const config = configs?.[gameId];
 	const allParticipants = config?.participants || [];
-	
+
 	// Subscribe to their challenges, comments, modifications, support for each proposal
 	for (const proposalAuthorPub of allParticipants) {
 		// Challenges
@@ -677,7 +677,7 @@ function subscribeToGameParticipant(
 			true
 		);
 		unsubscribers.push(unsubChallenge);
-		
+
 		// Comments
 		const unsubComment = listenAtPath(
 			user,
@@ -692,7 +692,7 @@ function subscribeToGameParticipant(
 			true
 		);
 		unsubscribers.push(unsubComment);
-		
+
 		// Modifications
 		const unsubModification = listenAtPath(
 			user,
@@ -707,7 +707,7 @@ function subscribeToGameParticipant(
 			true
 		);
 		unsubscribers.push(unsubModification);
-		
+
 		// Support
 		const unsubSupport = listenAtPath(
 			user,
@@ -726,7 +726,7 @@ function subscribeToGameParticipant(
 		);
 		unsubscribers.push(unsubSupport);
 	}
-	
+
 	// Return cleanup function
 	return () => {
 		unsubscribers.forEach(unsub => unsub());
@@ -750,7 +750,7 @@ class ReactiveP2PDecider {
 	private user: any;
 	private gameId: string;
 	private myPublicKey: string;
-	
+
 	// Derived stores (scoped to this game)
 	allProposals: Readable<ProposalData[]>;
 	allChallenges: Readable<Map<string, ChallengeData[]>>;
@@ -760,14 +760,14 @@ class ReactiveP2PDecider {
 	currentPhase: Readable<GamePhase>;
 	consensusResults: Readable<Map<string, string>>;
 	isReady: Readable<boolean>;
-	
+
 	// Config and participants (for backwards compatibility)
 	config = $state<GameConfig | null>(null);
 	participants = $state<string[]>([]);
-	
+
 	// Track subscriptions for cleanup
 	private unsubscribers: Array<() => void> = [];
-	
+
 	constructor(user: any, gameId: string) {
 		if (!user || !user.is || !user.is.pub) {
 			throw new Error('User must be authenticated before creating ReactiveP2PDecider');
@@ -775,7 +775,7 @@ class ReactiveP2PDecider {
 		this.user = user;
 		this.gameId = gameId;
 		this.myPublicKey = user.is.pub;
-		
+
 		// Create game-scoped derived stores
 		this.allProposals = getGameProposals(gameId);
 		this.allChallenges = getGameChallenges(gameId);
@@ -784,10 +784,10 @@ class ReactiveP2PDecider {
 		this.allSupport = getGameSupport(gameId);
 		this.currentPhase = getGamePhase(gameId);
 		this.consensusResults = getConsensusResults(gameId);
-		this.isReady = derived([gameConfigsStore], ([$configs]) => 
+		this.isReady = derived([gameConfigsStore], ([$configs]) =>
 			$configs?.[gameId] !== undefined
 		);
-		
+
 		// Subscribe to config changes to update local state
 		const unsubConfig = gameConfigsStore.subscribe(($configs) => {
 			const gameConfig = $configs?.[gameId];
@@ -804,13 +804,13 @@ class ReactiveP2PDecider {
 	// ========================================================================
 
 	async createGame(
-		agenda: (string | AgendaItem)[], 
+		agenda: (string | AgendaItem)[],
 		otherParticipantPubKeys: string[] = [],
 		timeWindow: number = 86400000,
 		phaseTimeConfig?: PhaseTimeConfig
 	): Promise<void> {
 		console.log(`[DECIDER] Creating new game with ID: ${this.gameId}`);
-		
+
 		const config: GameConfig = {
 			gameId: this.gameId,
 			participants: [this.myPublicKey, ...otherParticipantPubKeys],
@@ -823,16 +823,16 @@ class ReactiveP2PDecider {
 			createdBy: this.myPublicKey,
 		};
 
-		// Update global store (persists to Holster automatically via createStore)
+		// Update global store (persists to Mesh automatically via createStore)
 		const currentConfigs = get(gameConfigsStore) || {};
 		gameConfigsStore.set({
 			...currentConfigs,
 			[this.gameId]: config
 		});
-		
+
 		// Setup listeners for all participants
 		this.setupAllListeners(config.participants);
-		
+
 		console.log('[DECIDER] Game created successfully');
 	}
 
@@ -845,13 +845,13 @@ class ReactiveP2PDecider {
 			const configs = get(gameConfigsStore);
 			if (configs?.[this.gameId]) {
 				clearInterval(checkInterval);
-				
+
 				const config = configs[this.gameId];
-				
+
 				// Add myself as participant if not already included
 				if (!config.participants.includes(this.myPublicKey)) {
 					config.participants.push(this.myPublicKey);
-					
+
 					// Update store (persists automatically)
 					const currentConfigs = get(gameConfigsStore) || {};
 					gameConfigsStore.set({
@@ -859,14 +859,14 @@ class ReactiveP2PDecider {
 						[this.gameId]: config
 					});
 				}
-				
+
 				// Setup listeners
 				this.setupAllListeners(config.participants);
-				
+
 				console.log('[DECIDER] Successfully joined game');
 			}
 		}, 100);
-		
+
 		// Timeout after 10 seconds
 		setTimeout(() => {
 			clearInterval(checkInterval);
@@ -892,7 +892,7 @@ class ReactiveP2PDecider {
 			);
 			this.unsubscribers.push(unsub);
 		}
-		
+
 		console.log(`[DECIDER] Set up subscriptions for game ${this.gameId}`);
 	}
 
@@ -902,10 +902,10 @@ class ReactiveP2PDecider {
 
 	async writeMyProposal(content: string, proposedConfigChanges?: ProposedConfigChanges): Promise<void> {
 		if (!this.config) throw new Error('Must join or create game first');
-		
+
 		const key = `${this.gameId}:${this.myPublicKey}`;
 		const existing = networkProposals.getData(key);
-		
+
 		const proposal = composeMyProposal(
 			this.gameId,
 			this.myPublicKey,
@@ -951,7 +951,7 @@ class ReactiveP2PDecider {
 			this.myPublicKey,
 			challengeContent
 		);
-		
+
 		console.log(`[DECIDER] Writing challenge to proposal by ${proposalAuthorPub}`);
 
 		// Clean undefined fields for Gun compatibility
@@ -979,7 +979,7 @@ class ReactiveP2PDecider {
 			this.myPublicKey,
 			commentContent
 		);
-		
+
 		console.log(`[DECIDER] Writing comment on proposal by ${proposalAuthorPub}`);
 
 		// Clean undefined fields for Gun compatibility
@@ -1007,7 +1007,7 @@ class ReactiveP2PDecider {
 			this.myPublicKey,
 			modificationContent
 		);
-		
+
 		console.log(`[DECIDER] Writing modification to proposal by ${proposalAuthorPub}`);
 
 		// Clean undefined fields for Gun compatibility
@@ -1050,11 +1050,11 @@ class ReactiveP2PDecider {
 			);
 		});
 	}
-	
+
 	// ========================================================================
 	// CLEANUP
 	// ========================================================================
-	
+
 	destroy(): void {
 		console.log(`[DECIDER] Cleaning up ${this.unsubscribers.length} subscriptions`);
 		this.unsubscribers.forEach(unsub => unsub());
@@ -1066,7 +1066,7 @@ class ReactiveP2PDecider {
 // EXPORTS
 // ============================================================================
 
-export { 
+export {
 	ReactiveP2PDecider,
 	// Global stores (for advanced usage)
 	gameConfigsStore,

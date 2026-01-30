@@ -8,7 +8,7 @@
 	} from '@playnet/free-association/tree';
 	import { Calendar, DatePicker, Button } from 'bits-ui';
 	import { getLocalTimeZone, today } from '@internationalized/date';
-	import { holsterUserAlias as userAlias, holsterUserPub as userPub } from '$lib/network/holster.svelte';
+	import { meshUserAlias as userAlias, meshUserPub as userPub } from '$lib/network/mesh.svelte';
 	// V5: Import from v5 stores - CORRECT PATTERN: Use source stores + composition
 	import {
 		myRecognitionTreeStore as userTree,

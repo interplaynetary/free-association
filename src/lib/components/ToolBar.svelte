@@ -13,7 +13,7 @@
 	import { get } from 'svelte/store';
 	import { base } from '$app/paths';
 	import { searchTreeForNavigation } from '@playnet/free-association/filters/treeSearch';
-	import { holsterUserAlias as userAlias, holsterUserPub as userPub } from '$lib/network/holster.svelte';
+	import { meshUserAlias as userAlias, meshUserPub as userPub } from '$lib/network/mesh.svelte';
 	import { getLocalTimeZone, today } from '@internationalized/date';
 	// Demo tree for unauthenticated users
 	import type { Commitment, Node, NonRootNode, AvailabilitySlot, NeedSlot } from '@playnet/free-association/schemas';
@@ -133,7 +133,7 @@
 
 	// Helper function to update the appropriate tree store
 	function updateTreeStore(updatedTree: Node) {
-		// Always update userTree (handles both Holster and LocalStorage)
+		// Always update userTree (handles both Mesh and LocalStorage)
 		userTree.set(updatedTree);
 	}
 
@@ -637,7 +637,7 @@
 				const newSlot = capacity.capacity_slots[0];
 				const updatedSlots = [...currentSlots, newSlot];
 				
-				// Update v5 store (Holster auto-persists)
+				// Update v5 store (Mesh auto-persists)
 				setMyCapacitySlots(updatedSlots);
 				
 				// Add to highlighted capacities using global state

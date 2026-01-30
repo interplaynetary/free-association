@@ -33,7 +33,7 @@ import {
 	setMyNeedSlots
 } from '$lib/protocol/stores/stores.svelte';
 import { userContacts } from '$lib/network/users.svelte';
-import { slotSubscriptions, slotFilters } from '$lib/network/capacity-subscriptions.svelte';
+import { slotSubscriptions, slotFilters } from '$lib/network/slot-subscriptions.svelte';
 import { myAttributeRecognitions, myAttributeSubscriptions } from '$lib/protocol/stores/attributes.svelte';
 
 console.log('[TRACE] src/lib/utils/data/userStateExport.ts: <module scope>');
@@ -287,11 +287,11 @@ export async function importUserState(
 	const errors: string[] = [];
 
 	try {
-		// V5: Import tree (Holster auto-persists)
+		// V5: Import tree (Mesh auto-persists)
 		if (!options.skipTree && importData.data.tree) {
 			console.log('[USER-STATE-IMPORT] Importing tree...');
 			userTree.set(importData.data.tree);
-			console.log('[USER-STATE-IMPORT] ✓ Tree imported (Holster auto-persisting)');
+			console.log('[USER-STATE-IMPORT] ✓ Tree imported (Mesh auto-persisting)');
 		}
 
 		// V5: Recognition weights are computed from tree, no need to import
@@ -300,21 +300,21 @@ export async function importUserState(
 		if (!options.skipCommitment && importData.data.commitment) {
 			console.log('[USER-STATE-IMPORT] Importing commitment...');
 			myCommitmentStore.set(importData.data.commitment);
-			console.log('[USER-STATE-IMPORT] ✓ Commitment imported (Holster auto-persisting)');
+			console.log('[USER-STATE-IMPORT] ✓ Commitment imported (Mesh auto-persisting)');
 		} else {
 			// Fall back to importing slots individually if no commitment
-			// V5: Import capacity slots (Holster auto-persists)
+			// V5: Import capacity slots (Mesh auto-persists)
 			if (!options.skipCapacitySlots && importData.data.capacity_slots) {
 				console.log('[USER-STATE-IMPORT] Importing capacity slots...');
 				setMyCapacitySlots(importData.data.capacity_slots);
-				console.log('[USER-STATE-IMPORT] ✓ Capacity slots imported (Holster auto-persisting)');
+				console.log('[USER-STATE-IMPORT] ✓ Capacity slots imported (Mesh auto-persisting)');
 			}
 
-			// V5: Import need slots (Holster auto-persists)
+			// V5: Import need slots (Mesh auto-persists)
 			if (!options.skipNeedSlots && importData.data.need_slots) {
 				console.log('[USER-STATE-IMPORT] Importing need slots...');
 				setMyNeedSlots(importData.data.need_slots);
-				console.log('[USER-STATE-IMPORT] ✓ Need slots imported (Holster auto-persisting)');
+				console.log('[USER-STATE-IMPORT] ✓ Need slots imported (Mesh auto-persisting)');
 			}
 		}
 
@@ -322,25 +322,25 @@ export async function importUserState(
 		if (!options.skipSlotSubscriptions && importData.data.slot_subscriptions) {
 			console.log('[USER-STATE-IMPORT] Importing slot subscriptions...');
 			slotSubscriptions.set(importData.data.slot_subscriptions);
-			console.log('[USER-STATE-IMPORT] ✓ Slot subscriptions imported (Holster auto-persisting)');
+			console.log('[USER-STATE-IMPORT] ✓ Slot subscriptions imported (Mesh auto-persisting)');
 		}
 
 		if (!options.skipSlotFilters && importData.data.slot_filters) {
 			console.log('[USER-STATE-IMPORT] Importing slot filters...');
 			slotFilters.set(importData.data.slot_filters);
-			console.log('[USER-STATE-IMPORT] ✓ Slot filters imported (Holster auto-persisting)');
+			console.log('[USER-STATE-IMPORT] ✓ Slot filters imported (Mesh auto-persisting)');
 		}
 
 		if (importData.data.attribute_recognitions) {
 			console.log('[USER-STATE-IMPORT] Importing attribute recognitions...');
 			myAttributeRecognitions.set(importData.data.attribute_recognitions);
-			console.log('[USER-STATE-IMPORT] ✓ Attribute recognitions imported (Holster auto-persisting)');
+			console.log('[USER-STATE-IMPORT] ✓ Attribute recognitions imported (Mesh auto-persisting)');
 		}
 
 		if (importData.data.attribute_subscriptions) {
 			console.log('[USER-STATE-IMPORT] Importing attribute subscriptions...');
 			myAttributeSubscriptions.set(importData.data.attribute_subscriptions);
-			console.log('[USER-STATE-IMPORT] ✓ Attribute subscriptions imported (Holster auto-persisting)');
+			console.log('[USER-STATE-IMPORT] ✓ Attribute subscriptions imported (Mesh auto-persisting)');
 		}
 
 		// V5 TODO: Composition desires need to be redesigned

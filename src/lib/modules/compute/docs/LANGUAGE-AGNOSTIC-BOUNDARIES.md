@@ -37,10 +37,10 @@ The boundaries are sometimes blurred, particularly in the kernel, which mixes ge
 │  PRIMITIVES (Core Infrastructure)                          │ ← Language-agnostic
 │  - ITC (interval tree clocks)                              │
 │  - Deterministic hashing                                    │
-│  - Store abstraction (Holster integration)                 │
+│  - Store abstraction (Mesh integration)                 │
 │  - Path management                                          │
 ├─────────────────────────────────────────────────────────────┤
-│  STORAGE LAYER (Holster/Gun)                               │ ← Language-agnostic
+│  STORAGE LAYER (Mesh/Gun)                               │ ← Language-agnostic
 │  - Encrypted P2P database                                  │
 │  - Cross-user subscriptions                                 │
 └─────────────────────────────────────────────────────────────┘
@@ -97,9 +97,9 @@ export function createDeterministicHash(
 
 ---
 
-#### 3. **Holster Store Abstraction** - `utils/store.svelte.ts`
+#### 3. **Mesh Store Abstraction** - `utils/store.svelte.ts`
 ```typescript
-export interface HolsterStore<T> extends Readable<T | null> {
+export interface MeshStore<T> extends Readable<T | null> {
   initialize(): void;
   cleanup(): Promise<void>;
   subscribeToUser(pubKey: string, callback?: Function): void;
@@ -109,23 +109,23 @@ export interface HolsterStore<T> extends Readable<T | null> {
 
 export function createStore<T extends z.ZodTypeAny>(
   config: StoreConfig<T>
-): HolsterStore<T> | null { ... }
+): MeshStore<T> | null { ... }
 ```
 
 **Why agnostic:**
 - Generic over schema type (uses Zod, but any validator would work)
-- Wraps Holster/Gun with reactive semantics
+- Wraps Mesh/Gun with reactive semantics
 - No knowledge of programs, computations, or RDL
 
 **Reusability:** 90% - Requires Zod/Gun, but abstractions are generic
 
 ---
 
-#### 4. **Holster Path Utilities** - `program-hash.svelte.ts` (path functions)
+#### 4. **Mesh Path Utilities** - `program-hash.svelte.ts` (path functions)
 ```typescript
-export function prefixHolsterPath(
+export function prefixMeshPath(
   programHash: string, 
-  holsterPath: string
+  meshPath: string
 ): string { ... }
 
 export function extractProgramHash(prefixedPath: string): string | null { ... }
@@ -476,7 +476,7 @@ export function passesSlotFilters() { ... }
 │  └─────────────────────────────────────────────────────────┘│
 │  ┌─────────────────────────────────────────────────────────┐│
 │  │ Storage Abstraction                                     ││
-│  │ - Holster store wrapper                                ││
+│  │ - Mesh store wrapper                                ││
 │  │ - Path management                                      ││
 │  │ - Schema validation (generic)                          ││
 │  └─────────────────────────────────────────────────────────┘│
@@ -625,7 +625,7 @@ registerLanguage(rdlRuntime);
 **What's Truly Language-Agnostic:**
 - ✅ ITC (causality tracking)
 - ✅ Deterministic hashing (content addressing)
-- ✅ Store abstraction (Holster wrapper)
+- ✅ Store abstraction (Mesh wrapper)
 - ✅ Path utilities (namespace management)
 
 **What's Clearly RDL-Specific:**

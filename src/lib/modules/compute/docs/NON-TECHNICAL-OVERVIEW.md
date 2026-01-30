@@ -6,7 +6,7 @@
 
 This is **distributed computing infrastructure** that turns **millions of devices into a shared computational commons**. Think of it as:
 
-- **Distributed storage** (Holster/Gun) + **Distributed computation** (RDL) = **A new computing paradigm**
+- **Distributed storage** (Mesh/Gun) + **Distributed computation** (RDL) = **A new computing paradigm**
 - Like **Excel that runs across the entire internet**, where anyone can write formulas, subscribe to results, and verify calculations
 - A **global network of verifiable computation** running for free in browsers and on disk
 - **Post-app-italism**: Breaking out of the app prison into open, composable, public computation
@@ -87,7 +87,7 @@ Instead of isolated apps, imagine:
 
 ### The Three Layers
 
-**Layer 1: Distributed Storage (Holster/Gun)**
+**Layer 1: Distributed Storage (Mesh/Gun)**
 - Your data lives on **your device** (browser, phone, computer)
 - **Encrypted** peer-to-peer synchronization
 - No servers, no company in the middle
@@ -143,7 +143,7 @@ Charlie's result: 30
 
 When Alice changes her offers to 15:
 1. **Alice's device** updates `~/alice/offers` = 15
-2. **P2P sync** propagates to network (Holster)
+2. **P2P sync** propagates to network (Mesh)
 3. **Charlie's device** sees the change (subscribed)
 4. **Charlie's program** auto-recomputes: 15 + 20 = 35
 5. **Charlie's result** updates: `~/charlie/total` = 35
@@ -321,7 +321,7 @@ If provenance doesn't match, the fraud is mathematically provable.
 
 ## The Distributed Computing Layer
 
-### Holster: Distributed Storage
+### Mesh: Distributed Storage
 
 **What it provides:**
 - Every user has encrypted storage (their "space")
@@ -345,17 +345,17 @@ If provenance doesn't match, the fraud is mathematically provable.
 - Program registry (discover and deploy programs)
 
 **Together:**
-- Holster = distributed hard drive
+- Mesh = distributed hard drive
 - RDL = distributed CPU + memory
 - Combined = **distributed computer**
 
 ### The Result: Global Computational Commons
 
 Anyone can:
-1. **Store data** (on Holster)
+1. **Store data** (on Mesh)
 2. **Write programs** (in RDL)
 3. **Run computations** (on their device)
-4. **Publish results** (to Holster)
+4. **Publish results** (to Mesh)
 5. **Subscribe to others** (automatic updates)
 6. **Verify everything** (check provenance)
 7. **Compose freely** (chain computations)
@@ -540,7 +540,7 @@ Because everything is open, everything can compose.
 ### Computational Commons (This System)
 
 **Digital commons** (new):
-- Common storage (Holster - everyone stores data)
+- Common storage (Mesh - everyone stores data)
 - Common computation (RDL - everyone runs programs)
 - Common verification (Provenance - everyone checks work)
 
@@ -629,7 +629,7 @@ Not an app. Not a platform. **Infrastructure for a planetary-scale computer** wh
 
 **This system** creates a **planetary computation system**:
 - Anyone can publish programs (RDL)
-- Anyone can subscribe to results (Holster paths)
+- Anyone can subscribe to results (Mesh paths)
 - Anyone can run computations (browsers + IndexedDB)
 - No permission needed (open protocols)
 
@@ -798,9 +798,9 @@ Compute Runtime (execute RDL)
         ↓
 Kernel (program management)
         ↓
-Store Layer (Holster integration)
+Store Layer (Mesh integration)
         ↓
-Holster/Gun (P2P storage)
+Mesh/Gun (P2P storage)
         ↓
 IndexedDB / Disk
 ```

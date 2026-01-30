@@ -1,7 +1,7 @@
-import {z} from "zod"
-import type {DataRelayConfig} from "../config"
-import {buildFlatPath, DEFAULT_RETENTION, DEFAULT_THROTTLING} from "../config"
-import type {User} from "@mblaney/holster/src/holster.js"
+import { z } from "zod"
+import type { DataRelayConfig } from "../config"
+import { buildFlatPath, DEFAULT_RETENTION, DEFAULT_THROTTLING } from "../config"
+import type { User } from "@playnet/mesh/src/mesh"
 
 // ============================================================================
 // Webhook Events Configuration
@@ -217,7 +217,7 @@ export const emailArchiveConfig: DataRelayConfig = {
       subject: data.subject,
       body: data.body,
       receivedAt: data.receivedAt,
-      labels: data.labels?.reduce((acc, label) => ({...acc, [label]: true}), {}) || {},
+      labels: data.labels?.reduce((acc, label) => ({ ...acc, [label]: true }), {}) || {},
       hasAttachments: (data.attachments?.length || 0) > 0,
       attachmentCount: data.attachments?.length || 0,
     }),
@@ -337,7 +337,7 @@ export const jsonDocumentConfig: DataRelayConfig = {
       collection: data.collection,
       timestamp: data.timestamp,
       data: data.data,
-      tags: data.tags?.reduce((acc, tag) => ({...acc, [tag]: true}), {}) || {},
+      tags: data.tags?.reduce((acc, tag) => ({ ...acc, [tag]: true }), {}) || {},
       updatedAt: Date.now(),
     }),
   },

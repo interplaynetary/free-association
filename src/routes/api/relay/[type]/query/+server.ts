@@ -1,8 +1,8 @@
-import {json, error} from "@sveltejs/kit"
-import type {RequestHandler} from "./$types"
-import {user} from "$lib/server/holster/core"
-import {checkAuth} from "$lib/server/holster/auth"
-import {z} from "zod"
+import { json, error } from "@sveltejs/kit"
+import type { RequestHandler } from "./$types"
+import { user } from "$lib/server/mesh/core"
+import { checkAuth } from "$lib/server/mesh/auth"
+import { z } from "zod"
 
 const querySchema = z.object({
   collection: z.string().optional(),
@@ -23,9 +23,9 @@ export const GET: RequestHandler = async (event) => {
   const authError = checkAuth(event)
   if (authError) return authError
 
-  const {type} = event.params
+  const { type } = event.params
   const params = Object.fromEntries(event.url.searchParams.entries())
-  
+
   // Parse query parameters
   const parsedParams = querySchema.safeParse({
     ...params,
@@ -38,7 +38,7 @@ export const GET: RequestHandler = async (event) => {
     error(400, parsedParams.error.message)
   }
 
-  const {resourceId, timeKey, limit, offset} = parsedParams.data
+  const { resourceId, timeKey, limit, offset } = parsedParams.data
 
   try {
     // Determine collection name based on relay type
@@ -82,7 +82,7 @@ export const GET: RequestHandler = async (event) => {
         const items: any[] = []
         for (const [key, value] of Object.entries(data)) {
           if (key !== "_" && value && typeof value === "object") {
-            items.push({...value, _key: key})
+            items.push({ ...value, _key: key })
           }
         }
 

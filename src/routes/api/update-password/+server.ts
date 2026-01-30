@@ -1,17 +1,17 @@
-import {error} from "@sveltejs/kit"
-import {updatePasswordSchema} from "$lib/server/schemas/holster"
-import {user, holster} from "$lib/server/holster/core"
-import {holsterNext, holsterNextPut, holsterDecrypt, ensureAuthenticated} from "$lib/server/holster/db"
-import {createPOSTHandler} from "$lib/server/middleware/request-handler"
+import { error } from "@sveltejs/kit"
+import { updatePasswordSchema } from "$lib/server/schemas/mesh"
+import { user, mesh } from "$lib/server/mesh/core"
+import { meshNext, meshNextPut, meshDecrypt, ensureAuthenticated } from "$lib/server/mesh/db"
+import { createPOSTHandler } from "$lib/server/middleware/request-handler"
 
 export const POST = createPOSTHandler(
   updatePasswordSchema,
-  async ({data: requestData}) => {
-    const {code, reset, pub, epub, username: userName, name} = requestData
+  async ({ data: requestData }) => {
+    const { code, reset, pub, epub, username: userName, name } = requestData
 
     ensureAuthenticated()
 
-    const account = await holsterNext("accounts", code)
+    const account = await meshNext("accounts", code)
 
     if (!account) {
       error(404, "Account not found")
@@ -25,7 +25,7 @@ export const POST = createPOSTHandler(
       error(400, "Reset code has expired")
     }
 
-    const resetCode = await holsterDecrypt((account as any).reset, user.is)
+    const resetCode = await meshDecrypt((account as any).reset, user.is)
     if (resetCode !== reset) {
       error(400, "Reset code does not match")
     }
@@ -39,10 +39,10 @@ export const POST = createPOSTHandler(
     }
 
     // Update account
-    await holsterNextPut("accounts", code, accountData)
+    await meshNextPut("accounts", code, accountData)
 
     // Update account map
-    await holsterNextPut("map", "account:" + pub, code)
+    await meshNextPut("map", "account:" + pub, code)
 
     // Update shared invite codes for this account (async operation)
     user
@@ -50,16 +50,16 @@ export const POST = createPOSTHandler(
       .next("invite_codes")
       .next(code, async (codes: any) => {
         if (codes) {
-          const oldSecret = await holster.SEA.secret(account, user.is)
-          const newSecret = await holster.SEA.secret(accountData, user.is)
-          
+          const oldSecret = await mesh.SEA.secret(account, user.is)
+          const newSecret = await mesh.SEA.secret(accountData, user.is)
+
           for (const [key, encrypted] of Object.entries(codes)) {
             if (!key || !encrypted) continue
 
             try {
-              const dec = await holster.SEA.decrypt(encrypted, oldSecret)
-              const shared = await holster.SEA.encrypt(dec, newSecret)
-              await holsterNextPut("shared", ["invite_codes", code, key].join('/'), shared)
+              const dec = await mesh.SEA.decrypt(encrypted, oldSecret)
+              const shared = await mesh.SEA.encrypt(dec, newSecret)
+              await meshNextPut("shared", ["invite_codes", code, key].join('/'), shared)
             } catch (err) {
               console.log('Error re-encrypting shared code:', err)
             }
@@ -67,7 +67,7 @@ export const POST = createPOSTHandler(
         }
       })
 
-    return {previousPub: (account as any).pub}
+    return { previousPub: (account as any).pub }
   }
 )
 

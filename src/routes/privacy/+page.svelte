@@ -53,7 +53,7 @@ This policy describes what data we collect, how we use it, and the limitations o
 
 **Legal Basis (GDPR):** Legitimate interest and contract performance
 
-**Storage Location:** Our servers (Gun/Holster relay servers)
+**Storage Location:** Our servers (Gun/Mesh relay servers)
 
 **Retention:** Until you request account deletion or service termination
 

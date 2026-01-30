@@ -6,7 +6,7 @@ import type {
   ResourceMetadata,
 } from "./config"
 
-// Type for Gun/Holster user instance
+// Type for Gun/Mesh user instance
 type User = any
 
 /**
@@ -18,7 +18,7 @@ export class SubscriptionManager {
     private config: SubscriptionConfig,
     private user: User,
     private relayType: string,
-  ) {}
+  ) { }
 
   /**
    * Subscribe a user to a resource
@@ -281,7 +281,7 @@ export class SubscriptionManager {
 
     // If no limit set, allow unlimited
     if (limit === null || limit === undefined) {
-      return {allowed: true}
+      return { allowed: true }
     }
 
     if (current >= limit) {
@@ -301,7 +301,7 @@ export class SubscriptionManager {
   }
 
   /**
-   * Get account from Holster
+   * Get account from Mesh
    */
   private async getAccount(accountCode: string): Promise<any> {
     return new Promise(resolve => {
@@ -310,7 +310,7 @@ export class SubscriptionManager {
   }
 
   /**
-   * Get resource metadata from Holster
+   * Get resource metadata from Mesh
    */
   private async getResource(resourceId: string): Promise<any> {
     return new Promise(resolve => {
@@ -350,7 +350,7 @@ export class SubscriptionManager {
     return new Promise(resolve => {
       this.user.get(this.config.resourceCollection, (resources: any) => {
         if (!resources) {
-          resolve({totalResources: 0, totalSubscriptions: 0})
+          resolve({ totalResources: 0, totalSubscriptions: 0 })
           return
         }
 
@@ -367,7 +367,7 @@ export class SubscriptionManager {
           }
         }
 
-        resolve({totalResources, totalSubscriptions})
+        resolve({ totalResources, totalSubscriptions })
       })
     })
   }

@@ -18,7 +18,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // ═══════════════════════════════════════════════════════════════════
 
 // Mock old state modules to prevent localStorage access
-// NOTE: Using real holster.svelte module (it has mockAuth/clearAuth for testing)
+// NOTE: Using real mesh.svelte module (it has mockAuth/clearAuth for testing)
 
 vi.mock('$lib/state/gun.svelte', () => ({
 	gun: null,
@@ -27,7 +27,7 @@ vi.mock('$lib/state/gun.svelte', () => ({
 
 vi.mock('$lib/protocol/config', () => ({
 	config: {
-		holster: {
+		mesh: {
 			peers: [],
 			indexedDB: false,
 			file: undefined
@@ -60,7 +60,7 @@ import {
 	getSubscriptionStats,
 	getConvergenceStats
 } from '$lib/protocol/stores/stores.svelte';
-import { mockAuth, clearAuth } from '$lib/network/holster.svelte';
+import { mockAuth, clearAuth } from '$lib/network/mesh.svelte';
 import type { Commitment, RootNode, NeedSlot, AvailabilitySlot, GlobalRecognitionWeights } from '../schemas';
 import { seed as itcSeed, event as itcEvent, join as itcJoin } from '$lib/utils/primitives/itc';
 
@@ -951,21 +951,21 @@ describe('Realistic Scenario - Multi-User Allocation', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════
-// TEST 11: HOLSTER CONVERTERS - ARRAY/RECORD CONVERSION
+// TEST 11: MESH CONVERTERS - ARRAY/RECORD CONVERSION
 // NOTE: These tests are now obsolete! We use JSON.stringify/parse instead.
 // Tests kept for reference only - they will fail if run.
 // ═══════════════════════════════════════════════════════════════════
 
-// import { toHolsterFormat, fromHolsterFormat } from '../../utils/holster-converters';
+// import { toMeshFormat, fromMeshFormat } from '../../utils/mesh-converters';
 
-describe.skip('Holster Converters - Array to Record Conversion (OBSOLETE - using JSON now)', () => {
+describe.skip('Mesh Converters - Array to Record Conversion (OBSOLETE - using JSON now)', () => {
 	it('should convert arrays with id field to id-keyed records', () => {
 		const data = [
 			{ id: 'slot-1', name: 'Food', quantity: 10 },
 			{ id: 'slot-2', name: 'Housing', quantity: 5 }
 		];
 
-		const result = toHolsterFormat(data);
+		const result = toMeshFormat(data);
 
 		expect(result).toEqual({
 			'slot-1': { id: 'slot-1', name: 'Food', quantity: 10 },
@@ -975,7 +975,7 @@ describe.skip('Holster Converters - Array to Record Conversion (OBSOLETE - using
 
 	it('should convert arrays without id field to numeric-keyed records', () => {
 		const data = ['red', 'green', 'blue'];
-		const result = toHolsterFormat(data);
+		const result = toMeshFormat(data);
 
 		expect(result).toEqual({
 			'0': 'red',
@@ -985,7 +985,7 @@ describe.skip('Holster Converters - Array to Record Conversion (OBSOLETE - using
 	});
 
 	it('should convert empty arrays to null', () => {
-		const result = toHolsterFormat([]);
+		const result = toMeshFormat([]);
 		expect(result).toBeNull();
 	});
 
@@ -996,7 +996,7 @@ describe.skip('Holster Converters - Array to Record Conversion (OBSOLETE - using
 			]
 		};
 
-		const result = toHolsterFormat(data);
+		const result = toMeshFormat(data);
 
 		expect(result).toEqual({
 			slots: {
@@ -1018,7 +1018,7 @@ describe.skip('Holster Converters - Array to Record Conversion (OBSOLETE - using
 			value: 42
 		};
 
-		const result = toHolsterFormat(data);
+		const result = toMeshFormat(data);
 
 		expect(result).toEqual({
 			name: 'Test',
@@ -1043,7 +1043,7 @@ describe.skip('Holster Converters - Array to Record Conversion (OBSOLETE - using
 			]
 		};
 
-		const result = toHolsterFormat(data);
+		const result = toMeshFormat(data);
 
 		expect(result.capacity_slots['slot-1'].id).toBe('slot-1');
 		expect(result.capacity_slots['slot-1'].availability_window.time_ranges['0'].start_time).toBe('09:00');
@@ -1051,7 +1051,7 @@ describe.skip('Holster Converters - Array to Record Conversion (OBSOLETE - using
 	});
 });
 
-describe.skip('Holster Converters - Record to Array Conversion (OBSOLETE - using JSON now)', () => {
+describe.skip('Mesh Converters - Record to Array Conversion (OBSOLETE - using JSON now)', () => {
 	it('should convert numeric-keyed records back to arrays', () => {
 		const data = {
 			'0': 'red',
@@ -1059,7 +1059,7 @@ describe.skip('Holster Converters - Record to Array Conversion (OBSOLETE - using
 			'2': 'blue'
 		};
 
-		const result = fromHolsterFormat(data);
+		const result = fromMeshFormat(data);
 
 		expect(result).toEqual(['red', 'green', 'blue']);
 	});
@@ -1070,7 +1070,7 @@ describe.skip('Holster Converters - Record to Array Conversion (OBSOLETE - using
 			'slot-2': { id: 'slot-2', name: 'Housing', quantity: 5 }
 		};
 
-		const result = fromHolsterFormat(data);
+		const result = fromMeshFormat(data);
 
 		expect(Array.isArray(result)).toBe(true);
 		expect(result.length).toBe(2);
@@ -1079,7 +1079,7 @@ describe.skip('Holster Converters - Record to Array Conversion (OBSOLETE - using
 	});
 
 	it('should convert null to null (for nullable fields)', () => {
-		const result = fromHolsterFormat(null);
+		const result = fromMeshFormat(null);
 		expect(result).toBeNull();
 	});
 
@@ -1096,7 +1096,7 @@ describe.skip('Holster Converters - Record to Array Conversion (OBSOLETE - using
 			}
 		};
 
-		const result = fromHolsterFormat(data);
+		const result = fromMeshFormat(data);
 
 		expect(Array.isArray(result.slots)).toBe(true);
 		expect(result.slots[0].id).toBe('s1');
@@ -1120,7 +1120,7 @@ describe.skip('Holster Converters - Record to Array Conversion (OBSOLETE - using
 			}
 		};
 
-		const result = fromHolsterFormat(data);
+		const result = fromMeshFormat(data);
 
 		expect(Array.isArray(result.capacity_slots)).toBe(true);
 		expect(result.capacity_slots[0].id).toBe('slot-1');
@@ -1129,7 +1129,7 @@ describe.skip('Holster Converters - Record to Array Conversion (OBSOLETE - using
 	});
 });
 
-describe.skip('Holster Converters - Enum Normalization (OBSOLETE - using JSON now)', () => {
+describe.skip('Mesh Converters - Enum Normalization (OBSOLETE - using JSON now)', () => {
 	it('should normalize valid enum values to lowercase', () => {
 		const data = {
 			slot: {
@@ -1138,7 +1138,7 @@ describe.skip('Holster Converters - Enum Normalization (OBSOLETE - using JSON no
 			}
 		};
 
-		const result = fromHolsterFormat(data);
+		const result = fromMeshFormat(data);
 		expect(result.slot.recurrence).toBe('daily');
 	});
 
@@ -1152,7 +1152,7 @@ describe.skip('Holster Converters - Enum Normalization (OBSOLETE - using JSON no
 			}
 		};
 
-		const result = fromHolsterFormat(data);
+		const result = fromMeshFormat(data);
 		expect(result.capacity_slots[0].recurrence).toBe('weekly');
 	});
 
@@ -1164,7 +1164,7 @@ describe.skip('Holster Converters - Enum Normalization (OBSOLETE - using JSON no
 			}
 		};
 
-		const result = fromHolsterFormat(data);
+		const result = fromMeshFormat(data);
 		expect(result.slot.recurrence).toBe('weekly');
 	});
 
@@ -1176,7 +1176,7 @@ describe.skip('Holster Converters - Enum Normalization (OBSOLETE - using JSON no
 			}
 		};
 
-		const result = fromHolsterFormat(data);
+		const result = fromMeshFormat(data);
 		expect(result.slot.recurrence).toBe('weekly');
 	});
 
@@ -1189,7 +1189,7 @@ describe.skip('Holster Converters - Enum Normalization (OBSOLETE - using JSON no
 			}
 		};
 
-		const result = fromHolsterFormat(data);
+		const result = fromMeshFormat(data);
 
 		expect(result.capacity_slots[0].recurrence).toBe('daily');
 		expect(result.capacity_slots[1].recurrence).toBe('weekly');
@@ -1204,7 +1204,7 @@ describe.skip('Holster Converters - Enum Normalization (OBSOLETE - using JSON no
 			}
 		};
 
-		const result = fromHolsterFormat(data);
+		const result = fromMeshFormat(data);
 		expect(result.slot.recurrence).toBeNull();
 	});
 
@@ -1224,12 +1224,12 @@ describe.skip('Holster Converters - Enum Normalization (OBSOLETE - using JSON no
 			}
 		};
 
-		const result = fromHolsterFormat(data);
+		const result = fromMeshFormat(data);
 		expect(result.commitment.capacity_slots[0].nested.deep.recurrence).toBe('monthly');
 	});
 });
 
-describe.skip('Holster Converters - Round Trip Conversion (OBSOLETE - using JSON now)', () => {
+describe.skip('Mesh Converters - Round Trip Conversion (OBSOLETE - using JSON now)', () => {
 	it('should preserve data through round trip for slots', () => {
 		const original = {
 			capacity_slots: [
@@ -1243,10 +1243,10 @@ describe.skip('Holster Converters - Round Trip Conversion (OBSOLETE - using JSON
 			]
 		};
 
-		const toHolster = toHolsterFormat(original);
-		const fromHolster = fromHolsterFormat(toHolster);
+		const toMesh = toMeshFormat(original);
+		const fromMesh = fromMeshFormat(toMesh);
 
-		expect(fromHolster.capacity_slots).toEqual(original.capacity_slots);
+		expect(fromMesh.capacity_slots).toEqual(original.capacity_slots);
 	});
 
 	it('should preserve nested structures through round trip', () => {
@@ -1263,10 +1263,10 @@ describe.skip('Holster Converters - Round Trip Conversion (OBSOLETE - using JSON
 			]
 		};
 
-		const toHolster = toHolsterFormat(original);
-		const fromHolster = fromHolsterFormat(toHolster);
+		const toMesh = toMeshFormat(original);
+		const fromMesh = fromMeshFormat(toMesh);
 
-		expect(fromHolster).toEqual(original);
+		expect(fromMesh).toEqual(original);
 	});
 
 	it('should fix legacy enum values during round trip', () => {
@@ -1276,34 +1276,34 @@ describe.skip('Holster Converters - Round Trip Conversion (OBSOLETE - using JSON
 			]
 		};
 
-		const toHolster = toHolsterFormat(original);
-		const fromHolster = fromHolsterFormat(toHolster);
+		const toMesh = toMeshFormat(original);
+		const fromMesh = fromMeshFormat(toMesh);
 
 		// Legacy value should be normalized
-		expect(fromHolster.capacity_slots[0].recurrence).toBe('weekly');
+		expect(fromMesh.capacity_slots[0].recurrence).toBe('weekly');
 	});
 });
 
-describe.skip('Holster Converters - Edge Cases (OBSOLETE - using JSON now)', () => {
+describe.skip('Mesh Converters - Edge Cases (OBSOLETE - using JSON now)', () => {
 	it('should handle empty objects', () => {
-		const result = toHolsterFormat({});
+		const result = toMeshFormat({});
 		expect(result).toBeNull();
 	});
 
 	it('should handle null input', () => {
-		const result = toHolsterFormat(null);
+		const result = toMeshFormat(null);
 		expect(result).toBeNull();
 	});
 
 	it('should handle undefined input', () => {
-		const result = toHolsterFormat(undefined);
+		const result = toMeshFormat(undefined);
 		expect(result).toBeNull();
 	});
 
 	it('should handle primitives', () => {
-		expect(toHolsterFormat(42)).toBe(42);
-		expect(toHolsterFormat('test')).toBe('test');
-		expect(toHolsterFormat(true)).toBe(true);
+		expect(toMeshFormat(42)).toBe(42);
+		expect(toMeshFormat('test')).toBe('test');
+		expect(toMeshFormat(true)).toBe(true);
 	});
 
 	it('should handle mixed array types', () => {
@@ -1313,21 +1313,21 @@ describe.skip('Holster Converters - Edge Cases (OBSOLETE - using JSON now)', () 
 		];
 
 		// When not all elements have id, should fall back to numeric keys
-		const result = toHolsterFormat(data);
+		const result = toMeshFormat(data);
 		expect(result['0']).toBeDefined();
 		expect(result['1']).toBeDefined();
 	});
 
-	it('should handle Holster metadata fields', () => {
+	it('should handle Mesh metadata fields', () => {
 		const data = {
 			capacity_slots: {
 				'slot-1': { id: 'slot-1', name: 'Food' },
-				'_': { some: 'metadata' }, // Holster metadata
+				'_': { some: 'metadata' }, // Mesh metadata
 				'#': { some: 'reference' } // Gun reference
 			}
 		};
 
-		const result = fromHolsterFormat(data);
+		const result = fromMeshFormat(data);
 
 		// Should only have the actual slot, not metadata
 		expect(Array.isArray(result.capacity_slots)).toBe(true);
@@ -1343,7 +1343,7 @@ describe.skip('Holster Converters - Edge Cases (OBSOLETE - using JSON now)', () 
 		};
 
 		// This is NOT a valid array (missing 1, 3), so should stay as object
-		const result = fromHolsterFormat(data);
+		const result = fromMeshFormat(data);
 		expect(typeof result).toBe('object');
 		expect(Array.isArray(result)).toBe(false);
 	});
@@ -1363,10 +1363,10 @@ describe.skip('Holster Converters - Edge Cases (OBSOLETE - using JSON now)', () 
 			}
 		};
 
-		const toHolster = toHolsterFormat(data);
-		const fromHolster = fromHolsterFormat(toHolster);
+		const toMesh = toMeshFormat(data);
+		const fromMesh = fromMeshFormat(toMesh);
 
-		expect(fromHolster.level1.level2.level3.level4.slots[0].recurrence).toBe('daily');
+		expect(fromMesh.level1.level2.level3.level4.slots[0].recurrence).toBe('daily');
 	});
 
 	it('should handle commitments with all array fields', () => {
@@ -1380,17 +1380,17 @@ describe.skip('Holster Converters - Edge Cases (OBSOLETE - using JSON now)', () 
 			]
 		});
 
-		const toHolster = toHolsterFormat(commitment);
-		const fromHolster = fromHolsterFormat(toHolster);
+		const toMesh = toMeshFormat(commitment);
+		const fromMesh = fromMeshFormat(toMesh);
 
-		expect(Array.isArray(fromHolster.need_slots)).toBe(true);
-		expect(fromHolster.need_slots.length).toBe(2);
-		expect(Array.isArray(fromHolster.capacity_slots)).toBe(true);
-		expect(fromHolster.capacity_slots.length).toBe(1);
+		expect(Array.isArray(fromMesh.need_slots)).toBe(true);
+		expect(fromMesh.need_slots.length).toBe(2);
+		expect(Array.isArray(fromMesh.capacity_slots)).toBe(true);
+		expect(fromMesh.capacity_slots.length).toBe(1);
 	});
 });
 
-describe.skip('Holster Converters - Integration with Stores (OBSOLETE - using JSON now)', () => {
+describe.skip('Mesh Converters - Integration with Stores (OBSOLETE - using JSON now)', () => {
 	beforeEach(() => {
 		mockAuth(TEST_USER_PUB, 'test-user');
 	});
@@ -1412,10 +1412,10 @@ describe.skip('Holster Converters - Integration with Stores (OBSOLETE - using JS
 			]
 		});
 
-		// Store it (will use toHolsterFormat internally)
+		// Store it (will use toMeshFormat internally)
 		myCommitmentStore.set(commitment);
 
-		// Retrieve it (will use fromHolsterFormat internally)
+		// Retrieve it (will use fromMeshFormat internally)
 		const retrieved = get(myCommitmentStore);
 
 		expect(retrieved).toBeDefined();
@@ -1425,9 +1425,9 @@ describe.skip('Holster Converters - Integration with Stores (OBSOLETE - using JS
 	});
 
 	it('should handle legacy data when loading from network', () => {
-		// Simulate receiving data with legacy enum values from Holster
-		// The data comes in as a Record (Holster format) with legacy enum values
-		const legacyHolsterData = {
+		// Simulate receiving data with legacy enum values from Mesh
+		// The data comes in as a Record (Mesh format) with legacy enum values
+		const legacyMeshData = {
 			timestamp: Date.now(),
 			itcStamp: itcSeed(),
 			global_recognition_weights: {},
@@ -1437,13 +1437,13 @@ describe.skip('Holster Converters - Integration with Stores (OBSOLETE - using JS
 					name: 'Test',
 					quantity: 10,
 					type_id: 'food',
-					recurrence: 'Bi-weekly' // Legacy value in Holster format
+					recurrence: 'Bi-weekly' // Legacy value in Mesh format
 				}
 			}
 		};
 
-		// Apply fromHolsterFormat (this is what happens when data comes from Holster)
-		const normalizedCommitment = fromHolsterFormat(legacyHolsterData);
+		// Apply fromMeshFormat (this is what happens when data comes from Mesh)
+		const normalizedCommitment = fromMeshFormat(legacyMeshData);
 
 		// Verify conversion happened correctly (Record → Array)
 		expect(Array.isArray(normalizedCommitment.capacity_slots)).toBe(true);

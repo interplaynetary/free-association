@@ -34,7 +34,7 @@ user[playerPubKey]/games/[gameId]/[dataType]/[key]
 import { P2PDecider } from './lib/p2p-decider.svelte';
 
 // User must be authenticated first
-const user = holster.user();
+const user = mesh.user();
 await user.auth('username', 'password');
 
 // Create decider instance
@@ -272,7 +272,7 @@ await waitForEveryone();
 
 ## Files to Reference
 
-- `/src/lib/utils/holsterData.ts` - Path utilities
+- `/src/lib/utils/meshData.ts` - Path utilities
 - `/src/lib/p2p-decider.svelte.ts` - Main P2P implementation
 - `/docs/p2p-architecture.md` - Detailed architecture docs
 - `/docs/p2p-path-patterns.md` - Read/write patterns

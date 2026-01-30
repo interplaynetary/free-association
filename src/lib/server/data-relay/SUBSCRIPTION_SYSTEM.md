@@ -186,7 +186,7 @@ subscription: buildSimpleSubscriptionConfig("rss-feed", "feeds", {
   
   // Verify signed URLs
   verifyResourceId: async (resourceId, account) => {
-    return await holsterVerify(resourceId, account)
+    return await meshVerify(resourceId, account)
   },
   
   // Fetch feed metadata from external service

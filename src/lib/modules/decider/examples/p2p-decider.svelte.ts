@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { writeAtPath, readAtPath, listenAtPath } from '../utils/holsterData';
+import { writeAtPath, readAtPath, listenAtPath } from '../utils/meshData';
 
 // ============================================================================
 // ZOD SCHEMAS
@@ -129,9 +129,9 @@ class Proposal {
 // ============================================================================
 
 /**
- * P2P Decider using Holster for distributed consensus.
+ * P2P Decider using Mesh for distributed consensus.
  * 
- * Path Structure in Holster User Space:
+ * Path Structure in Mesh User Space:
  * 
  * user[myPublicKey]/
  *   games/
@@ -149,7 +149,7 @@ class Proposal {
  *         [proposalAuthorPub]: { [candidateContent]: points }
  */
 class P2PDecider {
-	private user: any; // Holster user instance (must be authenticated)
+	private user: any; // Mesh user instance (must be authenticated)
 	private gameId: string;
 	private config: GameConfig | null = null;
 	private myPublicKey: string;
@@ -172,7 +172,7 @@ class P2PDecider {
 	 */
 	async createGame(agenda: string[], otherParticipantPubKeys: string[] = []): Promise<void> {
 		console.log(`Creating new game with ID: ${this.gameId}`);
-		
+
 		const config: GameConfig = {
 			gameId: this.gameId,
 			participants: [this.myPublicKey, ...otherParticipantPubKeys],

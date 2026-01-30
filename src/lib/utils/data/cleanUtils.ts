@@ -1,5 +1,5 @@
 import { get } from 'svelte/store';
-import { holsterUserPub as userPub, holsterUserAlias as userAlias } from '$lib/network/holster.svelte';
+import { meshUserPub as userPub, meshUserAlias as userAlias } from '$lib/network/mesh.svelte';
 import { userContacts, resolveToPublicKey } from '$lib/network/users.svelte';
 // V5: Import from v5 stores
 import { myRecognitionTreeStore as userTree } from '$lib/protocol/stores/stores.svelte';

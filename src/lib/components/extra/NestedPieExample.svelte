@@ -6,7 +6,7 @@
 	import NestedPie from './NestedPie.svelte';
 	import { onMount } from 'svelte';
 	import { globalState, currentPath } from '$lib/global.svelte';
-	import { holsterUserAlias as userAlias, holsterUserPub as userPub } from '$lib/network/holster.svelte';
+	import { meshUserAlias as userAlias, meshUserPub as userPub } from '$lib/network/mesh.svelte';
 	// V5: Import from v5 stores
 	import { myRecognitionTreeStore as userTree, myRecognitionWeights } from '$lib/protocol/stores/stores.svelte';
 	// V5: userSogf and generalShares - these would need to be computed from recognition data

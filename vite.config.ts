@@ -14,7 +14,7 @@ export default defineConfig({
 	define: {
 		'process.env.NODE_ENV': process.env.NODE_ENV === 'production' ? '"production"' : '"development"'
 	},
-	// Support top-level await for Holster
+	// Support top-level await for Mesh
 	optimizeDeps: {
 		esbuildOptions: {
 			target: 'esnext'
@@ -27,9 +27,15 @@ export default defineConfig({
 	esbuild: {
 		target: 'esnext'
 	},
+	// Resolve aliases to use TypeScript source for @playnet/mesh
+	resolve: {
+		alias: {
+			'@playnet/mesh': '@playnet/mesh/src/index.ts'
+		}
+	},
 	// SSR configuration for server-only packages
 	ssr: {
-		noExternal: []
+		noExternal: ['@playnet/mesh']
 	},
 	server: {
 		fs: {

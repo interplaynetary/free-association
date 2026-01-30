@@ -1,6 +1,6 @@
-import {z} from "zod"
+import { z } from "zod"
 
-// Type for Gun/Holster user instance
+// Type for Gun/Mesh user instance
 type User = any
 
 // ============================================================================
@@ -137,7 +137,7 @@ export interface DataRelayConfig<TInput = any, TStored = any> {
 
   /** Storage configuration */
   storage: {
-    /** Base collection name in Holster (e.g., "feedItems", "tweets", "events") */
+    /** Base collection name in Mesh (e.g., "feedItems", "tweets", "events") */
     collection: string
 
     /** Function to extract resource identifier (e.g., feed URL, user handle) */
@@ -152,7 +152,7 @@ export interface DataRelayConfig<TInput = any, TStored = any> {
     /** Time grouping strategy */
     timeGrouping: "day" | "hour" | "week" | "month" | "none"
 
-    /** Build the Holster storage path */
+    /** Build the Mesh storage path */
     buildPath: (
       user: User,
       resourceId: string,

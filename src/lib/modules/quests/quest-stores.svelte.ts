@@ -1,11 +1,11 @@
 /**
  * Quest Stores
- * Holster-backed P2P stores for quest management
+ * Mesh-backed P2P stores for quest management
  */
 
 import { writable, derived, get } from 'svelte/store';
 import { createStore } from '$lib/utils/primitives/store.svelte';
-import { holster } from '$lib/network/holster.svelte';
+import { mesh } from '$lib/network/mesh.svelte';
 import {
 	QuestCollectionSchema,
 	QuestSharingSettingsSchema,
@@ -20,7 +20,7 @@ import { myRecognitionWeights } from '$lib/protocol/stores/stores.svelte';
  * Stores primary, transformative quests
  */
 export const myMainQuestsStore = createStore({
-	holsterPath: 'quests/main',
+	meshPath: 'quests/main',
 	schema: QuestCollectionSchema,
 	persistDebounce: 300
 });
@@ -30,7 +30,7 @@ export const myMainQuestsStore = createStore({
  * Stores smaller, achievable quests
  */
 export const mySideQuestsStore = createStore({
-	holsterPath: 'quests/side',
+	meshPath: 'quests/side',
 	schema: QuestCollectionSchema,
 	persistDebounce: 300
 });
@@ -40,7 +40,7 @@ export const mySideQuestsStore = createStore({
  * Stores completed or abandoned quests
  */
 export const myArchivedQuestsStore = createStore({
-	holsterPath: 'quests/archived',
+	meshPath: 'quests/archived',
 	schema: QuestCollectionSchema,
 	persistDebounce: 300
 });
@@ -50,7 +50,7 @@ export const myArchivedQuestsStore = createStore({
  * Controls whether user shares quests with network
  */
 export const questSharingSettingsStore = createStore({
-	holsterPath: 'quests/settings/sharing',
+	meshPath: 'quests/settings/sharing',
 	schema: QuestSharingSettingsSchema,
 	persistDebounce: 500
 });
@@ -60,7 +60,7 @@ export const questSharingSettingsStore = createStore({
  * Quests that are shared with the network (read by others)
  */
 export const mySharedQuestsStore = createStore({
-	holsterPath: 'quests/shared',
+	meshPath: 'quests/shared',
 	schema: QuestCollectionSchema,
 	persistDebounce: 300
 });
@@ -89,20 +89,20 @@ export const myActiveQuests = derived(
  */
 export function subscribeToQuestsByPub(pub: string) {
 	if (!pub) return;
-	
+
 	console.log(`[QUEST-STORE] Subscribing to quests from ${pub.slice(0, 8)}...`);
-	
+
 	const path = `${pub}/quests/shared`;
-	
-	// Subscribe using Holster API
-	holster.get(path).on((data: any) => {
+
+	// Subscribe using Mesh API
+	mesh.get(path).on((data: any) => {
 		if (!data) return;
-		
+
 		try {
 			// Parse and validate
 			const parsed = JSON.parse(data);
 			const validated = QuestCollectionSchema.safeParse(parsed);
-			
+
 			if (validated.success) {
 				networkQuestsStore.update(store => ({
 					...store,
@@ -125,18 +125,18 @@ export function subscribeToQuestsByPub(pub: string) {
 export function initializeQuestSharing() {
 	// Get current sharing settings
 	const settings = get(questSharingSettingsStore);
-	
+
 	if (!settings || !settings.enabled) {
 		console.log('[QUEST-STORE] Quest sharing disabled');
 		return;
 	}
-	
+
 	// Get contributors to subscribe to
 	const contributors = get(myRecognitionWeights);
 	const contributorPubs = Object.keys(contributors || {});
-	
+
 	console.log(`[QUEST-STORE] Initializing quest sharing with ${contributorPubs.length} contributors`);
-	
+
 	// Subscribe to each contributor's quests
 	for (const pub of contributorPubs) {
 		subscribeToQuestsByPub(pub);
@@ -149,24 +149,24 @@ export function initializeQuestSharing() {
  */
 export function updateSharedQuests() {
 	const settings = get(questSharingSettingsStore);
-	
+
 	if (!settings || !settings.enabled) {
 		// Clear shared quests if sharing is disabled
 		mySharedQuestsStore.set([]);
 		return;
 	}
-	
+
 	// Get active quests
 	const main = get(myMainQuestsStore) || [];
 	const side = get(mySideQuestsStore) || [];
 	const allQuests = [...main, ...side];
-	
+
 	// Filter out completed quests and those marked as private
 	const sharedQuests = allQuests.filter(q => !q.completion?.completed);
-	
+
 	// Update shared store
 	mySharedQuestsStore.set(sharedQuests);
-	
+
 	console.log(`[QUEST-STORE] Updated shared quests: ${sharedQuests.length} quests`);
 }
 

@@ -1,7 +1,7 @@
-import {z} from "zod"
-import type {DataRelayConfig} from "../config"
-import {buildUserScopedPath, DEFAULT_RETENTION, DEFAULT_THROTTLING} from "../config"
-import type {User} from "@mblaney/holster/src/holster.js"
+import { z } from "zod"
+import type { DataRelayConfig } from "../config"
+import { buildUserScopedPath, DEFAULT_RETENTION, DEFAULT_THROTTLING } from "../config"
+import type { User } from "@playnet/mesh/src/mesh"
 
 // ============================================================================
 // Twitter/X Post Configuration
@@ -63,8 +63,8 @@ export const twitterConfig: DataRelayConfig = {
   transform: {
     toStorage: data => ({
       ...data,
-      hashtags: data.hashtags?.reduce((acc, tag) => ({...acc, [tag]: true}), {}) || {},
-      mentions: data.mentions?.reduce((acc, user) => ({...acc, [user]: true}), {}) || {},
+      hashtags: data.hashtags?.reduce((acc, tag) => ({ ...acc, [tag]: true }), {}) || {},
+      mentions: data.mentions?.reduce((acc, user) => ({ ...acc, [user]: true }), {}) || {},
     }),
   },
 

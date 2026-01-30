@@ -27,7 +27,7 @@
 	import { currentPath } from '$lib/global.svelte';
 	import { derived, get } from 'svelte/store';
 	import { t, loading } from '$lib/translations';
-	import { holsterUserPub } from '$lib/network/holster.svelte';
+	import { meshUserPub } from '$lib/network/mesh.svelte';
 	import type {
 		NeedSlot,
 		AvailabilitySlot,
@@ -115,7 +115,7 @@ console.log('[ORG-PAGE] Initializing org page for:', data.orgName);
 // Handle user trees differently from org trees
 if (data.isUserTree) {
 	const userPubkey = data.userPubkey!;
-	const isOwnTree = get(holsterUserPub) === userPubkey;
+	const isOwnTree = get(meshUserPub) === userPubkey;
 	
 	if (isOwnTree) {
 		// 🎯 Viewing own tree - instant load from myRecognitionTreeStore
@@ -204,7 +204,7 @@ if (data.isUserTree) {
 	console.log('[ORG-PAGE] Preparing custom tree:', data.tree!.name);
 	
 	// Bootstrap: Register demo orgs in globalOrganizations IMMEDIATELY
-	// (In production, orgs would come from Holster network)
+	// (In production, orgs would come from Mesh network)
 	globalOrganizations.update((orgs) => ({ ...orgs, ...DEMO_ORGANIZATIONS }));
 	console.log('[ORG-PAGE] Registered demo organizations');
 	

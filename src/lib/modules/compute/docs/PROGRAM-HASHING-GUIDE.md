@@ -2,24 +2,24 @@
 
 ## Overview
 
-The RDL (Reactive Dataflow Language) implements automatic **program hashing** to namespace all program data in Holster. Every RDL program gets a unique hash based on its structure, and all Holster paths are automatically prefixed with this hash.
+The RDL (Reactive Dataflow Language) implements automatic **program hashing** to namespace all program data in Mesh. Every RDL program gets a unique hash based on its structure, and all Mesh paths are automatically prefixed with this hash.
 
 ## Data Organization
 
 ### Format
 ```
-~pubkey/<program_hash>/<holster_path>
+~pubkey/<program_hash>/<mesh_path>
 ```
 
 ### Example
 ```typescript
 // You define:
-holster_path: "tree"
+mesh_path: "tree"
 
 // Runtime uses:
-holster_path: "a1b2c3d4e5f6g7h8/tree"
+mesh_path: "a1b2c3d4e5f6g7h8/tree"
 
-// Full path in Holster:
+// Full path in Mesh:
 ~yourPubkey/a1b2c3d4e5f6g7h8/tree
 ```
 
@@ -120,7 +120,7 @@ const hash2 = getProgramHash(program);
 
 ### Automatic Prefixing
 
-All holster paths are automatically prefixed:
+All mesh paths are automatically prefixed:
 
 ```typescript
 const program: ReactiveComputationGraph = {
@@ -128,20 +128,20 @@ const program: ReactiveComputationGraph = {
   variables: {
     count: {
       type: 'subscription',
-      holster_path: 'counter',  // You define this
+      mesh_path: 'counter',  // You define this
       schema_type: 'Number'
     }
   },
   computations: [{
     id: 'increment',
     inputs: {
-      value: { type: 'subscription', holster_path: 'counter', schema_type: 'Number' }
+      value: { type: 'subscription', mesh_path: 'counter', schema_type: 'Number' }
     },
     compute_fn: 'increment',
     outputs: {
       result: {
-        type: 'holster',
-        holster_path: 'counter',  // You define this
+        type: 'mesh',
+        mesh_path: 'counter',  // You define this
         schema_type: 'Number'
       }
     }
@@ -209,14 +209,14 @@ const program: ReactiveComputationGraph = {
     // My tree
     myTree: {
       type: 'subscription',
-      holster_path: 'tree',
+      mesh_path: 'tree',
       schema_type: 'TreeNode'
     },
     
     // Their tree (cross-user)
     theirTree: {
       type: 'subscription',
-      holster_path: 'tree',
+      mesh_path: 'tree',
       schema_type: 'TreeNode',
       subscribe_to_user: 'their-pubkey'  // ← Cross-user
     }
@@ -271,18 +271,18 @@ unregisterProgram(hash);
 
 ```typescript
 import { 
-  prefixHolsterPath,
-  unprefixHolsterPath,
+  prefixMeshPath,
+  unprefixMeshPath,
   extractProgramHash,
   buildProgramDataPath
 } from '$lib/commons';
 
 // Prefix a path
-prefixHolsterPath('abc123', 'tree');
+prefixMeshPath('abc123', 'tree');
 // → "abc123/tree"
 
 // Unprefix a path
-unprefixHolsterPath('abc123/tree');
+unprefixMeshPath('abc123/tree');
 // → "tree"
 
 // Extract hash
@@ -292,11 +292,11 @@ extractProgramHash('abc123/tree/nodes/node1');
 // Build full path
 buildProgramDataPath('user-pubkey', 'abc123', 'tree');
 // → ["user-pubkey", "abc123/tree"]
-// Usage: holsterUser.get(["user-pubkey", "abc123/tree"])
+// Usage: meshUser.get(["user-pubkey", "abc123/tree"])
 
 buildProgramDataPath(null, 'abc123', 'tree');
 // → "abc123/tree"
-// Usage: holsterUser.get("abc123/tree")
+// Usage: meshUser.get("abc123/tree")
 ```
 
 ---
@@ -308,10 +308,10 @@ Don't manually prefix paths in your program definitions:
 
 ```typescript
 // ❌ BAD
-holster_path: 'abc123/tree'
+mesh_path: 'abc123/tree'
 
 // ✅ GOOD
-holster_path: 'tree'
+mesh_path: 'tree'
 ```
 
 The runtime adds the prefix automatically!
@@ -321,23 +321,23 @@ Even though they're prefixed, base paths should be descriptive:
 
 ```typescript
 // ❌ BAD
-holster_path: 'd1'
-holster_path: 'x'
+mesh_path: 'd1'
+mesh_path: 'x'
 
 // ✅ GOOD
-holster_path: 'tree'
-holster_path: 'allocation_result'
-holster_path: 'mutual_recognition'
+mesh_path: 'tree'
+mesh_path: 'allocation_result'
+mesh_path: 'mutual_recognition'
 ```
 
 ### 3. **Structure Data Hierarchically**
 Use path separators for related data:
 
 ```typescript
-holster_path: 'tree'
-holster_path: 'tree/root'
-holster_path: 'tree/nodes/node1'
-holster_path: 'tree/metadata'
+mesh_path: 'tree'
+mesh_path: 'tree/root'
+mesh_path: 'tree/nodes/node1'
+mesh_path: 'tree/metadata'
 
 // Results in:
 // ~pubkey/<hash>/tree
@@ -367,7 +367,7 @@ When accessing another user's data, document the expected program:
 variables: {
   peerData: {
     type: 'subscription',
-    holster_path: 'shared_data',
+    mesh_path: 'shared_data',
     schema_type: 'SharedData',
     subscribe_to_user: peerPubkey
     // Note: Expects peer to run program with hash: abc123
@@ -395,17 +395,17 @@ const program: ReactiveComputationGraph = {
 #### Option 2: Migrate Data
 ```typescript
 // 1. Read old data
-const oldData = await holsterUser.get('tree');
+const oldData = await meshUser.get('tree');
 
 // 2. Create new program (gets hash)
 const runtime = new ComputationGraphRuntime(newProgram);
 const hash = runtime.getProgramHash();
 
 // 3. Write to new location
-await holsterUser.get(`${hash}/tree`).put(oldData);
+await meshUser.get(`${hash}/tree`).put(oldData);
 
 // 4. Clean up old location (optional)
-await holsterUser.get('tree').put(null);
+await meshUser.get('tree').put(null);
 ```
 
 ---
@@ -431,7 +431,7 @@ See complete examples in:
 │                                                     │
 │ id: "counter"                                       │
 │ variables:                                          │
-│   count: { holster_path: "counter", ... }          │
+│   count: { mesh_path: "counter", ... }          │
 │ computations: [ ... ]                               │
 └──────────────┬──────────────────────────────────────┘
                │
@@ -460,14 +460,14 @@ See complete examples in:
     │ All paths prefixed:                 │
     │   "counter" → "abc123/counter"      │
     │                                     │
-    │ Holster operations:                 │
-    │   holsterUser.get("abc123/counter") │
+    │ Mesh operations:                 │
+    │   meshUser.get("abc123/counter") │
     └─────────────────────────────────────┘
                     │
                     │
                     ▼
           ┌──────────────────┐
-          │  Holster Storage │
+          │  Mesh Storage │
           │                  │
           │ ~pubkey/abc123/  │
           │   ├─ counter     │
@@ -494,17 +494,17 @@ Verify that `program.program_hash` matches computed hash.
 
 ### Path Functions
 
-#### `prefixHolsterPath(programHash: string, holsterPath: string): string`
-Prefix a holster path with program hash.
+#### `prefixMeshPath(programHash: string, meshPath: string): string`
+Prefix a mesh path with program hash.
 
-#### `unprefixHolsterPath(prefixedPath: string): string`
+#### `unprefixMeshPath(prefixedPath: string): string`
 Remove program hash prefix from path.
 
 #### `extractProgramHash(prefixedPath: string): string | null`
 Extract program hash from prefixed path.
 
 #### `buildProgramDataPath(pubkey: string | null, programHash: string, dataPath: string): string | [string, string]`
-Build full Holster path for program data.
+Build full Mesh path for program data.
 
 ### Registry Functions
 

@@ -14,7 +14,7 @@
  * - Uses collective-membership.ts for MRD computation
  * - Uses collective-recognition.ts for resource allocation
  * - Integrates with organizations.svelte.ts for network identity
- * - Publishes to Holster for distributed coordination
+ * - Publishes to Mesh for distributed coordination
  * 
  * Example Use Cases:
  * - Fluid resource pools among peers
@@ -619,7 +619,7 @@ export class RecognitionCouncil {
 	}
 
 	// ═══════════════════════════════════════════════════════════════
-	// NETWORK INTEGRATION (Holster)
+	// NETWORK INTEGRATION (Mesh)
 	// ═══════════════════════════════════════════════════════════════
 
 	/**

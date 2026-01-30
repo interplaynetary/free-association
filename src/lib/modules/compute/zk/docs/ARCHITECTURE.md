@@ -10,7 +10,7 @@
 │  │                    PROVENANCE LAYER                               │  │
 │  │  ┌────────────┐  ┌─────────────┐  ┌───────────┐  ┌────────────┐ │  │
 │  │  │   Events   │─▶│   Signing   │─▶│    DAG    │─▶│  Proofs    │ │  │
-│  │  │  (Schema)  │  │    (SEA)    │  │ (Holster) │  │ (Merkle)   │ │  │
+│  │  │  (Schema)  │  │    (SEA)    │  │ (Mesh) │  │ (Merkle)   │ │  │
 │  │  └────────────┘  └─────────────┘  └───────────┘  └────────────┘ │  │
 │  └──────────────────────────────────────────────────────────────────┘  │
 │                              │                                           │
@@ -44,7 +44,7 @@ Create **signed, content-addressed events** that form a Merkle-DAG.
    - Content hash computation
 
 3. **DAG** (`provenance-dag.svelte.ts`)
-   - Event storage (Holster)
+   - Event storage (Mesh)
    - Graph traversal
    - Lineage tracking
 
@@ -62,7 +62,7 @@ Create **signed, content-addressed events** that form a Merkle-DAG.
 ### Data Flow
 
 ```
-Create Event → Sign (SEA) → Store (Holster) → Verify → Build Proof
+Create Event → Sign (SEA) → Store (Mesh) → Verify → Build Proof
 ```
 
 ## Layer 2: ZK System
@@ -181,7 +181,7 @@ await verifyZkProof(recursiveProof);  // O(1)
 | Create Event | ~10ms | 2KB |
 | Sign Event | ~5ms | 256 bytes |
 | Verify Event | ~15ms | - |
-| Store Event | ~50ms | 2KB (Holster) |
+| Store Event | ~50ms | 2KB (Mesh) |
 | Traverse DAG | ~100ms | O(depth) |
 
 ### ZK Layer
@@ -226,7 +226,7 @@ await verifyZkProof(recursiveProof);  // O(1)
 ### Provenance Scaling
 
 - **Events:** Unlimited (DAG grows unbounded)
-- **Storage:** O(total events) in Holster
+- **Storage:** O(total events) in Mesh
 - **Verification:** O(depth) for lineage
 - **Throughput:** ~100 events/sec
 
@@ -262,7 +262,7 @@ await verifyZkProof(recursiveProof);  // O(1)
 │         │              │                    │            │
 │         ▼              ▼                    ▼            │
 │  ┌────────────────────────────────────────────────────┐ │
-│  │              HOLSTER (Storage)                     │ │
+│  │              MESH (Storage)                     │ │
 │  │  Events + DAG + Proofs + Verification Keys        │ │
 │  └────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────┘
@@ -273,7 +273,7 @@ await verifyZkProof(recursiveProof);  // O(1)
 1. **Frontend:** Verify proofs (fast!)
 2. **Backend:** Generate proofs (slow but parallelizable)
 3. **Workers:** Dedicated proof generation pool
-4. **Storage:** Holster for events + proofs
+4. **Storage:** Mesh for events + proofs
 5. **CDN:** Serve verification keys
 
 ## Future Extensions

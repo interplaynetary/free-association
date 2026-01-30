@@ -3,12 +3,12 @@
  * 
  * Provides deterministic hashing for RDL programs to:
  * - Create unique identifiers for programs
- * - Namespace program data in Holster
+ * - Namespace program data in Mesh
  * - Enable program versioning
  * - Isolate program instances
  * 
  * Architecture:
- * All program data is stored at: ~pubkey/<program_hash>/<holster_path>
+ * All program data is stored at: ~pubkey/<program_hash>/<mesh_path>
  * 
  * This ensures:
  * - Different programs don't collide
@@ -31,25 +31,25 @@ function deterministicStringify(obj: any): string {
 	if (obj === null) {
 		return 'null';
 	}
-	
+
 	if (obj === undefined) {
 		return 'undefined';  // Explicitly return string "undefined"
 	}
-	
+
 	if (typeof obj !== 'object') {
 		return JSON.stringify(obj);
 	}
-	
+
 	if (Array.isArray(obj)) {
 		return '[' + obj.map(item => deterministicStringify(item)).join(',') + ']';
 	}
-	
+
 	// Sort object keys and stringify recursively
 	const sortedKeys = Object.keys(obj).sort();
 	const pairs = sortedKeys.map(key => {
 		return JSON.stringify(key) + ':' + deterministicStringify(obj[key]);
 	});
-	
+
 	return '{' + pairs.join(',') + '}';
 }
 
@@ -72,13 +72,13 @@ export function hashProgram(program: ReactiveComputationGraph): string {
 		variables: program.variables,
 		computations: program.computations
 	};
-	
+
 	// Deterministic JSON serialization with sorted keys
 	const json = deterministicStringify(canonical);
-	
+
 	// Create SHA-256 hash (first 16 chars for brevity)
 	const hash = createHash('sha256').update(json).digest('hex').substring(0, 16);
-	
+
 	return hash;
 }
 
@@ -106,7 +106,7 @@ export function verifyProgramHash(program: ReactiveComputationGraph): boolean {
 	if (!program.program_hash) {
 		return true; // No hash to verify
 	}
-	
+
 	const computed = hashProgram(program);
 	return program.program_hash === computed;
 }
@@ -116,16 +116,16 @@ export function verifyProgramHash(program: ReactiveComputationGraph): boolean {
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * Prefix a holster path with program hash
+ * Prefix a mesh path with program hash
  * 
  * Examples:
  * - prefixPath("abc123", "tree") → "abc123/tree"
  * - prefixPath("abc123", "nodes/node1") → "abc123/nodes/node1"
  */
-export function prefixHolsterPath(programHash: string, holsterPath: string): string {
-	// Remove leading/trailing slashes from holster path
-	const cleanPath = holsterPath.replace(/^\/+|\/+$/g, '');
-	
+export function prefixMeshPath(programHash: string, meshPath: string): string {
+	// Remove leading/trailing slashes from mesh path
+	const cleanPath = meshPath.replace(/^\/+|\/+$/g, '');
+
 	// Combine with program hash
 	return `${programHash}/${cleanPath}`;
 }
@@ -149,7 +149,7 @@ export function extractProgramHash(prefixedPath: string): string | null {
  * - unprefixPath("abc123/tree") → "tree"
  * - unprefixPath("abc123/nodes/node1") → "nodes/node1"
  */
-export function unprefixHolsterPath(prefixedPath: string): string {
+export function unprefixMeshPath(prefixedPath: string): string {
 	const parts = prefixedPath.split('/');
 	return parts.length > 1 ? parts.slice(1).join('/') : prefixedPath;
 }
@@ -158,8 +158,8 @@ export function unprefixHolsterPath(prefixedPath: string): string {
 // COMPUTATION PROVENANCE HASHING
 // ═══════════════════════════════════════════════════════════════════
 
-import type { 
-	Computation, 
+import type {
+	Computation,
 	ComputationProvenance
 } from './schema';
 
@@ -192,7 +192,7 @@ export function hashComputation(computation: Computation): string {
 		inputs: Object.keys(computation.inputs).sort(),
 		outputs: Object.keys(computation.outputs).sort()
 	};
-	
+
 	const json = deterministicStringify(canonical);
 	return createHash('sha256').update(json).digest('hex').substring(0, 16);
 }
@@ -214,12 +214,12 @@ export function createDeterministicHash(
 		.sort(([a], [b]) => a.localeCompare(b))
 		.map(([name, hash]) => `${name}:${hash}`)
 		.join(',');
-	
+
 	const canonical = {
 		computation: computationHash,
 		inputs: sortedInputs
 	};
-	
+
 	const json = deterministicStringify(canonical);
 	return createHash('sha256').update(json).digest('hex').substring(0, 16);
 }
@@ -232,11 +232,11 @@ export function createDeterministicHash(
  */
 export function itcStampSignature(stamp: any): string {
 	if (!stamp) return '';
-	
+
 	// Hash the ITC stamp for compactness
 	const stampJson = deterministicStringify(stamp);
 	const stampHash = createHash('sha256').update(stampJson).digest('hex').substring(0, 16);
-	
+
 	return `itc:${stampHash}`;
 }
 
@@ -251,7 +251,7 @@ export function createProvenanceSignature(prov: ComputationProvenance): string {
 	const itcSig = itcStampSignature(prov.itcStamp);
 	const compId = prov.computationId.substring(0, 8);
 	const detHash = prov.deterministicHash.substring(0, 8);
-	
+
 	return `p_${itcSig}_comp:${compId}_det:${detHash}`;
 }
 
@@ -266,40 +266,40 @@ export function parseProvenanceSignature(sig: string): {
 	deterministicHash: string;
 } | null {
 	if (!sig.startsWith('p_')) return null;
-	
+
 	// Remove 'p_' prefix and split by component markers
 	const content = sig.substring(2);
-	
+
 	// Find component boundaries
 	const compMatch = content.match(/_comp:([^_]+)/);
 	const detMatch = content.match(/_det:([^_]+)$/);
-	
+
 	if (!compMatch || !detMatch) return null;
-	
+
 	const computationId = compMatch[1];
 	const deterministicHash = detMatch[1];
-	
+
 	// Extract ITC stamp signature (everything before _comp:)
 	const itcStamp = content.split('_comp:')[0];
-	
+
 	if (!itcStamp) return null;
-	
+
 	return { itcStamp, computationId, deterministicHash };
 }
 
 /**
  * Build versioned data path with provenance
  * 
- * Full path: ~<pubkey>/<program_hash>/<holster_path>/<provenance_signature>
+ * Full path: ~<pubkey>/<program_hash>/<mesh_path>/<provenance_signature>
  */
 export function buildProvenancePath(
 	pubkey: string | null,
 	programHash: string,
-	holsterPath: string,
+	meshPath: string,
 	provenanceSignature: string
 ): string | [string, string] {
-	const base = buildProgramDataPath(pubkey, programHash, holsterPath);
-	
+	const base = buildProgramDataPath(pubkey, programHash, meshPath);
+
 	if (Array.isArray(base)) {
 		// Cross-user: [pubkey, path]
 		return [base[0], `${base[1]}/${provenanceSignature}`];
@@ -358,11 +358,11 @@ export function clearProgramRegistry(): void {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// HOLSTER PATH HELPERS
+// MESH PATH HELPERS
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * Build full Holster path for program data
+ * Build full Mesh path for program data
  * 
  * Format: ~pubkey/<program_hash>/<data_path>
  * 
@@ -375,8 +375,8 @@ export function buildProgramDataPath(
 	programHash: string,
 	dataPath: string
 ): string | [string, string] {
-	const prefixedPath = prefixHolsterPath(programHash, dataPath);
-	
+	const prefixedPath = prefixMeshPath(programHash, dataPath);
+
 	if (pubkey) {
 		// Cross-user access: ~pubkey/program_hash/data
 		return [pubkey, prefixedPath];
@@ -409,7 +409,7 @@ export interface ProgramMetadata {
 export function getProgramMetadata(hash: string): ProgramMetadata | null {
 	const program = programRegistry.get(hash);
 	if (!program) return null;
-	
+
 	return {
 		hash,
 		id: program.id,

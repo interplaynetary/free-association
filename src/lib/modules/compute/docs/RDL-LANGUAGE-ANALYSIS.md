@@ -63,7 +63,7 @@ RDL uses **Zod schemas** for structural typing:
 // Type is defined by structure, not name
 VariableBinding = 
   | { type: 'value', value: any }
-  | { type: 'subscription', holster_path: string, schema_type: string, ... }
+  | { type: 'subscription', mesh_path: string, schema_type: string, ... }
   | { type: 'fetch', ... }
   | ...
 ```
@@ -86,7 +86,7 @@ fetch        → Read (one-time)
 local        → Read (local state)
 derived      → Pure (depends on computation purity)
 
-holster      → Write + Persist
+mesh      → Write + Persist
 local        → Write (local state)
 memory       → Pure (transient)
 ```
@@ -107,7 +107,7 @@ memory       → Pure (transient)
 4. ✅ **Execution ordering** - Via `depends_on` and implicit dependencies
 5. ✅ **Debouncing/throttling** - Built-in timing control
 6. ✅ **Conditional execution** - Via `enabled` flag
-7. ✅ **State persistence** - Multiple strategies (holster, local, memory)
+7. ✅ **State persistence** - Multiple strategies (mesh, local, memory)
 
 **What RDL struggles to express**:
 
@@ -208,7 +208,7 @@ compute_c ← input_y
 
 **Moderate**:
 - Programs can subscribe to other programs' outputs
-- Via `subscription` binding with `holster_path`
+- Via `subscription` binding with `mesh_path`
 - But: No first-class program composition
 
 **Missing**:
@@ -264,7 +264,7 @@ RDL excels at its target domain (P2P coordination):
 1. **Explicit I/O**: All sources and sinks are declared
 2. **Dependency tracking**: Automatic, correct-by-construction
 3. **Timing control**: Debouncing built into language
-4. **Multi-strategy persistence**: `holster`, `local`, `memory`
+4. **Multi-strategy persistence**: `mesh`, `local`, `memory`
 5. **Cross-user subscriptions**: P2P data flow as primitive
 
 ### 6.3 Design Philosophy Strengths
@@ -363,7 +363,7 @@ RDL excels at its target domain (P2P coordination):
   type: 'map',
   over: {
     type: 'subscription',
-    holster_path: 'network/*',  // Wildcard subscription
+    mesh_path: 'network/*',  // Wildcard subscription
     schema_type: 'Commitment'
   },
   compute_fn: 'extract_capacity',
@@ -396,10 +396,10 @@ RDL excels at its target domain (P2P coordination):
   id: 'allocation_template',
   parameters: {
     algorithm: { type: 'FunctionName' },
-    source: { type: 'HolsterPath' }
+    source: { type: 'MeshPath' }
   },
   variables: {
-    data: { type: 'subscription', holster_path: '$source' }
+    data: { type: 'subscription', mesh_path: '$source' }
   },
   computations: [
     {
@@ -442,7 +442,7 @@ RDL excels at its target domain (P2P coordination):
     max_subscriptions: 100,
     max_memory_mb: 50,
     max_execution_time_ms: 1000,
-    max_holster_writes_per_sec: 10
+    max_mesh_writes_per_sec: 10
   },
   variables: {...},
   computations: [...]

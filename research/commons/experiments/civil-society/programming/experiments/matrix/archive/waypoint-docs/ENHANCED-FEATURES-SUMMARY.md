@@ -546,7 +546,7 @@ All operations completed successfully with sparse optimization!
 ### Future Enhancements
 - ITC causality tracking (from src/lib)
 - Event-driven architecture (from src/lib)
-- Holster integration for persistence
+- Mesh integration for persistence
 - WebSocket support for real-time updates
 - Cloudflare Workers deployment example
 

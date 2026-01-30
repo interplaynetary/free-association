@@ -11,7 +11,7 @@
  */
 
 import { createHash } from 'crypto';
-import { holster, holsterUser } from '$lib/network/holster.svelte';
+import { mesh, meshUser } from '$lib/network/mesh.svelte';
 import type {
 	ProvenanceEvent,
 	EventBody,
@@ -44,12 +44,12 @@ export function deterministicStringify(data: any): string {
 	}
 	if (typeof data === 'boolean') return String(data);
 	if (typeof data === 'string') return JSON.stringify(data);
-	
+
 	if (Array.isArray(data)) {
 		const items = data.map(item => deterministicStringify(item));
 		return '[' + items.join(',') + ']';
 	}
-	
+
 	if (typeof data === 'object') {
 		const keys = Object.keys(data).sort();
 		const pairs = keys.map(key => {
@@ -58,7 +58,7 @@ export function deterministicStringify(data: any): string {
 		});
 		return '{' + pairs.join(',') + '}';
 	}
-	
+
 	// Fallback for other types
 	return JSON.stringify(data);
 }
@@ -171,22 +171,22 @@ export function computeEventId(eventBody: EventBody): Hash {
  */
 export async function signEvent(eventBody: EventBody): Promise<{ eventId: Hash; signature: SEASignature }> {
 	// Check authentication
-	if (!holsterUser.is?.pub) {
+	if (!meshUser.is?.pub) {
 		throw new Error('User must be authenticated to sign events');
 	}
-	
+
 	// Compute event ID
 	const eventId = computeEventId(eventBody);
-	
+
 	try {
 		// Sign the event ID with SEA
 		// SEA.sign returns {m: message, s: signature}
-		const signed = await holster.SEA.sign(eventId, holsterUser.is);
-		
+		const signed = await mesh.SEA.sign(eventId, meshUser.is);
+
 		if (!signed || !signed.m || !signed.s) {
 			throw new Error('SEA signing failed - invalid signature format');
 		}
-		
+
 		return {
 			eventId: eventId,
 			signature: {
@@ -213,15 +213,15 @@ export async function signEventWithKeypair(
 ): Promise<{ eventId: Hash; signature: SEASignature }> {
 	// Compute event ID
 	const eventId = computeEventId(eventBody);
-	
+
 	try {
 		// Sign with provided keypair
-		const signed = await holster.SEA.sign(eventId, keypair);
-		
+		const signed = await mesh.SEA.sign(eventId, keypair);
+
 		if (!signed || !signed.m || !signed.s) {
 			throw new Error('SEA signing failed - invalid signature format');
 		}
-		
+
 		return {
 			eventId: eventId,
 			signature: {
@@ -255,10 +255,10 @@ export async function verifyEventSignature(event: ProvenanceEvent): Promise<bool
 	try {
 		// Step 1: Extract event body
 		const eventBody = extractEventBody(event);
-		
+
 		// Step 2: Recompute event ID
 		const recomputedId = computeEventId(eventBody);
-		
+
 		// Step 3: Check event ID matches
 		if (recomputedId !== event.id) {
 			console.warn('[PROVENANCE-SIGNING] Event ID mismatch:', {
@@ -267,10 +267,10 @@ export async function verifyEventSignature(event: ProvenanceEvent): Promise<bool
 			});
 			return false;
 		}
-		
+
 		// Step 4: Verify SEA signature
-		const verified = await holster.SEA.verify(event.sig, event.author);
-		
+		const verified = await mesh.SEA.verify(event.sig, event.author);
+
 		// SEA.verify returns the message on success, undefined on failure
 		// The message should be the event ID
 		if (verified !== event.id) {
@@ -281,9 +281,9 @@ export async function verifyEventSignature(event: ProvenanceEvent): Promise<bool
 			});
 			return false;
 		}
-		
+
 		return true;
-		
+
 	} catch (error) {
 		console.error('[PROVENANCE-SIGNING] Verification error:', error);
 		return false;
@@ -306,7 +306,7 @@ export async function verifyEventIntegrity(event: ProvenanceEvent): Promise<{
 	errors: string[];
 }> {
 	const errors: string[] = [];
-	
+
 	try {
 		// Check 1: Event ID matches content hash
 		const eventBody = extractEventBody(event);
@@ -314,18 +314,18 @@ export async function verifyEventIntegrity(event: ProvenanceEvent): Promise<{
 		if (recomputedId !== event.id) {
 			errors.push(`Event ID mismatch: ${event.id} !== ${recomputedId}`);
 		}
-		
+
 		// Check 2: Signature is valid
 		const sigValid = await verifyEventSignature(event);
 		if (!sigValid) {
 			errors.push('Invalid signature');
 		}
-		
+
 		// Check 3: Author matches signature
 		if (event.author !== event.sig.m && event.id !== event.sig.m) {
 			errors.push('Signature message does not match event ID');
 		}
-		
+
 		// Check 4: Required fields present
 		if (!event.author) errors.push('Missing author');
 		if (!event.payload) errors.push('Missing payload');
@@ -333,12 +333,12 @@ export async function verifyEventIntegrity(event: ProvenanceEvent): Promise<{
 		if (!event.parents) errors.push('Missing parents array');
 		if (!event.timestamp) errors.push('Missing timestamp');
 		if (!event.meta) errors.push('Missing metadata');
-		
+
 		return {
 			valid: errors.length === 0,
 			errors
 		};
-		
+
 	} catch (error) {
 		errors.push(`Verification exception: ${error}`);
 		return {
@@ -358,7 +358,7 @@ export async function verifyEventIntegrity(event: ProvenanceEvent): Promise<{
  * @returns Public key or null if not authenticated
  */
 export function getCurrentUserPubKey(): string | null {
-	return holsterUser.is?.pub || null;
+	return meshUser.is?.pub || null;
 }
 
 /**
@@ -367,7 +367,7 @@ export function getCurrentUserPubKey(): string | null {
  * @returns true if authenticated, false otherwise
  */
 export function canSignEvents(): boolean {
-	return !!(holsterUser.is?.pub && holsterUser.is?.priv);
+	return !!(meshUser.is?.pub && meshUser.is?.priv);
 }
 
 /**
@@ -394,7 +394,7 @@ export async function signEventsBatch(
 	eventBodies: EventBody[]
 ): Promise<Array<{ eventId: Hash; signature: SEASignature }>> {
 	const results = [];
-	
+
 	for (const body of eventBodies) {
 		try {
 			const signed = await signEvent(body);
@@ -404,7 +404,7 @@ export async function signEventsBatch(
 			throw error;
 		}
 	}
-	
+
 	return results;
 }
 
@@ -418,7 +418,7 @@ export async function verifyEventsBatch(
 	events: ProvenanceEvent[]
 ): Promise<Array<{ eventId: Hash; valid: boolean; errors: string[] }>> {
 	const results = [];
-	
+
 	for (const event of events) {
 		const result = await verifyEventIntegrity(event);
 		results.push({
@@ -426,7 +426,7 @@ export async function verifyEventsBatch(
 			...result
 		});
 	}
-	
+
 	return results;
 }
 

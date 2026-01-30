@@ -1,11 +1,11 @@
-import {removeFeedSchema} from "$lib/server/schemas/holster"
-import {holsterNextPut, ensureAuthenticated} from "$lib/server/holster/db"
-import {createPOSTHandler} from "$lib/server/middleware/request-handler"
+import { removeFeedSchema } from "$lib/server/schemas/mesh"
+import { meshNextPut, ensureAuthenticated } from "$lib/server/mesh/db"
+import { createPOSTHandler } from "$lib/server/middleware/request-handler"
 
 export const POST = createPOSTHandler(
   removeFeedSchema,
-  async ({data}) => {
-    const {url} = data
+  async ({ data }) => {
+    const { url } = data
 
     ensureAuthenticated()
 
@@ -18,12 +18,12 @@ export const POST = createPOSTHandler(
       image: "",
     }
 
-    await holsterNextPut("feeds", url, feedData)
+    await meshNextPut("feeds", url, feedData)
     return ""
   },
   {
     requireAuth: true,
-    authOptions: {allowBasic: true, allowJwt: false, allowApiKey: false},
+    authOptions: { allowBasic: true, allowJwt: false, allowApiKey: false },
     emptyResponse: true
   }
 )

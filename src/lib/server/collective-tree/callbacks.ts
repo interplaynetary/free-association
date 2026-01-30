@@ -1,17 +1,17 @@
 /**
  * Collective Tree Scheduler Callbacks Implementation
  * 
- * Real implementation using Holster database utilities
+ * Real implementation using Mesh database utilities
  */
 
 import type { CollectiveTreeCallbacks, CollectiveDefinition } from './scheduler';
 import type { Node } from '$lib/protocol/schemas';
 import type { CollectiveTree } from '$lib/protocol/stores/collective-tree.svelte';
-import { holsterGet, holsterNextPut, holsterGetArray, ensureAuthenticated } from '$lib/server/holster/db';
+import { meshGet, meshNextPut, meshGetArray, ensureAuthenticated } from '$lib/server/mesh/db';
 import { SharedUtils } from '../collective/shared-utils';
 
 /**
- * Production implementation using Holster
+ * Production implementation using Mesh
  */
 export function createCollectiveTreeCallbacks(): CollectiveTreeCallbacks {
 	return {
@@ -21,20 +21,20 @@ export function createCollectiveTreeCallbacks(): CollectiveTreeCallbacks {
 		async fetchAutoMergeCollectives(): Promise<CollectiveDefinition[]> {
 			try {
 				ensureAuthenticated();
-				
+
 				// Fetch all collectives with auto_merge enabled
-				const collectives = await holsterGetArray<CollectiveDefinition>(
+				const collectives = await meshGetArray<CollectiveDefinition>(
 					'collective_definitions',
 					(collective) => Boolean(collective.auto_merge && collective.contributor_ids?.length > 0)
 				);
-				
+
 				return collectives;
 			} catch (error) {
 				console.error('[COLLECTIVE-TREE-CALLBACKS] Failed to fetch auto-merge collectives:', error);
 				return [];
 			}
 		},
-		
+
 		/**
 		 * Fetch contributor trees for a collective
 		 * Uses shared utility to reduce duplication
@@ -42,7 +42,7 @@ export function createCollectiveTreeCallbacks(): CollectiveTreeCallbacks {
 		async fetchContributorTrees(contributorIds: string[]): Promise<Record<string, Node>> {
 			return SharedUtils.fetchTreesAsRecord(contributorIds);
 		},
-		
+
 		/**
 		 * Save merged collective tree
 		 */
@@ -53,32 +53,32 @@ export function createCollectiveTreeCallbacks(): CollectiveTreeCallbacks {
 		): Promise<void> {
 			try {
 				ensureAuthenticated();
-				
+
 				const timestamp = new Date();
-				
+
 				// Store the collective tree
-				await holsterNextPut('collective_trees', collectiveId, {
+				await meshNextPut('collective_trees', collectiveId, {
 					...tree,
 					last_updated: timestamp.toISOString()
 				});
-				
+
 				// Update the collective definition with last merge time
-				const definition = await holsterGet<CollectiveDefinition>(['collective_definitions', collectiveId]);
+				const definition = await meshGet<CollectiveDefinition>(['collective_definitions', collectiveId]);
 				if (definition) {
-					await holsterNextPut('collective_definitions', collectiveId, {
+					await meshNextPut('collective_definitions', collectiveId, {
 						...definition,
 						last_merge: timestamp.toISOString()
 					});
 				}
-				
+
 				// Store merge history
 				const historyKey = `${collectiveId}_${timestamp.getTime()}`;
-				await holsterNextPut('collective_tree_merge_history', historyKey, {
+				await meshNextPut('collective_tree_merge_history', historyKey, {
 					collective_id: collectiveId,
 					merge_stats: mergeStats,
 					timestamp: timestamp.toISOString()
 				});
-				
+
 				console.log(
 					`[COLLECTIVE-TREE-CALLBACKS] ✓ Saved collective tree ${collectiveId}:\n` +
 					`  → Contributors: ${tree.contributors.length}\n` +
@@ -89,22 +89,22 @@ export function createCollectiveTreeCallbacks(): CollectiveTreeCallbacks {
 				throw error;
 			}
 		},
-		
+
 		/**
 		 * Fetch existing collective trees for recognition computation
 		 */
 		async fetchCollectiveTrees(): Promise<CollectiveTree[]> {
 			try {
 				ensureAuthenticated();
-				
-				const trees = await holsterGetArray<CollectiveTree>('collective_trees');
+
+				const trees = await meshGetArray<CollectiveTree>('collective_trees');
 				return trees;
 			} catch (error) {
 				console.error('[COLLECTIVE-TREE-CALLBACKS] Failed to fetch collective trees:', error);
 				return [];
 			}
 		},
-		
+
 		/**
 		 * Save collective recognition results
 		 */
@@ -114,24 +114,24 @@ export function createCollectiveTreeCallbacks(): CollectiveTreeCallbacks {
 		): Promise<void> {
 			try {
 				ensureAuthenticated();
-				
+
 				const timestamp = new Date();
-				
+
 				// Store recognition results
 				const recognitionKey = `${treeId}_${timestamp.getTime()}`;
-				await holsterNextPut('collective_recognition_results', recognitionKey, {
+				await meshNextPut('collective_recognition_results', recognitionKey, {
 					tree_id: treeId,
 					recognition,
 					timestamp: timestamp.toISOString()
 				});
-				
+
 				// Update latest pointer
-				await holsterNextPut('collective_recognition_latest', treeId, {
+				await meshNextPut('collective_recognition_latest', treeId, {
 					result_key: recognitionKey,
 					timestamp: timestamp.toISOString(),
 					node_count: Object.keys(recognition).length
 				});
-				
+
 				console.log(
 					`[COLLECTIVE-TREE-CALLBACKS] ✓ Saved recognition for ${treeId}:\n` +
 					`  → Nodes: ${Object.keys(recognition).length}`
@@ -141,7 +141,7 @@ export function createCollectiveTreeCallbacks(): CollectiveTreeCallbacks {
 				throw error;
 			}
 		},
-		
+
 		/**
 		 * Fetch individual capacities for allocation
 		 * Uses shared utility to reduce duplication
@@ -149,7 +149,7 @@ export function createCollectiveTreeCallbacks(): CollectiveTreeCallbacks {
 		async fetchIndividualCapacities(): Promise<Record<string, Record<string, number>>> {
 			return SharedUtils.fetchAllIndividualCapacities();
 		},
-		
+
 		/**
 		 * Save capacity allocation results
 		 */
@@ -159,25 +159,25 @@ export function createCollectiveTreeCallbacks(): CollectiveTreeCallbacks {
 		): Promise<void> {
 			try {
 				ensureAuthenticated();
-				
+
 				const timestamp = new Date();
-				
+
 				// Store allocation results
 				const allocationKey = `${treeId}_${timestamp.getTime()}`;
-				await holsterNextPut('collective_capacity_allocations', allocationKey, {
+				await meshNextPut('collective_capacity_allocations', allocationKey, {
 					tree_id: treeId,
 					allocation,
 					timestamp: timestamp.toISOString()
 				});
-				
+
 				// Update latest pointer
-				await holsterNextPut('collective_capacity_allocation_latest', treeId, {
+				await meshNextPut('collective_capacity_allocation_latest', treeId, {
 					result_key: allocationKey,
 					timestamp: timestamp.toISOString(),
 					efficiency: allocation.allocation_efficiency,
 					fairness: allocation.allocation_fairness
 				});
-				
+
 				console.log(
 					`[COLLECTIVE-TREE-CALLBACKS] ✓ Saved allocation for ${treeId}:\n` +
 					`  → Efficiency: ${(allocation.allocation_efficiency * 100).toFixed(1)}%\n` +
@@ -188,7 +188,7 @@ export function createCollectiveTreeCallbacks(): CollectiveTreeCallbacks {
 				throw error;
 			}
 		},
-		
+
 		/**
 		 * Log computation events
 		 * Uses shared utility for consistent logging
@@ -210,9 +210,9 @@ export async function validateCollectiveTreeCallbacks(): Promise<{
 	const callbacks = createCollectiveTreeCallbacks();
 	const results: Record<string, any> = {};
 	const errors: string[] = [];
-	
+
 	console.log('[COLLECTIVE-TREE-CALLBACKS-VALIDATION] 🔍 Starting validation...');
-	
+
 	try {
 		// Test auto-merge collectives fetch
 		try {
@@ -226,7 +226,7 @@ export async function validateCollectiveTreeCallbacks(): Promise<{
 			errors.push(`Auto-merge collectives fetch failed: ${err}`);
 			console.error('[COLLECTIVE-TREE-CALLBACKS-VALIDATION]   ✗ Auto-merge collectives fetch failed:', err);
 		}
-		
+
 		// Test collective trees fetch
 		try {
 			const trees = await callbacks.fetchCollectiveTrees();
@@ -239,7 +239,7 @@ export async function validateCollectiveTreeCallbacks(): Promise<{
 			errors.push(`Collective trees fetch failed: ${err}`);
 			console.error('[COLLECTIVE-TREE-CALLBACKS-VALIDATION]   ✗ Collective trees fetch failed:', err);
 		}
-		
+
 		// Test individual capacities fetch
 		try {
 			const capacities = await callbacks.fetchIndividualCapacities();
@@ -252,17 +252,17 @@ export async function validateCollectiveTreeCallbacks(): Promise<{
 			errors.push(`Individual capacities fetch failed: ${err}`);
 			console.error('[COLLECTIVE-TREE-CALLBACKS-VALIDATION]   ✗ Individual capacities fetch failed:', err);
 		}
-		
+
 		const success = errors.length === 0;
-		
+
 		if (success) {
 			console.log('[COLLECTIVE-TREE-CALLBACKS-VALIDATION] ✅ All validations passed');
 		} else {
 			console.log(`[COLLECTIVE-TREE-CALLBACKS-VALIDATION] ⚠️  Validation completed with ${errors.length} errors`);
 		}
-		
+
 		return { success, results, errors };
-		
+
 	} catch (error) {
 		console.error('[COLLECTIVE-TREE-CALLBACKS-VALIDATION] ❌ Validation failed:', error);
 		return {

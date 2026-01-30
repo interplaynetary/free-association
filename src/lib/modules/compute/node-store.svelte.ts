@@ -6,7 +6,7 @@
  * 
  * Each node can declare:
  * - What schema to use (data_schema_type)
- * - Where to sync (holster_path)
+ * - Where to sync (mesh_path)
  * - How to persist (auto_persist, persist_debounce_ms)
  * - Who to subscribe to (subscribe_to_user)
  * 
@@ -16,7 +16,7 @@
  * - Store Manager: Manages lifecycle of multiple node stores
  */
 
-import { createStore, type HolsterStore } from '$lib/utils/primitives/store.svelte';
+import { createStore, type MeshStore } from '$lib/utils/primitives/store.svelte';
 import type { NodeDataStorage } from '$lib/modules/compute/schema';
 import * as z from 'zod';
 
@@ -69,7 +69,7 @@ const SCHEMA_REGISTRY: Record<string, z.ZodTypeAny> = {
 	// Commons schemas v2 (from commons/schema-v2.ts)
 	'Commitment': CommitmentSchema,
 	'TwoTierAllocationState': TwoTierAllocationStateSchema,
-	
+
 	// Main schemas (from lib/schema.ts)
 	'AvailabilitySlot': AvailabilitySlotSchema,
 	'BaseCapacity': BaseCapacitySchema,
@@ -89,7 +89,7 @@ const SCHEMA_REGISTRY: Record<string, z.ZodTypeAny> = {
 	'ComplianceFilter': ComplianceFilterSchema,
 	'Allocation': AllocationSchema,
 	'AllocationComputationResult': AllocationComputationResultSchema,
-	
+
 	// Generic types for flexible storage
 	'String': z.string(),
 	'Number': z.number(),
@@ -146,7 +146,7 @@ export function hasSchemaType(typeName: string): boolean {
  * Example:
  * ```typescript
  * const nodeConfig: NodeDataStorage = {
- *   holster_path: 'allocation/commitment',
+ *   mesh_path: 'allocation/commitment',
  *   data_schema_type: 'Commitment',
  *   persist_debounce_ms: 100,
  *   auto_persist: true
@@ -158,18 +158,18 @@ export function hasSchemaType(typeName: string): boolean {
  */
 export function createNodeStore<T = any>(
 	config: NodeDataStorage
-): HolsterStore<T> | null {
+): MeshStore<T> | null {
 	// Validate required fields
-	if (!config.holster_path) {
-		console.error('[NODE-STORE] Missing holster_path in config', config);
+	if (!config.mesh_path) {
+		console.error('[NODE-STORE] Missing mesh_path in config', config);
 		return null;
 	}
-	
+
 	if (!config.data_schema_type) {
 		console.error('[NODE-STORE] Missing data_schema_type in config', config);
 		return null;
 	}
-	
+
 	// Lookup schema from registry
 	const schema = getSchema(config.data_schema_type);
 	if (!schema) {
@@ -179,14 +179,14 @@ export function createNodeStore<T = any>(
 		);
 		return null;
 	}
-	
+
 	// Create store with config
 	const store = createStore({
-		holsterPath: config.holster_path,
+		meshPath: config.mesh_path,
 		schema: schema,
 		persistDebounce: config.persist_debounce_ms ?? 0
 	});
-	
+
 	return store;
 }
 
@@ -205,7 +205,7 @@ export function createNodeStore<T = any>(
  * const manager = new NodeStoreManager();
  * 
  * manager.registerNode('node-1', {
- *   holster_path: 'data/node-1',
+ *   mesh_path: 'data/node-1',
  *   data_schema_type: 'Commitment'
  * });
  * 
@@ -218,10 +218,10 @@ export function createNodeStore<T = any>(
  * ```
  */
 export class NodeStoreManager {
-	private stores = new Map<string, HolsterStore<any>>();
+	private stores = new Map<string, MeshStore<any>>();
 	private configs = new Map<string, NodeDataStorage>();
 	private subscriptions = new Map<string, ((data: any) => void)[]>();
-	
+
 	/**
 	 * Register a node's data storage config
 	 * 
@@ -230,7 +230,7 @@ export class NodeStoreManager {
 	registerNode(nodeId: string, config: NodeDataStorage): void {
 		this.configs.set(nodeId, config);
 	}
-	
+
 	/**
 	 * Unregister a node (cleanup and remove)
 	 */
@@ -243,37 +243,37 @@ export class NodeStoreManager {
 		this.configs.delete(nodeId);
 		this.subscriptions.delete(nodeId);
 	}
-	
+
 	/**
 	 * Get or create a store for a node
 	 * 
 	 * Creates store on-demand if config exists
 	 * Auto-initializes if auto_persist is enabled
 	 */
-	getStore<T = any>(nodeId: string): HolsterStore<T> | null {
+	getStore<T = any>(nodeId: string): MeshStore<T> | null {
 		// Return existing store if available
 		if (this.stores.has(nodeId)) {
-			return this.stores.get(nodeId)! as HolsterStore<T>;
+			return this.stores.get(nodeId)! as MeshStore<T>;
 		}
-		
+
 		// Get config
 		const config = this.configs.get(nodeId);
 		if (!config) {
 			console.error(`[NODE-STORE-MANAGER] No config for node ${nodeId}`);
 			return null;
 		}
-		
+
 		// Create store
 		const store = createNodeStore<T>(config);
 		if (!store) {
 			return null;
 		}
-		
+
 		// Initialize if auto_persist is enabled (default: true)
 		if (config.auto_persist !== false) {
 			store.initialize();
 		}
-		
+
 		// Subscribe to user if specified
 		if (config.subscribe_to_user) {
 			store.subscribeToUser(config.subscribe_to_user, (data: any) => {
@@ -281,7 +281,7 @@ export class NodeStoreManager {
 					`[NODE-STORE-MANAGER] ${nodeId} received data from ${config.subscribe_to_user?.slice(0, 20)}...`,
 					data
 				);
-				
+
 				// Trigger any registered callbacks
 				const callbacks = this.subscriptions.get(nodeId);
 				if (callbacks) {
@@ -289,19 +289,19 @@ export class NodeStoreManager {
 				}
 			});
 		}
-		
+
 		// Cache and return
 		this.stores.set(nodeId, store);
-		return store as HolsterStore<T>;
+		return store as MeshStore<T>;
 	}
-	
+
 	/**
 	 * Get the configuration for a node
 	 */
 	getConfig(nodeId: string): NodeDataStorage | null {
 		return this.configs.get(nodeId) || null;
 	}
-	
+
 	/**
 	 * Update a node's configuration
 	 * 
@@ -314,9 +314,9 @@ export class NodeStoreManager {
 			console.error(`[NODE-STORE-MANAGER] No config found for node ${nodeId}`);
 			return;
 		}
-		
+
 		this.configs.set(nodeId, { ...existingConfig, ...config });
-		
+
 		// Warn if store already created
 		if (this.stores.has(nodeId)) {
 			console.warn(
@@ -325,7 +325,7 @@ export class NodeStoreManager {
 			);
 		}
 	}
-	
+
 	/**
 	 * Subscribe to a node's data updates
 	 * 
@@ -335,9 +335,9 @@ export class NodeStoreManager {
 		if (!this.subscriptions.has(nodeId)) {
 			this.subscriptions.set(nodeId, []);
 		}
-		
+
 		this.subscriptions.get(nodeId)!.push(callback);
-		
+
 		// Return unsubscribe function
 		return () => {
 			const callbacks = this.subscriptions.get(nodeId);
@@ -349,7 +349,7 @@ export class NodeStoreManager {
 			}
 		};
 	}
-	
+
 	/**
 	 * Initialize all registered nodes
 	 * 
@@ -357,10 +357,10 @@ export class NodeStoreManager {
 	 */
 	async initializeAll(): Promise<void> {
 		console.log(`[NODE-STORE-MANAGER] Initializing ${this.configs.size} nodes...`);
-		
+
 		let successCount = 0;
 		let failCount = 0;
-		
+
 		for (const [nodeId, config] of this.configs) {
 			const store = this.getStore(nodeId);
 			if (store) {
@@ -370,12 +370,12 @@ export class NodeStoreManager {
 				console.warn(`[NODE-STORE-MANAGER] Failed to create store for ${nodeId}`);
 			}
 		}
-		
+
 		console.log(
 			`[NODE-STORE-MANAGER] Initialization complete: ${successCount} succeeded, ${failCount} failed`
 		);
 	}
-	
+
 	/**
 	 * Cleanup all stores
 	 * 
@@ -383,53 +383,53 @@ export class NodeStoreManager {
 	 */
 	async cleanupAll(): Promise<void> {
 		console.log(`[NODE-STORE-MANAGER] Cleaning up ${this.stores.size} stores...`);
-		
+
 		await Promise.all(
 			Array.from(this.stores.values()).map(store => store.cleanup())
 		);
-		
+
 		this.stores.clear();
 		this.configs.clear();
 		this.subscriptions.clear();
-		
+
 		console.log('[NODE-STORE-MANAGER] Cleanup complete');
 	}
-	
+
 	/**
 	 * Get all active stores
 	 */
-	getAllStores(): Map<string, HolsterStore<any>> {
+	getAllStores(): Map<string, MeshStore<any>> {
 		return new Map(this.stores);
 	}
-	
+
 	/**
 	 * Get all registered node IDs
 	 */
 	getAllNodeIds(): string[] {
 		return Array.from(this.configs.keys());
 	}
-	
+
 	/**
 	 * Get all active store IDs (subset of registered nodes)
 	 */
 	getActiveNodeIds(): string[] {
 		return Array.from(this.stores.keys());
 	}
-	
+
 	/**
 	 * Check if a node has a config registered
 	 */
 	hasConfig(nodeId: string): boolean {
 		return this.configs.has(nodeId);
 	}
-	
+
 	/**
 	 * Check if a node has a store created
 	 */
 	hasStore(nodeId: string): boolean {
 		return this.stores.has(nodeId);
 	}
-	
+
 	/**
 	 * Get statistics about the manager
 	 */
@@ -441,7 +441,7 @@ export class NodeStoreManager {
 			nodeIds: this.getAllNodeIds()
 		};
 	}
-	
+
 	/**
 	 * Wait for all stores to finish persisting
 	 */
@@ -450,7 +450,7 @@ export class NodeStoreManager {
 			Array.from(this.stores.values()).map(store => store.waitForPersistence())
 		);
 	}
-	
+
 	/**
 	 * Force persistence of all stores
 	 */
@@ -459,11 +459,11 @@ export class NodeStoreManager {
 			Array.from(this.stores.values()).map(store => store.persist())
 		);
 	}
-	
+
 	// ════════════════════════════════════════════════════════════
 	// CONTRIBUTOR MANAGEMENT (Convenience Methods)
 	// ════════════════════════════════════════════════════════════
-	
+
 	/**
 	 * Add a contributor to a managed node
 	 * 
@@ -484,33 +484,33 @@ export class NodeStoreManager {
 			console.error(`[NODE-STORE-MANAGER] No store found for node ${nodeId}`);
 			return false;
 		}
-		
+
 		// Get current node data from store
 		let nodeData: any = null;
 		const unsubscribe = store.subscribe((data: any) => { nodeData = data; });
 		unsubscribe();
-		
+
 		if (!nodeData) {
 			console.error(`[NODE-STORE-MANAGER] No data in store for node ${nodeId}`);
 			return false;
 		}
-		
+
 		// Add contributor
 		const added = addSubscriberAsContributor(nodeData, contributorId, asAntiContributor);
 		if (!added) {
 			return false;
 		}
-		
+
 		// Set weight if provided
 		if (weight !== undefined) {
 			setContributorWeight(nodeData, contributorId, weight);
 		}
-		
+
 		// Update store
 		store.set(nodeData);
 		return true;
 	}
-	
+
 	/**
 	 * Add a subscriber as contributor and auto-subscribe to their data
 	 * 
@@ -535,44 +535,44 @@ export class NodeStoreManager {
 			console.error(`[NODE-STORE-MANAGER] No config found for node ${nodeId}`);
 			return false;
 		}
-		
+
 		const store = this.getStore(nodeId);
 		if (!store) {
 			console.error(`[NODE-STORE-MANAGER] No store found for node ${nodeId}`);
 			return false;
 		}
-		
+
 		// Get current node data
 		let nodeData: any = null;
 		const unsubscribe = store.subscribe((data: any) => { nodeData = data; });
 		unsubscribe();
-		
+
 		if (!nodeData) {
 			console.error(`[NODE-STORE-MANAGER] No data in store for node ${nodeId}`);
 			return false;
 		}
-		
+
 		// Add contributor to node data
 		const added = addSubscriberAsContributor(nodeData, pubkey, asAntiContributor);
 		if (!added) {
 			return false;
 		}
-		
+
 		// Set weight if provided
 		if (weight !== undefined) {
 			setContributorWeight(nodeData, pubkey, weight);
 		}
-		
+
 		// Update store data
 		store.set(nodeData);
-		
+
 		// Update config to subscribe to this user
 		config.subscribe_to_user = pubkey;
-		
+
 		// Unregister and re-register to apply new subscription
 		await this.unregisterNode(nodeId);
 		this.registerNode(nodeId, config);
-		
+
 		// Re-create store with new config
 		const newStore = this.getStore(nodeId);
 		if (newStore) {
@@ -584,14 +584,14 @@ export class NodeStoreManager {
 				);
 			});
 		}
-		
+
 		console.log(
 			`[NODE-STORE-MANAGER] Added ${pubkey.slice(0, 20)}... as ${asAntiContributor ? 'anti-' : ''}contributor with auto-subscribe to node ${nodeId}`
 		);
-		
+
 		return true;
 	}
-	
+
 	/**
 	 * Remove a contributor from a managed node
 	 * 
@@ -609,28 +609,28 @@ export class NodeStoreManager {
 			console.error(`[NODE-STORE-MANAGER] No store found for node ${nodeId}`);
 			return false;
 		}
-		
+
 		// Get current node data
 		let nodeData: any = null;
 		const unsubscribe = store.subscribe((data: any) => { nodeData = data; });
 		unsubscribe();
-		
+
 		if (!nodeData) {
 			console.error(`[NODE-STORE-MANAGER] No data in store for node ${nodeId}`);
 			return false;
 		}
-		
+
 		// Remove contributor
 		const removed = removeContributor(nodeData, contributorId, fromAntiContributors);
 		if (!removed) {
 			return false;
 		}
-		
+
 		// Update store
 		store.set(nodeData);
 		return true;
 	}
-	
+
 	/**
 	 * Set points for a managed node
 	 * 
@@ -643,28 +643,28 @@ export class NodeStoreManager {
 			console.error(`[NODE-STORE-MANAGER] No store found for node ${nodeId}`);
 			return false;
 		}
-		
+
 		// Get current node data
 		let nodeData: any = null;
 		const unsubscribe = store.subscribe((data: any) => { nodeData = data; });
 		unsubscribe();
-		
+
 		if (!nodeData) {
 			console.error(`[NODE-STORE-MANAGER] No data in store for node ${nodeId}`);
 			return false;
 		}
-		
+
 		// Set points
 		const success = setNodePoints(nodeData, points);
 		if (!success) {
 			return false;
 		}
-		
+
 		// Update store
 		store.set(nodeData);
 		return true;
 	}
-	
+
 	/**
 	 * Set weight for a contributor in a managed node
 	 * 
@@ -682,28 +682,28 @@ export class NodeStoreManager {
 			console.error(`[NODE-STORE-MANAGER] No store found for node ${nodeId}`);
 			return false;
 		}
-		
+
 		// Get current node data
 		let nodeData: any = null;
 		const unsubscribe = store.subscribe((data: any) => { nodeData = data; });
 		unsubscribe();
-		
+
 		if (!nodeData) {
 			console.error(`[NODE-STORE-MANAGER] No data in store for node ${nodeId}`);
 			return false;
 		}
-		
+
 		// Set weight
 		const success = setContributorWeight(nodeData, contributorId, weight);
 		if (!success) {
 			return false;
 		}
-		
+
 		// Update store
 		store.set(nodeData);
 		return true;
 	}
-	
+
 	/**
 	 * Get all contributors for a managed node
 	 * 
@@ -718,16 +718,16 @@ export class NodeStoreManager {
 		if (!store) {
 			return null;
 		}
-		
+
 		// Get current node data
 		let nodeData: any = null;
 		const unsubscribe = store.subscribe((data: any) => { nodeData = data; });
 		unsubscribe();
-		
+
 		if (!nodeData || nodeData.type !== 'NonRootNode') {
 			return null;
 		}
-		
+
 		return {
 			contributors: nodeData.contributor_ids || [],
 			antiContributors: nodeData.anti_contributors_ids || [],
@@ -764,21 +764,21 @@ export const nodeStoreManager = new NodeStoreManager();
  */
 export function createTypedNodeStoreFactory<T>(schemaType: string) {
 	return (
-		holsterPath: string,
+		meshPath: string,
 		options: {
 			persistDebounce?: number;
 			autoPersist?: boolean;
 			subscribeToUser?: string;
 		} = {}
-	): HolsterStore<T> | null => {
+	): MeshStore<T> | null => {
 		const config: NodeDataStorage = {
-			holster_path: holsterPath,
+			mesh_path: meshPath,
 			data_schema_type: schemaType,
 			persist_debounce_ms: options.persistDebounce ?? 0,
 			auto_persist: options.autoPersist ?? true,
 			subscribe_to_user: options.subscribeToUser
 		};
-		
+
 		return createNodeStore<T>(config);
 	};
 }
@@ -805,7 +805,7 @@ export function validateAgainstSchema(
 			])
 		};
 	}
-	
+
 	const result = schema.safeParse(data);
 	return result.success
 		? { success: true, data: result.data }
@@ -837,7 +837,7 @@ export function addSubscriberAsContributor(
 		console.error('[NODE-STORE] Can only add contributors to NonRootNode');
 		return false;
 	}
-	
+
 	// Initialize arrays if they don't exist
 	if (!node.contributor_ids) {
 		node.contributor_ids = [];
@@ -845,7 +845,7 @@ export function addSubscriberAsContributor(
 	if (!node.anti_contributors_ids) {
 		node.anti_contributors_ids = [];
 	}
-	
+
 	if (asAntiContributor) {
 		// Add as anti-contributor
 		if (!node.anti_contributors_ids.includes(pubkey)) {
@@ -861,7 +861,7 @@ export function addSubscriberAsContributor(
 			return true;
 		}
 	}
-	
+
 	return false; // Already exists
 }
 
@@ -882,7 +882,7 @@ export function removeContributor(
 		console.error('[NODE-STORE] Can only remove contributors from NonRootNode');
 		return false;
 	}
-	
+
 	if (fromAntiContributors) {
 		const index = node.anti_contributors_ids?.indexOf(pubkey);
 		if (index !== undefined && index > -1) {
@@ -898,7 +898,7 @@ export function removeContributor(
 			return true;
 		}
 	}
-	
+
 	return false;
 }
 
@@ -914,12 +914,12 @@ export function setNodePoints(node: any, points: number): boolean {
 		console.error('[NODE-STORE] Can only set points on NonRootNode');
 		return false;
 	}
-	
+
 	if (points < 0) {
 		console.error('[NODE-STORE] Points must be non-negative');
 		return false;
 	}
-	
+
 	node.points = points;
 	console.log(`[NODE-STORE] Set points to ${points} for node ${node.id}`);
 	return true;
@@ -955,22 +955,22 @@ export function setContributorWeight(
 		console.error('[NODE-STORE] Can only set contributor weights on NonRootNode');
 		return false;
 	}
-	
+
 	// Verify contributor exists
 	const isContributor = node.contributor_ids?.includes(contributorId);
 	const isAntiContributor = node.anti_contributors_ids?.includes(contributorId);
-	
+
 	if (!isContributor && !isAntiContributor) {
 		console.warn(
 			`[NODE-STORE] ${contributorId.slice(0, 20)}... is not a contributor to node ${node.id}`
 		);
 	}
-	
+
 	// Initialize contributor_weights if needed
 	if (!node.contributor_weights) {
 		node.contributor_weights = {};
 	}
-	
+
 	node.contributor_weights[contributorId] = weight;
 	console.log(
 		`[NODE-STORE] Set weight ${weight} for ${contributorId.slice(0, 20)}... in node ${node.id}`
@@ -987,7 +987,7 @@ export function getContributorWeight(node: any, contributorId: string): number |
 	if (node.type !== 'NonRootNode') {
 		return null;
 	}
-	
+
 	return node.contributor_weights?.[contributorId] ?? null;
 }
 
@@ -1000,7 +1000,7 @@ export function getAllContributorWeights(node: any): ContributorWeights {
 	if (node.type !== 'NonRootNode') {
 		return {};
 	}
-	
+
 	return node.contributor_weights ?? {};
 }
 
@@ -1013,19 +1013,19 @@ export function normalizeContributorWeights(node: any): boolean {
 	if (node.type !== 'NonRootNode' || !node.contributor_weights) {
 		return false;
 	}
-	
+
 	const weights = node.contributor_weights;
 	const total = Object.values(weights).reduce((sum: number, w: any) => sum + (w as number), 0);
-	
+
 	if (total === 0) {
 		console.warn('[NODE-STORE] Cannot normalize - total weight is 0');
 		return false;
 	}
-	
+
 	for (const contributorId in weights) {
 		weights[contributorId] = weights[contributorId] / total;
 	}
-	
+
 	console.log(`[NODE-STORE] Normalized contributor weights for node ${node.id}`);
 	return true;
 }
@@ -1052,23 +1052,23 @@ export function addSubscriberAsContributorWithAutoSubscribe(
 ): boolean {
 	// Add to node's contributor list
 	const added = addSubscriberAsContributor(node, pubkey, asAntiContributor);
-	
+
 	if (!added) {
 		return false;
 	}
-	
+
 	// Set weight if provided
 	if (weight !== undefined) {
 		setContributorWeight(node, pubkey, weight);
 	}
-	
+
 	// Update node config to subscribe to this pubkey
 	nodeConfig.subscribe_to_user = pubkey;
-	
+
 	console.log(
 		`[NODE-STORE] Added ${pubkey.slice(0, 20)}... as ${asAntiContributor ? 'anti-' : ''}contributor with auto-subscribe`
 	);
-	
+
 	return true;
 }
 

@@ -5,7 +5,7 @@
  * Import from here for cleaner code:
  * 
  * @example
- * import { config, requireAuth, createPOSTHandler, holsterNext } from '$lib/server';
+ * import { config, requireAuth, createPOSTHandler, meshNext } from '$lib/server';
  */
 
 // Configuration
@@ -55,27 +55,27 @@ export {
   cleanupRateLimits
 } from './middleware/rate-limit';
 
-// Holster - Database Helpers
+// Mesh - Database Helpers
 export {
-  holsterGet,
-  holsterNext,
-  holsterPut,
-  holsterNextPut,
+  meshGet,
+  meshNext,
+  meshPut,
+  meshNextPut,
   getAccountByCode,
   getAccountByCodeOrFail,
   updateAccount,
-  holsterGetArray,
-  holsterDecrypt,
-  holsterEncrypt,
-  holsterVerify,
+  meshGetArray,
+  meshDecrypt,
+  meshEncrypt,
+  meshVerify,
   ensureAuthenticated,
-  holsterDelete,
-  holsterSubscribe
-} from './holster/db';
+  meshDelete,
+  meshSubscribe
+} from './mesh/db';
 
-// Holster - Core
+// Mesh - Core
 export {
-  holster,
+  mesh,
   user,
   username,
   password,
@@ -85,11 +85,11 @@ export {
   dbStats,
   timeDbOperation,
   mapInviteCodes,
-  initializeHolster,
+  initializeMesh,
   getAccount,
   updateRequestStats,
   resetStatsIfNeeded
-} from './holster/core';
+} from './mesh/core';
 
 // Health Monitoring
 export {
@@ -99,7 +99,7 @@ export {
   unregisterHealthCheck,
   getAvailableServices,
   getSystemHealth,
-  getHolsterHealth,
+  getMeshHealth,
   getKeyPoolHealth,
   getLLMRouterHealth,
   getAIProxyHealth,

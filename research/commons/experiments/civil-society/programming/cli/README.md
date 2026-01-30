@@ -1,38 +1,38 @@
-# Holster + Git CLI
+# Mesh + Git CLI
 
-A command-line interface for managing Git repositories with Holster distributed storage.
+A command-line interface for managing Git repositories with Mesh distributed storage.
 
 ## Overview
 
 This CLI protocol enables:
 
-- **User Authentication**: Create and manage Holster identities
+- **User Authentication**: Create and manage Mesh identities
 - **Git Operations**: Initialize repos, commit changes, view history
-- **Distributed Storage**: Push/pull Git objects to/from Holster network
-- **Cryptographic Identity**: Commits are signed with your Holster keypair
+- **Distributed Storage**: Push/pull Git objects to/from Mesh network
+- **Cryptographic Identity**: Commits are signed with your Mesh keypair
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     Holster + Git CLI                       │
+│                     Mesh + Git CLI                       │
 ├─────────────────────────────────────────────────────────────┤
 │  cli.ts          - Command dispatcher & user interaction    │
-│  holster.js      - Holster instance & user auth             │
-│  git-adapter.ts  - Git ↔ Holster storage bridge             │
+│  mesh.js      - Mesh instance & user auth             │
+│  git-adapter.ts  - Git ↔ Mesh storage bridge             │
 └─────────────────────────────────────────────────────────────┘
                               │
         ┌─────────────────────┼─────────────────────┐
         ▼                     ▼                     ▼
   ┌──────────┐         ┌─────────────┐      ┌──────────────┐
-  │ Holster  │         │ isomorphic  │      │ LightningFS  │
+  │ Mesh  │         │ isomorphic  │      │ LightningFS  │
   │ Network  │         │    git      │      │   (local)    │
   └──────────┘         └─────────────┘      └──────────────┘
 ```
 
 ### Storage Model
 
-Git objects are stored in Holster with the following structure:
+Git objects are stored in Mesh with the following structure:
 
 ```
 user.get('git/<repo>/objects/<sha>') = {
@@ -60,7 +60,7 @@ bun add -d isomorphic-git @isomorphic-git/lightning-fs
 ### Quick Start
 
 ```bash
-# 1. Create a Holster user
+# 1. Create a Mesh user
 bun cli/cli.ts create alice secret123
 
 # 2. Authenticate
@@ -74,7 +74,7 @@ bun cli/cli.ts git-write myproject README.md "# My Project"
 bun cli/cli.ts git-add myproject README.md
 bun cli/cli.ts git-commit myproject "Initial commit"
 
-# 5. Push to Holster network
+# 5. Push to Mesh network
 bun cli/cli.ts git-push myproject
 
 # 6. Pull from another user
@@ -105,7 +105,7 @@ bun run cli:git-push myrepo
 
 #### `create <username> <password>`
 
-Creates a new Holster user account.
+Creates a new Mesh user account.
 
 ```bash
 bun cli/cli.ts create alice mySecurePassword123
@@ -164,7 +164,7 @@ bun cli/cli.ts git-init myproject
 **Output:**
 ```
 ✓ Initialized repo: myproject
-  Path: /holster/SE2G7...XpZWS/git/myproject
+  Path: /mesh/SE2G7...XpZWS/git/myproject
 ```
 
 #### `git-write <repo> <file> <content>`
@@ -199,9 +199,9 @@ bun cli/cli.ts git-commit myproject "Initial commit"
 ```
 
 **Commit Identity:**
-- `author.name` = Your Holster username
-- `author.email` = `<your-pubkey>@holster`
-- All commits are cryptographically linked to your Holster identity
+- `author.name` = Your Mesh username
+- `author.email` = `<your-pubkey>@mesh`
+- All commits are cryptographically linked to your Mesh identity
 
 #### `git-status <repo>`
 
@@ -239,7 +239,7 @@ bun cli/cli.ts git-log myproject 5
 Commit history for myproject:
 
 commit 3a7b9d2c4f5e6a7b8c9d0e1f2a3b4c5d6e7f8a9b
-Author: alice <SE2G7...XpZWS@holster>
+Author: alice <SE2G7...XpZWS@mesh>
 Date:   2025-11-15T10:30:00.000Z
 
     Initial commit
@@ -247,7 +247,7 @@ Date:   2025-11-15T10:30:00.000Z
 
 #### `git-push <repo>`
 
-Pushes all Git objects to the Holster network.
+Pushes all Git objects to the Mesh network.
 
 ```bash
 bun cli/cli.ts git-push myproject
@@ -255,25 +255,25 @@ bun cli/cli.ts git-push myproject
 
 **Output:**
 ```
-Pushing myproject to Holster...
+Pushing myproject to Mesh...
   HEAD: 3a7b9d2c...
   Objects: 42
   Stored 10/42 objects...
   Stored 20/42 objects...
   ...
-✓ Pushed 42 objects to Holster
+✓ Pushed 42 objects to Mesh
   Ref: main -> 3a7b9d2c...
 ```
 
 **What happens:**
 1. Walks all objects reachable from HEAD
 2. Serializes each object to base64
-3. Stores each object in Holster: `git/<repo>/objects/<sha>`
+3. Stores each object in Mesh: `git/<repo>/objects/<sha>`
 4. Updates the main branch ref: `git/<repo>/refs/heads/main`
 
 #### `git-pull <repo> [pubkey]`
 
-Pulls Git objects from the Holster network.
+Pulls Git objects from the Mesh network.
 
 ```bash
 # Pull from your own repos
@@ -285,19 +285,19 @@ bun cli/cli.ts git-pull myproject SE2G7...XpZWS
 
 **Output:**
 ```
-Pulling myproject from Holster...
+Pulling myproject from Mesh...
   Source: SE2G7...
   Remote HEAD: 3a7b9d2c...
   Fetched: 3a7b9d2c... (commit)
   Fetched: 7f8e9a0b... (tree)
   Fetched: 1c2d3e4f... (blob)
   ...
-✓ Pulled 42 objects from Holster
+✓ Pulled 42 objects from Mesh
   Updated: main -> 3a7b9d2c...
 ```
 
 **What happens:**
-1. Fetches the remote ref from Holster
+1. Fetches the remote ref from Mesh
 2. Recursively fetches all objects (commits → trees → blobs)
 3. Writes objects to local LightningFS
 4. Updates local main branch ref
@@ -378,7 +378,7 @@ The Git adapter is also available client-side in your SvelteKit app.
 ```svelte
 <script lang="ts">
   import { initRepo, writeFile, addFile, commit, push, log } from '$lib/git'
-  import { holsterUser } from '$lib/network/holster'
+  import { meshUser } from '$lib/network/mesh'
   
   let repo = 'my-app-data'
   let commits = $state([])
@@ -389,12 +389,12 @@ The Git adapter is also available client-side in your SvelteKit app.
   }
   
   async function saveData() {
-    const data = JSON.stringify({ user: holsterUser.is.username, timestamp: Date.now() })
+    const data = JSON.stringify({ user: meshUser.is.username, timestamp: Date.now() })
     await writeFile(repo, 'data.json', data)
     await addFile(repo, 'data.json')
     await commit(repo, 'Save user data')
     await push(repo)
-    console.log('Data pushed to Holster!')
+    console.log('Data pushed to Mesh!')
   }
   
   async function loadHistory() {
@@ -432,13 +432,13 @@ This ensures Git operations run only in the browser.
 
 ### CLI (Node/Bun)
 
-- Holster data: `.holster-data/` (local directory)
+- Mesh data: `.mesh-data/` (local directory)
 - Git repos: LightningFS in-memory (ephemeral)
 
 ### Browser (SvelteKit)
 
-- Holster data: IndexedDB (`holster` database)
-- Git repos: LightningFS IndexedDB (`holster-git-browser` database)
+- Mesh data: IndexedDB (`mesh` database)
+- Git repos: LightningFS IndexedDB (`mesh-git-browser` database)
 
 ---
 
@@ -448,7 +448,7 @@ This ensures Git operations run only in the browser.
 
 ```
 ┌──────────┐                           ┌──────────────┐
-│   CLI    │                           │   Holster    │
+│   CLI    │                           │   Mesh    │
 └─────┬────┘                           └──────┬───────┘
       │                                       │
       │ 1. git.resolveRef('HEAD')             │
@@ -477,7 +477,7 @@ This ensures Git operations run only in the browser.
 
 ```
 ┌──────────┐                           ┌──────────────┐
-│   CLI    │                           │   Holster    │
+│   CLI    │                           │   Mesh    │
 └─────┬────┘                           └──────┬───────┘
       │                                       │
       │ 1. user.get(<pub>).get('git/<repo>/  │
@@ -528,7 +528,7 @@ bun cli/cli.ts auth alice password123
 **Solution:**
 - Verify the public key
 - Ensure the remote user has pushed the repo
-- Check Holster peer connectivity
+- Check Mesh peer connectivity
 
 ### "Object not found"
 
@@ -544,13 +544,13 @@ bun cli/cli.ts auth alice password123
 
 ### Identity Verification
 
-All commits are signed with your Holster keypair:
+All commits are signed with your Mesh keypair:
 
 ```javascript
-author.email = `${user.is.pub}@holster`
+author.email = `${user.is.pub}@mesh`
 ```
 
-This cryptographically links every commit to your Holster identity.
+This cryptographically links every commit to your Mesh identity.
 
 ### Object Integrity
 
@@ -561,8 +561,8 @@ Git objects are content-addressed (SHA-1/SHA-256), ensuring:
 
 ### Network Security
 
-- Holster uses WebRTC for peer-to-peer connections
-- Optional relay servers (wss://holster.haza.website)
+- Mesh uses WebRTC for peer-to-peer connections
+- Optional relay servers (wss://free.playnet.lol)
 - End-to-end encryption for user data
 
 ---
@@ -602,11 +602,11 @@ Similar to push, but depends on:
 
 ## Related Files
 
-- `cli/holster.js` - Holster initialization
-- `cli/git-adapter.ts` - Git ↔ Holster bridge
+- `cli/mesh.js` - Mesh initialization
+- `cli/git-adapter.ts` - Git ↔ Mesh bridge
 - `cli/cli.ts` - CLI dispatcher
 - `src/lib/git/git-adapter.svelte.ts` - Browser adapter
-- `src/lib/network/holster.ts` - Holster network config
+- `src/lib/network/mesh.ts` - Mesh network config
 
 ---
 

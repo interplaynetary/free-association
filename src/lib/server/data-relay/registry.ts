@@ -1,12 +1,12 @@
-import {DataRelayEngine} from "./engine"
-import type {DataRelayConfig} from "./config"
+import { DataRelayEngine } from "./engine"
+import type { DataRelayConfig } from "./config"
 
-// Type for Gun/Holster user instance
+// Type for Gun/Mesh user instance
 type User = any
 
 // Import all preset configurations
-import {rssFeedConfig} from "./presets/rss-feed"
-import {twitterConfig, mastodonConfig, redditConfig} from "./presets/social-media"
+import { rssFeedConfig } from "./presets/rss-feed"
+import { twitterConfig, mastodonConfig, redditConfig } from "./presets/social-media"
 import {
   webhookConfig,
   iotSensorConfig,
@@ -274,8 +274,8 @@ export function resetRegistry(): void {
 // Preset exports
 // ============================================================================
 
-export {rssFeedConfig} from "./presets/rss-feed"
-export {twitterConfig, mastodonConfig, redditConfig} from "./presets/social-media"
+export { rssFeedConfig } from "./presets/rss-feed"
+export { twitterConfig, mastodonConfig, redditConfig } from "./presets/social-media"
 export {
   webhookConfig,
   iotSensorConfig,

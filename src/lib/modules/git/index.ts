@@ -1,5 +1,5 @@
 /**
- * Git-Holster Integration
+ * Git-Mesh Integration
  * 
  * Re-exports for convenient access
  */

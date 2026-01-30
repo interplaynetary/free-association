@@ -1,10 +1,10 @@
 /**
- * Generic Holster Store Utility
+ * Generic Mesh Store Utility
  * 
- * Simple, reliable store backed by Holster with JSON serialization.
+ * Simple, reliable store backed by Mesh with JSON serialization.
  * 
  * Core Flow:
- * 1. SAVE: JSON.stringify({ ...data, _updatedAt }) → Store string in Holster
+ * 1. SAVE: JSON.stringify({ ...data, _updatedAt }) → Store string in Mesh
  * 2. LOAD: Get string → JSON.parse() → Validate with Zod → Update if valid & different
  * 3. VALIDATION: Only valid data reaches the store (invalid data is rejected)
  * 
@@ -18,14 +18,14 @@
  * 
  * Storage Format:
  * ```typescript
- * holsterUser.get(path).put('{"field":"value",...,"_updatedAt":1234567890}')
+ * meshUser.get(path).put('{"field":"value",...,"_updatedAt":1234567890}')
  * // ↑ Just a JSON string, nothing fancy!
  * ```
  * 
  * Usage:
  * ```typescript
  * const store = createStore({
- *   holsterPath: 'allocation/commitment',
+ *   meshPath: 'allocation/commitment',
  *   schema: CommitmentSchema
  * });
  * 
@@ -37,9 +37,9 @@
 
 import { writable, get } from 'svelte/store';
 import type { Writable, Readable } from 'svelte/store';
-import { holsterUser, holsterUserPub } from '$lib/network/holster.svelte';
+import { meshUser, meshUserPub } from '$lib/network/mesh.svelte';
 import * as z from 'zod';
-import { shouldPersist } from '$lib/utils/data/holsterTimestamp';
+import { shouldPersist } from '$lib/utils/data/meshTimestamp';
 
 import { fastExtractTimestamp, fastParse } from '$lib/utils/data/fastJsonParser';
 import * as idb from '$lib/utils/primitives/idb-keyval';
@@ -49,8 +49,8 @@ import * as idb from '$lib/utils/primitives/idb-keyval';
 // ═══════════════════════════════════════════════════════════════════
 
 export interface StoreConfig<T extends z.ZodTypeAny> {
-	/** Path in Holster user space (e.g., 'commitment', 'tree') */
-	holsterPath: string;
+	/** Path in Mesh user space (e.g., 'commitment', 'tree') */
+	meshPath: string;
 
 	/** Zod schema for validation */
 	schema: T;
@@ -79,7 +79,7 @@ export interface StoreConfig<T extends z.ZodTypeAny> {
 	localStorageKey?: string;
 }
 
-export interface HolsterStore<T> extends Readable<T | null> {
+export interface MeshStore<T> extends Readable<T | null> {
 	/** Set local value (triggers persistence) */
 	set: (value: T) => void;
 
@@ -114,11 +114,11 @@ export interface HolsterStore<T> extends Readable<T | null> {
 
 export function createStore<T extends z.ZodTypeAny>(
 	config: StoreConfig<T>
-): HolsterStore<z.infer<T>> {
+): MeshStore<z.infer<T>> {
 	type DataType = z.infer<T>;
 
 	// Debug: Log store creation
-	console.log(`[HOLSTER-STORE] 🏗️  Creating store for: ${config.holsterPath}`);
+	console.log(`[MESH-STORE] 🏗️  Creating store for: ${config.meshPath}`);
 
 	// Internal state
 	const store = writable<DataType | null>(null);
@@ -156,11 +156,11 @@ export function createStore<T extends z.ZodTypeAny>(
 		if (!data) return;
 
 		// Debug: ALWAYS log what we received to diagnose issues
-		console.log(`[HOLSTER-STORE:${config.holsterPath}] 📥 LOADING - Raw:`, typeof data, data);
+		console.log(`[MESH-STORE:${config.meshPath}] 📥 LOADING - Raw:`, typeof data, data);
 
 		if (typeof data !== 'string') {
-			console.warn(`[HOLSTER-STORE:${config.holsterPath}] ⚠️  Expected string, got ${typeof data}:`, data);
-			console.warn(`[HOLSTER-STORE:${config.holsterPath}] ⚠️  This is OLD FORMAT data! Run: await window.clearAllV5Stores()`);
+			console.warn(`[MESH-STORE:${config.meshPath}] ⚠️  Expected string, got ${typeof data}:`, data);
+			console.warn(`[MESH-STORE:${config.meshPath}] ⚠️  This is OLD FORMAT data! Run: await window.clearAllV5Stores()`);
 			return;
 		}
 
@@ -169,7 +169,7 @@ export function createStore<T extends z.ZodTypeAny>(
 
 		// Early return if data is older than what we have
 		if (lastNetworkTimestamp && networkTimestamp && networkTimestamp <= lastNetworkTimestamp) {
-			console.log(`[HOLSTER-STORE:${config.holsterPath}] ⏭️  Stale data - skipping (network: ${networkTimestamp}, local: ${lastNetworkTimestamp})`);
+			console.log(`[MESH-STORE:${config.meshPath}] ⏭️  Stale data - skipping (network: ${networkTimestamp}, local: ${lastNetworkTimestamp})`);
 			return;
 		}
 
@@ -178,26 +178,26 @@ export function createStore<T extends z.ZodTypeAny>(
 		try {
 			parsedData = fastParse(data);
 		} catch (error) {
-			console.error(`[HOLSTER-STORE:${config.holsterPath}] ❌ JSON parse failed:`, error);
+			console.error(`[MESH-STORE:${config.meshPath}] ❌ JSON parse failed:`, error);
 			return;
 		}
 
 		// Debug
-		if (config.holsterPath.includes('tree') || config.holsterPath.includes('commitment')) {
-			console.log(`[HOLSTER-STORE:${config.holsterPath}] 📥 Parsed:`, parsedData);
-			console.log(`[HOLSTER-STORE:${config.holsterPath}] 📥 Timestamp:`, networkTimestamp);
+		if (config.meshPath.includes('tree') || config.meshPath.includes('commitment')) {
+			console.log(`[MESH-STORE:${config.meshPath}] 📥 Parsed:`, parsedData);
+			console.log(`[MESH-STORE:${config.meshPath}] 📥 Timestamp:`, networkTimestamp);
 		}
 
 		// Step 3: Validate with Zod (auto-strips _updatedAt)
 		const validation = config.schema.safeParse(parsedData);
 		if (!validation.success) {
-			console.warn(`[HOLSTER-STORE:${config.holsterPath}] ❌ Schema Validation failed:`, validation.error);
+			console.warn(`[MESH-STORE:${config.meshPath}] ❌ Schema Validation failed:`, validation.error);
 			return;
 		}
 
 		// Step 3b: Custom Validation (Purge on failure)
 		if (config.validate && !config.validate(validation.data)) {
-			console.warn(`[HOLSTER-STORE:${config.holsterPath}] ⚠️  Custom Validation failed! PURGING store to clear bad data...`);
+			console.warn(`[MESH-STORE:${config.meshPath}] ⚠️  Custom Validation failed! PURGING store to clear bad data...`);
 			store.set(null); // This clears memory AND triggers persistence of null (clearing DB)
 			return;
 		}
@@ -205,7 +205,7 @@ export function createStore<T extends z.ZodTypeAny>(
 		// Step 4: Only update if different/newer
 		const current = get(store);
 		if (current && isEqual(current, validation.data)) {
-			console.log(`[HOLSTER-STORE:${config.holsterPath}] ⏭️  Data unchanged - skipping`);
+			console.log(`[MESH-STORE:${config.meshPath}] ⏭️  Data unchanged - skipping`);
 			return;
 		}
 
@@ -216,7 +216,7 @@ export function createStore<T extends z.ZodTypeAny>(
 				lastNetworkTimestamp = networkTimestamp;
 			}
 		}
-		console.log(`[HOLSTER-STORE:${config.holsterPath}] ✅ Updated from network`);
+		console.log(`[MESH-STORE:${config.meshPath}] ✅ Updated from network`);
 
 
 		// We have data, so we are definitely loaded
@@ -251,10 +251,10 @@ export function createStore<T extends z.ZodTypeAny>(
 	// ────────────────────────────────────────────────────────────────
 
 	function subscribeToNetwork() {
-		if (!get(holsterUserPub)) {
+		if (!get(meshUserPub)) {
 			// fallback to localStorage (now IndexedDB) if configured
 			if (config.localStorageKey && typeof window !== 'undefined') {
-				console.log(`[HOLSTER-STORE:${config.holsterPath}] Not authenticated - using IndexedDB: ${config.localStorageKey}`);
+				console.log(`[MESH-STORE:${config.meshPath}] Not authenticated - using IndexedDB: ${config.localStorageKey}`);
 
 				// Async load from IndexedDB
 				idb.get<string>(config.localStorageKey).then((raw) => {
@@ -278,37 +278,37 @@ export function createStore<T extends z.ZodTypeAny>(
 									parsed = JSON.parse(raw);
 								} catch (e) {
 									// maybe it wasn't json string, but the object itself? No, raw is T.
-									console.warn(`[HOLSTER-STORE:${config.holsterPath}] Failed to parse IDB data`, e);
+									console.warn(`[MESH-STORE:${config.meshPath}] Failed to parse IDB data`, e);
 								}
 							}
 
 							const validation = config.schema.safeParse(parsed);
 							if (validation.success) {
 								store.set(validation.data);
-								console.log(`[HOLSTER-STORE:${config.holsterPath}] ✅ Loaded from IndexedDB`);
+								console.log(`[MESH-STORE:${config.meshPath}] ✅ Loaded from IndexedDB`);
 							} else {
-								console.warn(`[HOLSTER-STORE:${config.holsterPath}] ❌ IndexedDB validation failed`, validation.error);
+								console.warn(`[MESH-STORE:${config.meshPath}] ❌ IndexedDB validation failed`, validation.error);
 								// Self-healing
 								if (config.localStorageKey) idb.del(config.localStorageKey);
 							}
 						} catch (e) {
-							console.warn(`[HOLSTER-STORE:${config.holsterPath}] Failed to load IndexedDB`, e);
+							console.warn(`[MESH-STORE:${config.meshPath}] Failed to load IndexedDB`, e);
 						}
 					}
 				}).catch(e => {
-					console.warn(`[HOLSTER-STORE:${config.holsterPath}] Failed to read IndexedDB`, e);
+					console.warn(`[MESH-STORE:${config.meshPath}] Failed to read IndexedDB`, e);
 				});
 
 				return;
 			}
-			console.log(`[HOLSTER-STORE:${config.holsterPath}] Cannot subscribe: not authenticated (and no localStorageKey)`);
+			console.log(`[MESH-STORE:${config.meshPath}] Cannot subscribe: not authenticated (and no localStorageKey)`);
 			return;
 		}
 
 		networkCallback = (data: any) => {
 			// Handle empty data (confirmed empty from network)
 			if (data === null || data === undefined) {
-				console.log(`[HOLSTER-STORE:${config.holsterPath}] ∅ Received empty/null from network - store is empty`);
+				console.log(`[MESH-STORE:${config.meshPath}] ∅ Received empty/null from network - store is empty`);
 				if (get(isLoading)) {
 					isLoading.set(false);
 					if (loadingTimeout) {
@@ -328,7 +328,7 @@ export function createStore<T extends z.ZodTypeAny>(
 						.then((networkTimestamp) => {
 							// Only queue if different timestamp (external update)
 							if (networkTimestamp && networkTimestamp !== lastNetworkTimestamp) {
-								console.log(`[HOLSTER-STORE:${config.holsterPath}] External update during persistence - queueing`);
+								console.log(`[MESH-STORE:${config.meshPath}] External update during persistence - queueing`);
 								queuedNetworkUpdate = data;
 							}
 						})
@@ -344,7 +344,7 @@ export function createStore<T extends z.ZodTypeAny>(
 			processNetworkUpdate(data);
 		};
 
-		holsterUser.get(config.holsterPath).on(networkCallback, true);
+		meshUser.get(config.meshPath).on(networkCallback, true);
 	}
 
 	// ────────────────────────────────────────────────────────────────
@@ -353,33 +353,33 @@ export function createStore<T extends z.ZodTypeAny>(
 
 	async function persistNow(): Promise<void> {
 		// Debug: Log persistence attempt
-		if (config.holsterPath.includes('tree')) {
-			console.log(`[HOLSTER-STORE:${config.holsterPath}] 🚀 persistNow called`);
+		if (config.meshPath.includes('tree')) {
+			console.log(`[MESH-STORE:${config.meshPath}] 🚀 persistNow called`);
 		}
 
 
 
 		// 2. Authenticated Mode - Guard Clause
-		if (!get(holsterUserPub)) {
-			console.log(`[HOLSTER-STORE:${config.holsterPath}] ❌ Not authenticated, skipping persistence`);
+		if (!get(meshUserPub)) {
+			console.log(`[MESH-STORE:${config.meshPath}] ❌ Not authenticated, skipping persistence`);
 			return;
 		}
 
 		// RACE CONDITION GUARD:
 		// Check if Svelte auth store is consistent with Gun auth state.
-		// If holsterUser.is is true (Gun level) but holsterUserPub (Svelte level) is not yet updated,
+		// If meshUser.is is true (Gun level) but meshUserPub (Svelte level) is not yet updated,
 		// we are in the "Login Transition Window".
 		// In this window, we MUST NOT persist, because the store still holds Unauthenticated (Demo) data!
-		const currentPub = get(holsterUserPub);
+		const currentPub = get(meshUserPub);
 		if (!currentPub) {
-			console.warn(`[HOLSTER-STORE:${config.holsterPath}] ⚠️ Race condition detected: Gun authenticated but stores not synced. Aborting persist to prevent overwriting remote data with local demo data.`);
+			console.warn(`[MESH-STORE:${config.meshPath}] ⚠️ Race condition detected: Gun authenticated but stores not synced. Aborting persist to prevent overwriting remote data with local demo data.`);
 			return;
 		}
 
 		// Check if already persisting
 		if (isPersisting) {
-			if (config.holsterPath.includes('tree')) {
-				console.log(`[HOLSTER-STORE:${config.holsterPath}] ⏸️  Already persisting, queuing...`);
+			if (config.meshPath.includes('tree')) {
+				console.log(`[MESH-STORE:${config.meshPath}] ⏸️  Already persisting, queuing...`);
 			}
 			hasPendingLocalChanges = true;
 			return;
@@ -387,13 +387,13 @@ export function createStore<T extends z.ZodTypeAny>(
 
 		const dataToSave = get(store);
 		if (!dataToSave) {
-			console.log(`[HOLSTER-STORE:${config.holsterPath}] ❌ No data to persist`);
+			console.log(`[MESH-STORE:${config.meshPath}] ❌ No data to persist`);
 			return;
 		}
 
 		// Debug: Log data about to be saved
-		if (config.holsterPath.includes('tree')) {
-			console.log(`[HOLSTER-STORE:${config.holsterPath}] ✅ Data ready to persist:`, {
+		if (config.meshPath.includes('tree')) {
+			console.log(`[MESH-STORE:${config.meshPath}] ✅ Data ready to persist:`, {
 				hasId: 'id' in dataToSave,
 				hasChildren: 'children' in dataToSave,
 				childrenType: Array.isArray((dataToSave as any).children) ? 'array' : typeof (dataToSave as any).children
@@ -405,30 +405,30 @@ export function createStore<T extends z.ZodTypeAny>(
 		hasPendingLocalChanges = false;
 
 		// LocalStorage -> IndexedDB Mode
-		if (!get(holsterUserPub) && config.localStorageKey) {
+		if (!get(meshUserPub) && config.localStorageKey) {
 			try {
 				if (dataToSave) {
 					// Save directly to IndexedDB (as object, no need to stringify for IDB usually, but ensures consistency)
 					// Let's store the object directly to be efficient.
 					await idb.set(config.localStorageKey, dataToSave);
-					console.log(`[HOLSTER-STORE:${config.holsterPath}] 💾 SAVED to IndexedDB`);
+					console.log(`[MESH-STORE:${config.meshPath}] 💾 SAVED to IndexedDB`);
 				} else {
 					await idb.del(config.localStorageKey);
-					console.log(`[HOLSTER-STORE:${config.holsterPath}] 🗑️ REMOVED from IndexedDB`);
+					console.log(`[MESH-STORE:${config.meshPath}] 🗑️ REMOVED from IndexedDB`);
 				}
 				isPersisting = false;
 				processQueuedUpdate();
 				return;
 			} catch (e) {
-				console.error(`[HOLSTER-STORE:${config.holsterPath}] Error saving to IndexedDB`, e);
+				console.error(`[MESH-STORE:${config.meshPath}] Error saving to IndexedDB`, e);
 				isPersisting = false;
 				processQueuedUpdate();
 				return;
 			}
 		}
 
-		if (!get(holsterUserPub)) {
-			console.warn(`[HOLSTER-STORE:${config.holsterPath}] ⚠️  Cannot persist: not authenticated`);
+		if (!get(meshUserPub)) {
+			console.warn(`[MESH-STORE:${config.meshPath}] ⚠️  Cannot persist: not authenticated`);
 			isPersisting = false;
 			return;
 		}
@@ -440,7 +440,7 @@ export function createStore<T extends z.ZodTypeAny>(
 
 			// Check if safe to persist
 			if (!shouldPersist(localTimestamp, lastNetworkTimestamp)) {
-				console.warn(`[HOLSTER-STORE:${config.holsterPath}] Skipping persist - network has newer data`);
+				console.warn(`[MESH-STORE:${config.meshPath}] Skipping persist - network has newer data`);
 				isPersisting = false;
 				processQueuedUpdate();
 				return;
@@ -455,30 +455,30 @@ export function createStore<T extends z.ZodTypeAny>(
 			const jsonString = JSON.stringify(dataWithTimestamp);
 
 			// Debug: Log serialization for trees and commitments
-			if (config.holsterPath.includes('tree') || config.holsterPath.includes('commitment')) {
-				console.log(`[HOLSTER-STORE:${config.holsterPath}] 💾 SAVING - Data:`, dataToSave);
-				console.log(`[HOLSTER-STORE:${config.holsterPath}] 💾 SAVING - Timestamp:`, localTimestamp);
-				console.log(`[HOLSTER-STORE:${config.holsterPath}] 💾 SAVING - JSON size:`, jsonString.length, 'bytes');
+			if (config.meshPath.includes('tree') || config.meshPath.includes('commitment')) {
+				console.log(`[MESH-STORE:${config.meshPath}] 💾 SAVING - Data:`, dataToSave);
+				console.log(`[MESH-STORE:${config.meshPath}] 💾 SAVING - Timestamp:`, localTimestamp);
+				console.log(`[MESH-STORE:${config.meshPath}] 💾 SAVING - JSON size:`, jsonString.length, 'bytes');
 			}
 
-			// Persist to Holster as a single JSON string
+			// Persist to Mesh as a single JSON string
 			await new Promise<void>((resolve, reject) => {
-				holsterUser.get(config.holsterPath).put(jsonString, (err: any) => {
+				meshUser.get(config.meshPath).put(jsonString, (err: any) => {
 					if (err) {
-						console.error(`[HOLSTER-STORE:${config.holsterPath}] Error persisting:`, err);
+						console.error(`[MESH-STORE:${config.meshPath}] Error persisting:`, err);
 						isPersisting = false;
 						processQueuedUpdate();
 						return reject(err);
 					}
 
-					console.log(`[HOLSTER-STORE:${config.holsterPath}] ✅ Saved successfully`);
+					console.log(`[MESH-STORE:${config.meshPath}] ✅ Saved successfully`);
 					isPersisting = false;
 					processQueuedUpdate();
 					resolve();
 				});
 			});
 		} catch (error) {
-			console.error(`[HOLSTER-STORE:${config.holsterPath}] Error processing:`, error);
+			console.error(`[MESH-STORE:${config.meshPath}] Error processing:`, error);
 			isPersisting = false;
 			processQueuedUpdate();
 			throw error;
@@ -487,8 +487,8 @@ export function createStore<T extends z.ZodTypeAny>(
 
 	function persistDebounced(): void {
 		// Debug: Log persistence trigger
-		if (config.holsterPath.includes('tree')) {
-			console.log(`[HOLSTER-STORE:${config.holsterPath}] ⏱️  persistDebounced called, debounce=${config.persistDebounce}ms`);
+		if (config.meshPath.includes('tree')) {
+			console.log(`[MESH-STORE:${config.meshPath}] ⏱️  persistDebounced called, debounce=${config.persistDebounce}ms`);
 		}
 
 		if (persistDebounceTimeout) {
@@ -515,23 +515,23 @@ export function createStore<T extends z.ZodTypeAny>(
 		// If already initialized, do nothing? 
 		// Actually with auth subscription we might want to just ensure we are subscribed to auth
 		if (isInitialized) {
-			console.log(`[HOLSTER-STORE:${config.holsterPath}] Already initialized`);
+			console.log(`[MESH-STORE:${config.meshPath}] Already initialized`);
 			return;
 		}
 
-		console.log(`[HOLSTER-STORE:${config.holsterPath}] Initializing...`);
+		console.log(`[MESH-STORE:${config.meshPath}] Initializing...`);
 		isInitialized = true;
 		isLoading.set(true);
 
 		// Subscribe to auth changes to handle Login/Logout transitions
 		// This callback runs immediately with the current value!
-		authUnsub = holsterUserPub.subscribe((pub) => {
+		authUnsub = meshUserPub.subscribe((pub) => {
 			const isAuthenticated = !!pub;
 
 			// 1. Cleanup previous network subscriptions to avoid duplicates
 			// Use store checks instead of proxy access to avoid errors
-			if (networkCallback && get(holsterUserPub)) {
-				holsterUser.get(config.holsterPath).off(networkCallback);
+			if (networkCallback && get(meshUserPub)) {
+				meshUser.get(config.meshPath).off(networkCallback);
 				networkCallback = null;
 			}
 
@@ -547,7 +547,7 @@ export function createStore<T extends z.ZodTypeAny>(
 			// Fallback: If no data comes in 3s, assume loaded (empty)
 			loadingTimeout = setTimeout(() => {
 				if (get(isLoading)) {
-					console.log(`[HOLSTER-STORE:${config.holsterPath}] ⏱️  Loading timeout (3000ms) - assuming empty`);
+					console.log(`[MESH-STORE:${config.meshPath}] ⏱️  Loading timeout (3000ms) - assuming empty`);
 					isLoading.set(false);
 					loadingTimeout = null;
 				}
@@ -555,9 +555,9 @@ export function createStore<T extends z.ZodTypeAny>(
 
 			// 3. Re-run subscription logic
 			if (isAuthenticated) {
-				console.log(`[HOLSTER-STORE:${config.holsterPath}] 🔐 Authenticated (${pub.substring(0, 8)}...) - connecting to Holster`);
+				console.log(`[MESH-STORE:${config.meshPath}] 🔐 Authenticated (${pub.substring(0, 8)}...) - connecting to Mesh`);
 			} else {
-				console.log(`[HOLSTER-STORE:${config.holsterPath}] 🔓 Unauthenticated - checking LocalStorage`);
+				console.log(`[MESH-STORE:${config.meshPath}] 🔓 Unauthenticated - checking LocalStorage`);
 			}
 
 			subscribeToNetwork();
@@ -567,7 +567,7 @@ export function createStore<T extends z.ZodTypeAny>(
 	async function cleanup(): Promise<void> {
 		// Wait for in-flight persistence
 		if (isPersisting) {
-			console.log(`[HOLSTER-STORE:${config.holsterPath}] Waiting for persistence to complete...`);
+			console.log(`[MESH-STORE:${config.meshPath}] Waiting for persistence to complete...`);
 			const maxWait = 20000;
 			const startTime = Date.now();
 
@@ -577,8 +577,8 @@ export function createStore<T extends z.ZodTypeAny>(
 		}
 
 		// Unsubscribe from network
-		if (networkCallback && get(holsterUserPub)) {
-			holsterUser.get(config.holsterPath).off(networkCallback);
+		if (networkCallback && get(meshUserPub)) {
+			meshUser.get(config.meshPath).off(networkCallback);
 			networkCallback = null;
 		}
 
@@ -606,7 +606,7 @@ export function createStore<T extends z.ZodTypeAny>(
 			loadingTimeout = null;
 		}
 
-		console.log(`[HOLSTER-STORE:${config.holsterPath}] Cleaned up`);
+		console.log(`[MESH-STORE:${config.meshPath}] Cleaned up`);
 	}
 
 	// ────────────────────────────────────────────────────────────────
@@ -614,12 +614,12 @@ export function createStore<T extends z.ZodTypeAny>(
 	// ────────────────────────────────────────────────────────────────
 
 	function subscribeToUser(pubKey: string, callback: (data: DataType | null) => void) {
-		if (!get(holsterUserPub)) {
-			console.log(`[HOLSTER-STORE:${config.holsterPath}] Not authenticated, cannot subscribe to ${pubKey.slice(0, 20)}...`);
+		if (!get(meshUserPub)) {
+			console.log(`[MESH-STORE:${config.meshPath}] Not authenticated, cannot subscribe to ${pubKey.slice(0, 20)}...`);
 			return;
 		}
 
-		holsterUser.get([pubKey, config.holsterPath]).on((data: any) => {
+		meshUser.get([pubKey, config.meshPath]).on((data: any) => {
 			if (!data) {
 				callback(null);
 				return;
@@ -628,7 +628,7 @@ export function createStore<T extends z.ZodTypeAny>(
 			try {
 				// Parse JSON string
 				if (typeof data !== 'string') {
-					console.warn(`[HOLSTER-STORE:${config.holsterPath}] Expected string from ${pubKey.slice(0, 20)}...`);
+					console.warn(`[MESH-STORE:${config.meshPath}] Expected string from ${pubKey.slice(0, 20)}...`);
 					callback(null);
 					return;
 				}
@@ -639,7 +639,7 @@ export function createStore<T extends z.ZodTypeAny>(
 				const validation = config.schema.safeParse(parsedData);
 				if (!validation.success) {
 					console.warn(
-						`[HOLSTER-STORE:${config.holsterPath}] Invalid data from ${pubKey.slice(0, 20)}...`,
+						`[MESH-STORE:${config.meshPath}] Invalid data from ${pubKey.slice(0, 20)}...`,
 						validation.error
 					);
 					callback(null);
@@ -649,7 +649,7 @@ export function createStore<T extends z.ZodTypeAny>(
 				callback(validation.data);
 			} catch (error) {
 				console.error(
-					`[HOLSTER-STORE:${config.holsterPath}] Error from ${pubKey.slice(0, 20)}...`,
+					`[MESH-STORE:${config.meshPath}] Error from ${pubKey.slice(0, 20)}...`,
 					error
 				);
 				callback(null);
@@ -669,11 +669,11 @@ export function createStore<T extends z.ZodTypeAny>(
 		// Writable interface
 		set: (value: DataType) => {
 			// Debug: ALWAYS log when set is called (to catch ALL stores)
-			console.log(`[HOLSTER-STORE:${config.holsterPath}] 🔄 SET called`);
+			console.log(`[MESH-STORE:${config.meshPath}] 🔄 SET called`);
 
 			// Debug: Log tree details
-			if (config.holsterPath.includes('tree')) {
-				console.log(`[HOLSTER-STORE:${config.holsterPath}] 🔄 SET data:`, {
+			if (config.meshPath.includes('tree')) {
+				console.log(`[MESH-STORE:${config.meshPath}] 🔄 SET data:`, {
 					value,
 					hasId: value && typeof value === 'object' && 'id' in value,
 					hasChildren: value && typeof value === 'object' && 'children' in value

@@ -1,5 +1,5 @@
 /**
- * User Space Stores - Holster Integration
+ * User Space Stores - Mesh Integration
  * 
  * Provides stores and utilities for managing the complete user space structure:
  * - Programs (registry, active/inactive, subscribed)
@@ -13,7 +13,7 @@
  * 
  * Features:
  * - Type-safe with Zod validation
- * - Automatic persistence to Holster
+ * - Automatic persistence to Mesh
  * - Cross-user subscriptions
  * - Path helpers for consistency
  */
@@ -21,8 +21,8 @@
 import { writable, derived, get } from 'svelte/store';
 import type { Writable, Readable } from 'svelte/store';
 import { createStore } from '../utils/store.svelte';
-import { holsterUser } from '$lib/network/holster.svelte';
-import { writeAtPath, readAtPath, listenAtPath } from '$lib/utils/data/holsterData';
+import { meshUser } from '$lib/network/mesh.svelte';
+import { writeAtPath, readAtPath, listenAtPath } from '$lib/utils/data/meshData';
 
 import {
 	// Schemas
@@ -41,7 +41,7 @@ import {
 	PeerITCStampEntrySchema,
 	AllocationNamespaceSchema,
 	TreesNamespaceSchema,
-	
+
 	// Types
 	type ProgramRegistryEntry,
 	type ProgramReference,
@@ -58,7 +58,7 @@ import {
 	type PeerITCStampEntry,
 	type AllocationNamespace,
 	type TreesNamespace,
-	
+
 	// Path helpers
 	UserSpacePaths
 } from './kernel';
@@ -91,15 +91,15 @@ export async function registerProgram(
 	programHash: string,
 	entry: ProgramRegistryEntry
 ): Promise<void> {
-	if (!holsterUser.is) {
+	if (!meshUser.is) {
 		throw new Error('Not authenticated');
 	}
-	
-	const myPubKey = holsterUser.is.pub;
+
+	const myPubKey = meshUser.is.pub;
 	const path = UserSpacePaths.programRegistry(myPubKey, programHash);
-	
+
 	return new Promise((resolve, reject) => {
-		writeAtPath(holsterUser, path.split('/'), entry, (err) => {
+		writeAtPath(meshUser, path.split('/'), entry, (err) => {
 			if (err) {
 				console.error('[SPACE-STORES] Error registering program:', err);
 				reject(err);
@@ -128,18 +128,18 @@ export function getProgram(programHash: string): ProgramRegistryEntry | null {
  * Activate a program (move from inactive to active)
  */
 export async function activateProgram(programHash: string): Promise<void> {
-	if (!holsterUser.is) {
+	if (!meshUser.is) {
 		throw new Error('Not authenticated');
 	}
-	
-	const myPubKey = holsterUser.is.pub;
+
+	const myPubKey = meshUser.is.pub;
 	const registryPath = UserSpacePaths.programRegistry(myPubKey, programHash);
 	const activePath = UserSpacePaths.programActive(myPubKey, programHash);
-	
+
 	const reference: ProgramReference = { registry_path: registryPath };
-	
+
 	return new Promise((resolve, reject) => {
-		writeAtPath(holsterUser, activePath.split('/'), reference, (err) => {
+		writeAtPath(meshUser, activePath.split('/'), reference, (err) => {
 			if (err) {
 				console.error('[SPACE-STORES] Error activating program:', err);
 				reject(err);
@@ -161,18 +161,18 @@ export async function activateProgram(programHash: string): Promise<void> {
  * Deactivate a program (move from active to inactive)
  */
 export async function deactivateProgram(programHash: string): Promise<void> {
-	if (!holsterUser.is) {
+	if (!meshUser.is) {
 		throw new Error('Not authenticated');
 	}
-	
-	const myPubKey = holsterUser.is.pub;
+
+	const myPubKey = meshUser.is.pub;
 	const registryPath = UserSpacePaths.programRegistry(myPubKey, programHash);
 	const inactivePath = UserSpacePaths.programInactive(myPubKey, programHash);
-	
+
 	const reference: ProgramReference = { registry_path: registryPath };
-	
+
 	return new Promise((resolve, reject) => {
-		writeAtPath(holsterUser, inactivePath.split('/'), reference, (err) => {
+		writeAtPath(meshUser, inactivePath.split('/'), reference, (err) => {
 			if (err) {
 				console.error('[SPACE-STORES] Error deactivating program:', err);
 				reject(err);
@@ -200,7 +200,7 @@ export async function deactivateProgram(programHash: string): Promise<void> {
  */
 export function createComputeStateStore(programHash: string) {
 	return createStore({
-		holsterPath: UserSpacePaths.computeState(holsterUser.is?.pub || '', programHash).replace(/^~[^/]+\//, ''),
+		meshPath: UserSpacePaths.computeState(meshUser.is?.pub || '', programHash).replace(/^~[^/]+\//, ''),
 		schema: ComputeNamespaceSchema,
 		persistDebounce: 50
 	});
@@ -214,15 +214,15 @@ export async function writeVariable(
 	variableName: string,
 	value: any
 ): Promise<void> {
-	if (!holsterUser.is) {
+	if (!meshUser.is) {
 		throw new Error('Not authenticated');
 	}
-	
-	const myPubKey = holsterUser.is.pub;
+
+	const myPubKey = meshUser.is.pub;
 	const path = UserSpacePaths.computeVariable(myPubKey, programHash, variableName);
-	
+
 	return new Promise((resolve, reject) => {
-		writeAtPath(holsterUser, path.split('/'), value, (err) => {
+		writeAtPath(meshUser, path.split('/'), value, (err) => {
 			if (err) {
 				console.error('[SPACE-STORES] Error writing variable:', err);
 				reject(err);
@@ -241,21 +241,21 @@ export async function writeComputationResult(
 	computationId: string,
 	result: any
 ): Promise<void> {
-	if (!holsterUser.is) {
+	if (!meshUser.is) {
 		throw new Error('Not authenticated');
 	}
-	
-	const myPubKey = holsterUser.is.pub;
+
+	const myPubKey = meshUser.is.pub;
 	const path = UserSpacePaths.computeResult(myPubKey, programHash, computationId);
-	
+
 	const resultData = {
 		result,
 		last_executed: Date.now(),
 		execution_count: 1 // TODO: Track actual count
 	};
-	
+
 	return new Promise((resolve, reject) => {
-		writeAtPath(holsterUser, path.split('/'), resultData, (err) => {
+		writeAtPath(meshUser, path.split('/'), resultData, (err) => {
 			if (err) {
 				console.error('[SPACE-STORES] Error writing computation result:', err);
 				reject(err);
@@ -273,23 +273,23 @@ export async function writeOutput(
 	programHash: string,
 	outputKey: string,
 	value: any,
-	holsterPath: string
+	meshPath: string
 ): Promise<void> {
-	if (!holsterUser.is) {
+	if (!meshUser.is) {
 		throw new Error('Not authenticated');
 	}
-	
-	const myPubKey = holsterUser.is.pub;
+
+	const myPubKey = meshUser.is.pub;
 	const path = UserSpacePaths.computeOutput(myPubKey, programHash, outputKey);
-	
+
 	const outputData: OutputValue = {
 		value,
-		holster_path: holsterPath,
+		mesh_path: meshPath,
 		updated_at: Date.now()
 	};
-	
+
 	return new Promise((resolve, reject) => {
-		writeAtPath(holsterUser, path.split('/'), outputData, (err) => {
+		writeAtPath(meshUser, path.split('/'), outputData, (err) => {
 			if (err) {
 				console.error('[SPACE-STORES] Error writing output:', err);
 				reject(err);
@@ -308,15 +308,15 @@ export async function writeProvenance(
 	provenanceId: string,
 	entry: ProvenanceEntry
 ): Promise<void> {
-	if (!holsterUser.is) {
+	if (!meshUser.is) {
 		throw new Error('Not authenticated');
 	}
-	
-	const myPubKey = holsterUser.is.pub;
+
+	const myPubKey = meshUser.is.pub;
 	const path = UserSpacePaths.computeProvenance(myPubKey, programHash, provenanceId);
-	
+
 	return new Promise((resolve, reject) => {
-		writeAtPath(holsterUser, path.split('/'), entry, (err) => {
+		writeAtPath(meshUser, path.split('/'), entry, (err) => {
 			if (err) {
 				console.error('[SPACE-STORES] Error writing provenance:', err);
 				reject(err);
@@ -354,18 +354,18 @@ export const inboundSubscriptionsStore = writable<Map<string, string[]>>(new Map
  * Register an outbound subscription (local)
  */
 export async function registerLocalSubscription(
-	holsterPath: string,
+	meshPath: string,
 	schemaType: string,
 	callbackId: string
 ): Promise<void> {
 	outboundSubscriptionsStore.update(subs => {
-		const existing = subs.local.get(holsterPath);
+		const existing = subs.local.get(meshPath);
 		if (existing) {
 			if (!existing.subscribers.includes(callbackId)) {
 				existing.subscribers.push(callbackId);
 			}
 		} else {
-			subs.local.set(holsterPath, {
+			subs.local.set(meshPath, {
 				schema_type: schemaType,
 				subscribers: [callbackId],
 				last_value: undefined
@@ -373,8 +373,8 @@ export async function registerLocalSubscription(
 		}
 		return subs;
 	});
-	
-	console.log(`[SPACE-STORES] Registered local subscription: ${holsterPath}`);
+
+	console.log(`[SPACE-STORES] Registered local subscription: ${meshPath}`);
 }
 
 /**
@@ -382,7 +382,7 @@ export async function registerLocalSubscription(
  */
 export async function registerPeerSubscription(
 	peerPubKey: string,
-	holsterPath: string,
+	meshPath: string,
 	schemaType: string,
 	callbackId: string
 ): Promise<void> {
@@ -390,28 +390,28 @@ export async function registerPeerSubscription(
 		if (!subs.peers.has(peerPubKey)) {
 			subs.peers.set(peerPubKey, new Map());
 		}
-		
+
 		const peerSubs = subs.peers.get(peerPubKey)!;
-		const existing = peerSubs.get(holsterPath);
-		
+		const existing = peerSubs.get(meshPath);
+
 		if (existing) {
 			if (!existing.subscribers.includes(callbackId)) {
 				existing.subscribers.push(callbackId);
 			}
 			existing.last_synced = Date.now();
 		} else {
-			peerSubs.set(holsterPath, {
+			peerSubs.set(meshPath, {
 				schema_type: schemaType,
 				subscribers: [callbackId],
 				last_value: undefined,
 				last_synced: Date.now()
 			});
 		}
-		
+
 		return subs;
 	});
-	
-	console.log(`[SPACE-STORES] Registered peer subscription: ${peerPubKey.slice(0, 20)}.../${holsterPath}`);
+
+	console.log(`[SPACE-STORES] Registered peer subscription: ${peerPubKey.slice(0, 20)}.../${meshPath}`);
 }
 
 /**
@@ -419,18 +419,18 @@ export async function registerPeerSubscription(
  */
 export async function registerInboundSubscription(
 	peerPubKey: string,
-	holsterPath: string
+	meshPath: string
 ): Promise<void> {
 	inboundSubscriptionsStore.update(subs => {
 		const existing = subs.get(peerPubKey) || [];
-		if (!existing.includes(holsterPath)) {
-			existing.push(holsterPath);
+		if (!existing.includes(meshPath)) {
+			existing.push(meshPath);
 		}
 		subs.set(peerPubKey, existing);
 		return subs;
 	});
-	
-	console.log(`[SPACE-STORES] Registered inbound: ${peerPubKey.slice(0, 20)}... watching ${holsterPath}`);
+
+	console.log(`[SPACE-STORES] Registered inbound: ${peerPubKey.slice(0, 20)}... watching ${meshPath}`);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -450,15 +450,15 @@ export async function writeNode(
 	nodeId: string,
 	entry: NodeEntry
 ): Promise<void> {
-	if (!holsterUser.is) {
+	if (!meshUser.is) {
 		throw new Error('Not authenticated');
 	}
-	
-	const myPubKey = holsterUser.is.pub;
+
+	const myPubKey = meshUser.is.pub;
 	const path = UserSpacePaths.node(myPubKey, nodeId);
-	
+
 	return new Promise((resolve, reject) => {
-		writeAtPath(holsterUser, path.split('/'), entry, (err) => {
+		writeAtPath(meshUser, path.split('/'), entry, (err) => {
 			if (err) {
 				console.error('[SPACE-STORES] Error writing node:', err);
 				reject(err);
@@ -478,20 +478,20 @@ export async function writeNode(
  * Read a node entry
  */
 export async function readNode(nodeId: string): Promise<NodeEntry | null> {
-	if (!holsterUser.is) {
+	if (!meshUser.is) {
 		throw new Error('Not authenticated');
 	}
-	
-	const myPubKey = holsterUser.is.pub;
+
+	const myPubKey = meshUser.is.pub;
 	const path = UserSpacePaths.node(myPubKey, nodeId);
-	
+
 	return new Promise((resolve) => {
-		readAtPath(holsterUser, path.split('/'), (data) => {
+		readAtPath(meshUser, path.split('/'), (data) => {
 			if (!data) {
 				resolve(null);
 				return;
 			}
-			
+
 			const validation = NodeEntrySchema.safeParse(data);
 			if (!validation.success) {
 				console.warn('[SPACE-STORES] Invalid node data:', validation.error);
@@ -508,7 +508,7 @@ export async function readNode(nodeId: string): Promise<NodeEntry | null> {
  */
 export function createNodeStore(nodeId: string) {
 	return createStore({
-		holsterPath: UserSpacePaths.nodeStorage(holsterUser.is?.pub || '', nodeId).replace(/^~[^/]+\//, ''),
+		meshPath: UserSpacePaths.nodeStorage(meshUser.is?.pub || '', nodeId).replace(/^~[^/]+\//, ''),
 		schema: NodeEntrySchema,
 		persistDebounce: 100
 	});
@@ -522,7 +522,7 @@ export function createNodeStore(nodeId: string) {
  * My ITC Stamp Store
  */
 export const myITCStampStore = createStore({
-	holsterPath: 'causality/itc_stamp',
+	meshPath: 'causality/itc_stamp',
 	schema: ITCStampSchema,
 	persistDebounce: 0 // Immediate persistence for causality
 });
@@ -540,20 +540,20 @@ export async function writePeerITCStamp(
 	peerPubKey: string,
 	stamp: ITCStamp
 ): Promise<void> {
-	if (!holsterUser.is) {
+	if (!meshUser.is) {
 		throw new Error('Not authenticated');
 	}
-	
-	const myPubKey = holsterUser.is.pub;
+
+	const myPubKey = meshUser.is.pub;
 	const path = UserSpacePaths.peerITCStamp(myPubKey, peerPubKey);
-	
+
 	const entry: PeerITCStampEntry = {
 		itc_stamp: stamp,
 		last_seen: Date.now()
 	};
-	
+
 	return new Promise((resolve, reject) => {
-		writeAtPath(holsterUser, path.split('/'), entry, (err) => {
+		writeAtPath(meshUser, path.split('/'), entry, (err) => {
 			if (err) {
 				console.error('[SPACE-STORES] Error writing peer ITC stamp:', err);
 				reject(err);
@@ -576,19 +576,19 @@ export function subscribeToPeerITCStamp(
 	peerPubKey: string,
 	callback: (stamp: ITCStamp | null) => void
 ): () => void {
-	if (!holsterUser.is) {
+	if (!meshUser.is) {
 		console.error('[SPACE-STORES] Not authenticated');
-		return () => {};
+		return () => { };
 	}
-	
+
 	const path = `~${peerPubKey}/causality/itc_stamp`;
-	
-	return listenAtPath(holsterUser, path.split('/'), (data) => {
+
+	return listenAtPath(meshUser, path.split('/'), (data) => {
 		if (!data) {
 			callback(null);
 			return;
 		}
-		
+
 		const validation = ITCStampSchema.safeParse(data);
 		if (!validation.success) {
 			console.warn('[SPACE-STORES] Invalid peer ITC stamp:', validation.error);
@@ -607,7 +607,7 @@ export function subscribeToPeerITCStamp(
  * My Commitment Store
  */
 export const myCommitmentStore = createStore({
-	holsterPath: 'allocation/commitment',
+	meshPath: 'allocation/commitment',
 	schema: CommitmentSchema,
 	persistDebounce: 100
 });
@@ -616,7 +616,7 @@ export const myCommitmentStore = createStore({
  * My Allocation State Store
  */
 export const myAllocationStateStore = createStore({
-	holsterPath: 'allocation/allocation_state',
+	meshPath: 'allocation/allocation_state',
 	schema: TwoTierAllocationStateSchema,
 	persistDebounce: 100
 });
@@ -636,16 +636,16 @@ export const networkAllocationsStore = writable<Map<string, {
 export function subscribeToPeerAllocation(
 	peerPubKey: string
 ): () => void {
-	if (!holsterUser.is) {
+	if (!meshUser.is) {
 		console.error('[SPACE-STORES] Not authenticated');
-		return () => {};
+		return () => { };
 	}
-	
+
 	const commitmentPath = `~${peerPubKey}/allocation/commitment`;
 	const statePath = `~${peerPubKey}/allocation/allocation_state`;
-	
+
 	// Subscribe to both commitment and state
-	const unsubCommitment = listenAtPath(holsterUser, commitmentPath.split('/'), (data) => {
+	const unsubCommitment = listenAtPath(meshUser, commitmentPath.split('/'), (data) => {
 		if (data) {
 			const validation = CommitmentSchema.safeParse(data);
 			if (validation.success) {
@@ -658,8 +658,8 @@ export function subscribeToPeerAllocation(
 			}
 		}
 	}, true);
-	
-	const unsubState = listenAtPath(holsterUser, statePath.split('/'), (data) => {
+
+	const unsubState = listenAtPath(meshUser, statePath.split('/'), (data) => {
 		if (data) {
 			const validation = TwoTierAllocationStateSchema.safeParse(data);
 			if (validation.success) {
@@ -672,9 +672,9 @@ export function subscribeToPeerAllocation(
 			}
 		}
 	}, true);
-	
+
 	console.log(`[SPACE-STORES] Subscribed to allocation: ${peerPubKey.slice(0, 20)}...`);
-	
+
 	// Return combined unsubscribe
 	return () => {
 		unsubCommitment();
@@ -690,7 +690,7 @@ export function subscribeToPeerAllocation(
  * My Tree Store
  */
 export const myTreeStore = createStore({
-	holsterPath: 'trees/my_tree',
+	meshPath: 'trees/my_tree',
 	schema: RootNodeSchema,
 	persistDebounce: 200
 });
@@ -707,14 +707,14 @@ export const networkTreesStore = writable<Map<string, RootNode>>(new Map());
 export function subscribeToPeerTree(
 	peerPubKey: string
 ): () => void {
-	if (!holsterUser.is) {
+	if (!meshUser.is) {
 		console.error('[SPACE-STORES] Not authenticated');
-		return () => {};
+		return () => { };
 	}
-	
+
 	const path = `~${peerPubKey}/trees/my_tree`;
-	
-	return listenAtPath(holsterUser, path.split('/'), (data) => {
+
+	return listenAtPath(meshUser, path.split('/'), (data) => {
 		if (!data) {
 			networkTreesStore.update(map => {
 				map.delete(peerPubKey);
@@ -722,7 +722,7 @@ export function subscribeToPeerTree(
 			});
 			return;
 		}
-		
+
 		const validation = RootNodeSchema.safeParse(data);
 		if (!validation.success) {
 			console.warn('[SPACE-STORES] Invalid peer tree:', validation.error);
@@ -741,26 +741,26 @@ export function subscribeToPeerTree(
 
 /**
  * Initialize all user space stores
- * Call this after holster authentication
+ * Call this after mesh authentication
  */
 export function initializeUserSpaceStores() {
-	if (!holsterUser.is) {
+	if (!meshUser.is) {
 		console.error('[SPACE-STORES] Cannot initialize: not authenticated');
 		return;
 	}
-	
+
 	console.log('[SPACE-STORES] Initializing user space stores...');
-	
+
 	// Initialize causality stores
 	myITCStampStore.initialize();
-	
+
 	// Initialize allocation stores
 	myCommitmentStore.initialize();
 	myAllocationStateStore.initialize();
-	
+
 	// Initialize tree store
 	myTreeStore.initialize();
-	
+
 	console.log('[SPACE-STORES] User space stores initialized');
 }
 
@@ -770,14 +770,14 @@ export function initializeUserSpaceStores() {
  */
 export async function cleanupUserSpaceStores() {
 	console.log('[SPACE-STORES] Cleaning up user space stores...');
-	
+
 	await Promise.all([
 		myITCStampStore.cleanup(),
 		myCommitmentStore.cleanup(),
 		myAllocationStateStore.cleanup(),
 		myTreeStore.cleanup()
 	]);
-	
+
 	// Clear all maps
 	programRegistryStore.set(new Map());
 	outboundSubscriptionsStore.set({ local: new Map(), peers: new Map() });
@@ -786,7 +786,7 @@ export async function cleanupUserSpaceStores() {
 	peerITCStampsStore.set(new Map());
 	networkAllocationsStore.set(new Map());
 	networkTreesStore.set(new Map());
-	
+
 	console.log('[SPACE-STORES] User space stores cleaned up');
 }
 
@@ -800,7 +800,7 @@ export async function cleanupUserSpaceStores() {
 export function getUserSpaceDiagnostics() {
 	const outboundSubs = get(outboundSubscriptionsStore);
 	const inboundSubs = get(inboundSubscriptionsStore);
-	
+
 	return {
 		programs: {
 			registered: get(programRegistryStore).size

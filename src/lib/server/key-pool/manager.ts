@@ -38,9 +38,9 @@ export function initializeKeyPool(): void {
     console.warn('   Set OPENROUTER_KEYS in .env file');
     return;
   }
-  
+
   const keys = OPENROUTER_KEYS.split(',').map(k => k.trim()).filter(k => k);
-  
+
   openRouterKeys = keys.map(key => ({
     key,
     health: 'healthy' as KeyHealthStatus,
@@ -50,7 +50,7 @@ export function initializeKeyPool(): void {
     costToday: 0,
     creditsRemaining: null
   }));
-  
+
   console.log(`✅ Initialized OpenRouter pool with ${openRouterKeys.length} key(s)`);
 }
 
@@ -61,21 +61,21 @@ export function getHealthyKey(): KeyInfo | null {
   if (openRouterKeys.length === 0) {
     return null;
   }
-  
+
   const attempts = openRouterKeys.length;
-  
+
   for (let i = 0; i < attempts; i++) {
     const keyInfo = openRouterKeys[currentIndex];
-    
+
     if (keyInfo.health === 'healthy') {
       currentIndex = (currentIndex + 1) % openRouterKeys.length;
       keyInfo.lastUsed = Date.now();
       return keyInfo;
     }
-    
+
     currentIndex = (currentIndex + 1) % openRouterKeys.length;
   }
-  
+
   return null;
 }
 
@@ -89,38 +89,38 @@ export function updateKeyHealth(
   cost: number | null = null
 ): boolean {
   const keyInfo = openRouterKeys.find(k => k.key === key);
-  
+
   if (!keyInfo) {
     return false;
   }
-  
+
   const oldStatus = keyInfo.health;
   keyInfo.health = status;
-  
+
   // Update stats
   if (status === 'healthy' || status === 'degraded') {
     keyInfo.successCount++;
   } else if (status === 'failed' || status === 'rate_limited') {
     keyInfo.failureCount++;
   }
-  
+
   // Track cost
   if (cost !== null && cost > 0) {
     keyInfo.costToday += cost;
   }
-  
+
   // Check for depleted credits
   if (errorMessage && errorMessage.toLowerCase().includes('insufficient credits')) {
     keyInfo.health = 'depleted';
     console.log(`❌ Key ${key.substring(0, 15)}... DEPLETED - no credits remaining`);
   }
-  
+
   if (oldStatus !== status) {
     const errMsg = errorMessage ? ` (${errorMessage})` : '';
     const costMsg = cost ? ` ($${cost.toFixed(4)})` : '';
     console.log(`🔄 Key ${key.substring(0, 15)}... ${oldStatus} → ${status}${errMsg}${costMsg}`);
   }
-  
+
   return true;
 }
 
@@ -131,7 +131,7 @@ export function addKey(key: string, donorId?: string, donorName?: string): boole
   if (openRouterKeys.some(k => k.key === key)) {
     return false;
   }
-  
+
   openRouterKeys.push({
     key,
     health: 'healthy',
@@ -143,7 +143,7 @@ export function addKey(key: string, donorId?: string, donorName?: string): boole
     donorId,
     donorName
   });
-  
+
   console.log(`➕ Added new key to OpenRouter pool${donorName ? ` (donor: ${donorName})` : ''}`);
   return true;
 }
@@ -153,19 +153,40 @@ export function addKey(key: string, donorId?: string, donorName?: string): boole
  */
 export function removeKey(key: string): boolean {
   const index = openRouterKeys.findIndex(k => k.key === key);
-  
+
   if (index === -1) {
     return false;
   }
-  
+
   openRouterKeys.splice(index, 1);
-  
+
   if (currentIndex >= openRouterKeys.length) {
     currentIndex = 0;
   }
-  
+
   console.log(`➖ Removed key from OpenRouter pool`);
   return true;
+}
+
+/**
+ * Check remaining credits for a key
+ */
+export async function refreshKeyCredits(key: string): Promise<number | null> {
+  try {
+    const response = await fetch('https://openrouter.ai/api/v1/auth/key', {
+      headers: { 'Authorization': `Bearer ${key}` }
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    return data.data?.limit_remaining || null;
+  } catch (err) {
+    console.error('Failed to fetch key credits:', err);
+    return null;
+  }
 }
 
 /**
@@ -179,16 +200,16 @@ export function getPoolStatus() {
     rate_limited: 0,
     depleted: 0
   };
-  
+
   for (const keyInfo of openRouterKeys) {
     healthCounts[keyInfo.health]++;
   }
-  
+
   const totalRequests = openRouterKeys.reduce((sum, k) => sum + k.successCount + k.failureCount, 0);
   const totalSuccess = openRouterKeys.reduce((sum, k) => sum + k.successCount, 0);
   const totalCost = openRouterKeys.reduce((sum, k) => sum + k.costToday, 0);
   const successRate = totalRequests > 0 ? ((totalSuccess / totalRequests) * 100).toFixed(2) : '0';
-  
+
   return {
     totalKeys: openRouterKeys.length,
     health: healthCounts,
@@ -205,26 +226,39 @@ export function getPoolStatus() {
  * Auto-recovery background process
  */
 export function startHealthMonitor(intervalMs = 30000): void {
-  setInterval(() => {
+  setInterval(async () => {
     const now = Date.now();
-    
+
     for (const keyInfo of openRouterKeys) {
       const timeSinceLastUse = now - keyInfo.lastUsed;
-      
+
       // Auto-recover degraded keys after 5 minutes
       if (keyInfo.health === 'degraded' && timeSinceLastUse > 5 * 60 * 1000) {
         keyInfo.health = 'healthy';
         console.log(`✅ Auto-recovered key ${keyInfo.key.substring(0, 15)}... from degraded`);
       }
-      
+
       // Auto-recover rate-limited keys after 15 minutes
       if (keyInfo.health === 'rate_limited' && timeSinceLastUse > 15 * 60 * 1000) {
         keyInfo.health = 'healthy';
         console.log(`✅ Auto-recovered key ${keyInfo.key.substring(0, 15)}... from rate limit`);
       }
+
+      // Check credits every 5 minutes for keys that haven't been used recently
+      // This prevents hammering the API for active keys
+      if (timeSinceLastUse > 5 * 60 * 1000) {
+        const credits = await refreshKeyCredits(keyInfo.key);
+        if (credits !== null) {
+          keyInfo.creditsRemaining = credits;
+          if (credits <= 0 && keyInfo.health !== 'depleted') {
+            keyInfo.health = 'depleted';
+            console.log(`❌ Key ${keyInfo.key.substring(0, 15)}... depleted (0 credits remaining)`);
+          }
+        }
+      }
     }
   }, intervalMs);
-  
+
   console.log(`🔍 Health monitor started (interval: ${intervalMs}ms)`);
 }
 

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { holsterUserAlias } from '$lib/network/holster.svelte';
+	import { meshUserAlias } from '$lib/network/mesh.svelte';
 	
 	// State
 	let apiKey = '';
@@ -46,7 +46,7 @@
 		}
 		
 		if (!isAnonymous && !donorName.trim()) {
-			donorName = $holsterUserAlias || 'Anonymous';
+			donorName = $meshUserAlias || 'Anonymous';
 		}
 		
 		isSubmitting = true;
@@ -88,8 +88,8 @@
 	onMount(() => {
 		fetchPoolStats();
 		// Set default donor name to user's alias
-		if ($holsterUserAlias) {
-			donorName = $holsterUserAlias;
+		if ($meshUserAlias) {
+			donorName = $meshUserAlias;
 		}
 	});
 </script>
@@ -219,7 +219,7 @@
 							type="text"
 							id="donorName"
 							bind:value={donorName}
-							placeholder={$holsterUserAlias || 'Your name'}
+							placeholder={$meshUserAlias || 'Your name'}
 							disabled={isSubmitting}
 							maxlength="100"
 						/>

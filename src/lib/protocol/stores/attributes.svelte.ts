@@ -8,7 +8,7 @@
  * - No $effect - uses store.subscribe() pattern
  * 
  * Architecture follows stores.svelte.ts pattern:
- * - Local stores persist to Holster with ITC
+ * - Local stores persist to Mesh with ITC
  * - Network stores use VersionedStore for fine-grained reactivity
  * - Auto-subscription system (no $effect, just subscribe())
  */
@@ -33,7 +33,7 @@ import {
 import { getEqualityChecker } from '@playnet/free-association/attributes/attribute-types';
 import { leq as itcLeq, equals as itcEquals, join as itcJoin, type Stamp as ITCStamp } from '$lib/utils/primitives/itc';
 
-import { holsterUserPub } from '$lib/network/holster.svelte';
+import { meshUserPub } from '$lib/network/mesh.svelte';
 
 console.log('[TRACE] src/lib/protocol/stores/attributes.svelte.ts: <module scope>');
 
@@ -45,7 +45,7 @@ console.log('[TRACE] src/lib/protocol/stores/attributes.svelte.ts: <module scope
  * My Attribute Recognitions Store
  * 
  * Stores attributes I recognize about entities (users, orgs, etc.)
- * - Persists to Holster at 'attributes/recognitions'
+ * - Persists to Mesh at 'attributes/recognitions'
  * - ITC causality tracking built-in
  * - Debounced persistence (100ms)
  * 
@@ -62,7 +62,7 @@ console.log('[TRACE] src/lib/protocol/stores/attributes.svelte.ts: <module scope
  * }
  */
 export const myAttributeRecognitions = createStore({
-	holsterPath: 'attributes/recognitions',
+	meshPath: 'attributes/recognitions',
 	schema: AttributeRecognitionsCollectionSchema,
 	persistDebounce: 100
 });
@@ -71,7 +71,7 @@ export const myAttributeRecognitions = createStore({
  * My Attribute Subscriptions Store
  * 
  * Configures which sources to subscribe to for entity attributes.
- * - Persists to Holster at 'attributes/subscriptions'
+ * - Persists to Mesh at 'attributes/subscriptions'
  * - Debounced persistence (100ms)
  * 
  * Example data:
@@ -85,7 +85,7 @@ export const myAttributeRecognitions = createStore({
  * }
  */
 export const myAttributeSubscriptions = createStore({
-	holsterPath: 'attributes/subscriptions',
+	meshPath: 'attributes/subscriptions',
 	schema: AttributeSubscriptionsSchema,
 	persistDebounce: 100
 });
@@ -94,7 +94,7 @@ export const myAttributeSubscriptions = createStore({
  * My Entity ID Mappings Store
  * 
  * Maps local identifiers (uuid, contact_id) to public keys.
- * - Persists to Holster at 'attributes/id_mappings'
+ * - Persists to Mesh at 'attributes/id_mappings'
  * - Debounced persistence (100ms)
  * 
  * Example data:
@@ -104,7 +104,7 @@ export const myAttributeSubscriptions = createStore({
  * }
  */
 export const myEntityIdMappings = createStore({
-	holsterPath: 'attributes/id_mappings',
+	meshPath: 'attributes/id_mappings',
 	schema: EntityIdMappingsSchema,
 	persistDebounce: 100
 });
@@ -292,7 +292,7 @@ export function getSubscribedPubkeys(): string[] {
  * Flow:
  * 1. User configures subscription: myAttributeSubscriptions.update(...)
  * 2. This function detects the change via .subscribe()
- * 3. Subscribes to source's attribute recognitions via Holster
+ * 3. Subscribes to source's attribute recognitions via Mesh
  * 4. When their data arrives, updates networkAttributeRecognitions
  * 5. Resolution functions use networkAttributeCache automatically
  * 
@@ -586,7 +586,7 @@ export function createResolutionStore(
 /**
  * Initialize all attribute stores
  * 
- * Call this after holster authentication.
+ * Call this after mesh authentication.
  * Similar to initializeAllocationStores() in stores.svelte.ts.
  */
 export function initializeAttributeStores() {

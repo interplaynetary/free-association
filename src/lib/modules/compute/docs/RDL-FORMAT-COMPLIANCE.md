@@ -16,7 +16,7 @@ Our Reactive Dataflow Language (RDL) implementation is properly formatted and fo
 
 The JSON Schema defines the canonical RDL format:
 - ✅ Variable binding types (value, subscription, fetch, local, derived)
-- ✅ Output binding types (holster, local, memory)
+- ✅ Output binding types (mesh, local, memory)
 - ✅ Computation structure
 - ✅ Reactive computation graph
 - ✅ Identifier patterns (`^[a-zA-Z_][a-zA-Z0-9_-]*$`)
@@ -55,18 +55,18 @@ All 5 binding types are fully supported:
 // 1. Static value
 { type: 'value', value: 42 }
 
-// 2. Reactive subscription (Holster .on())
+// 2. Reactive subscription (Mesh .on())
 {
   type: 'subscription',
-  holster_path: 'allocation/commitment',
+  mesh_path: 'allocation/commitment',
   schema_type: 'Commitment',
   subscribe_to_user: 'pubkey' // Optional cross-user
 }
 
-// 3. One-time fetch (Holster .get())
+// 3. One-time fetch (Mesh .get())
 {
   type: 'fetch',
-  holster_path: 'config/settings',
+  mesh_path: 'config/settings',
   schema_type: 'Config',
   wait_ms: 500
 }
@@ -90,10 +90,10 @@ All 5 binding types are fully supported:
 All 3 output types are fully supported:
 
 ```typescript
-// 1. Persist to Holster
+// 1. Persist to Mesh
 {
-  type: 'holster',
-  holster_path: 'results/allocation',
+  type: 'mesh',
+  mesh_path: 'results/allocation',
   schema_type: 'AllocationState',
   persist_debounce_ms: 100
 }
@@ -213,14 +213,14 @@ validateRDL(program)
   variables: {
     // All binding types
     constant: { type: 'value', value: 100 },
-    myData: { type: 'subscription', holster_path: 'data', schema_type: 'Any' },
+    myData: { type: 'subscription', mesh_path: 'data', schema_type: 'Any' },
     peerData: { 
       type: 'subscription', 
-      holster_path: 'data', 
+      mesh_path: 'data', 
       schema_type: 'Any',
       subscribe_to_user: '0'.repeat(64)
     },
-    config: { type: 'fetch', holster_path: 'config', schema_type: 'Any' }
+    config: { type: 'fetch', mesh_path: 'config', schema_type: 'Any' }
   },
   
   computations: [
@@ -247,7 +247,7 @@ validateRDL(program)
       },
       compute_fn: 'process',
       outputs: {
-        result: { type: 'holster', holster_path: 'results' }
+        result: { type: 'mesh', mesh_path: 'results' }
       }
     }
   ]

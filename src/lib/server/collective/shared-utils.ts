@@ -8,7 +8,7 @@
  * This reduces duplication and ensures consistency
  */
 
-import { holsterGet, holsterNextPut, holsterGetArray, ensureAuthenticated } from '$lib/server/holster/db';
+import { meshGet, meshNextPut, meshGetArray, ensureAuthenticated } from '$lib/server/mesh/db';
 import { sharesOfGeneralFulfillmentMap } from '@playnet/free-association/tree';
 import type { RecognitionData } from '$lib/protocol/collective/schemas';
 import type { Node } from '$lib/protocol/schemas';
@@ -29,11 +29,11 @@ export function extractRecognitionFromTree(
 	tree: Node
 ): RecognitionData[] {
 	const recognitionData: RecognitionData[] = [];
-	
+
 	try {
 		// Extract recognition shares from tree using protocol function
 		const shares = sharesOfGeneralFulfillmentMap(tree);
-		
+
 		// Convert to RecognitionData format
 		for (const [toId, share] of Object.entries(shares)) {
 			recognitionData.push({
@@ -46,7 +46,7 @@ export function extractRecognitionFromTree(
 	} catch (err) {
 		console.warn(`[SHARED-UTILS] Could not extract recognition from tree for ${userId}:`, err);
 	}
-	
+
 	return recognitionData;
 }
 
@@ -60,24 +60,24 @@ export function extractRecognitionFromTree(
 export async function fetchAllRecognitionData(): Promise<RecognitionData[]> {
 	try {
 		ensureAuthenticated();
-		
+
 		const recognitionData: RecognitionData[] = [];
-		
+
 		// Fetch all users' trees
-		const treesData = await holsterGet<Record<string, any>>(['trees']);
-		
+		const treesData = await meshGet<Record<string, any>>(['trees']);
+
 		if (!treesData) {
 			console.warn('[SHARED-UTILS] No trees data found');
 			return [];
 		}
-		
+
 		// Extract recognition from each user's tree
 		for (const [userId, userTrees] of Object.entries(treesData)) {
 			if (userId === '_') continue; // Skip Gun metadata
-			
+
 			try {
-				const tree = await holsterGet<Node>(['trees', userId, 'recognition_tree']);
-				
+				const tree = await meshGet<Node>(['trees', userId, 'recognition_tree']);
+
 				if (tree) {
 					const userRecognition = extractRecognitionFromTree(userId, tree);
 					recognitionData.push(...userRecognition);
@@ -86,7 +86,7 @@ export async function fetchAllRecognitionData(): Promise<RecognitionData[]> {
 				console.warn(`[SHARED-UTILS] Could not process tree for user ${userId}:`, err);
 			}
 		}
-		
+
 		return recognitionData;
 	} catch (error) {
 		console.error('[SHARED-UTILS] Failed to fetch recognition data:', error);
@@ -99,14 +99,14 @@ export async function fetchAllRecognitionData(): Promise<RecognitionData[]> {
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * Fetch a single tree from Holster
+ * Fetch a single tree from Mesh
  * 
  * Shared by both schedulers for tree access
  */
 export async function fetchTree(userId: string): Promise<Node | null> {
 	try {
 		ensureAuthenticated();
-		const tree = await holsterGet<Node>(['trees', userId, 'recognition_tree']);
+		const tree = await meshGet<Node>(['trees', userId, 'recognition_tree']);
 		return tree;
 	} catch (err) {
 		console.warn(`[SHARED-UTILS] Could not fetch tree for ${userId}:`, err);
@@ -115,7 +115,7 @@ export async function fetchTree(userId: string): Promise<Node | null> {
 }
 
 /**
- * Fetch multiple trees from Holster
+ * Fetch multiple trees from Mesh
  * 
  * Shared by:
  * - Membership scheduler (fetchMemberTrees)
@@ -124,9 +124,9 @@ export async function fetchTree(userId: string): Promise<Node | null> {
 export async function fetchTrees(userIds: string[]): Promise<Map<string, Node>> {
 	try {
 		ensureAuthenticated();
-		
+
 		const trees = new Map<string, Node>();
-		
+
 		// Fetch each user's tree
 		for (const userId of userIds) {
 			const tree = await fetchTree(userId);
@@ -134,7 +134,7 @@ export async function fetchTrees(userIds: string[]): Promise<Map<string, Node>> 
 				trees.set(userId, tree);
 			}
 		}
-		
+
 		return trees;
 	} catch (error) {
 		console.error('[SHARED-UTILS] Failed to fetch trees:', error);
@@ -163,7 +163,7 @@ export async function fetchTreesAsRecord(userIds: string[]): Promise<Record<stri
  */
 export function extractCapacitiesFromTree(tree: Node): Record<string, number> {
 	const capacities: Record<string, number> = {};
-	
+
 	try {
 		if ('capacities' in tree && tree.capacities) {
 			// Extract capacity totals from slots
@@ -182,7 +182,7 @@ export function extractCapacitiesFromTree(tree: Node): Record<string, number> {
 	} catch (err) {
 		console.warn('[SHARED-UTILS] Could not extract capacities from tree:', err);
 	}
-	
+
 	return capacities;
 }
 
@@ -196,27 +196,27 @@ export function extractCapacitiesFromTree(tree: Node): Record<string, number> {
 export async function fetchAllIndividualCapacities(): Promise<Record<string, Record<string, number>>> {
 	try {
 		ensureAuthenticated();
-		
+
 		const capacities: Record<string, Record<string, number>> = {};
-		
+
 		// Fetch all users and their trees
-		const treesData = await holsterGet<Record<string, any>>(['trees']);
-		
+		const treesData = await meshGet<Record<string, any>>(['trees']);
+
 		if (!treesData) {
 			console.warn('[SHARED-UTILS] No user data found');
 			return {};
 		}
-		
+
 		// For each user, extract their capacities
 		for (const [userId, _] of Object.entries(treesData)) {
 			if (userId === '_') continue; // Skip Gun metadata
-			
+
 			try {
 				const tree = await fetchTree(userId);
-				
+
 				if (tree) {
 					const userCapacities = extractCapacitiesFromTree(tree);
-					
+
 					if (Object.keys(userCapacities).length > 0) {
 						capacities[userId] = userCapacities;
 					}
@@ -225,7 +225,7 @@ export async function fetchAllIndividualCapacities(): Promise<Record<string, Rec
 				console.warn(`[SHARED-UTILS] Could not fetch capacities for ${userId}:`, err);
 			}
 		}
-		
+
 		return capacities;
 	} catch (error) {
 		console.error('[SHARED-UTILS] Failed to fetch individual capacities:', error);
@@ -238,7 +238,7 @@ export async function fetchAllIndividualCapacities(): Promise<Record<string, Rec
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * Log computation event to Holster
+ * Log computation event to Mesh
  * 
  * Shared by both schedulers for consistent logging
  */
@@ -249,23 +249,23 @@ export async function logComputationEvent(
 ): Promise<void> {
 	try {
 		ensureAuthenticated();
-		
+
 		const timestamp = new Date();
 		const logKey = `${event}_${timestamp.getTime()}`;
-		
+
 		// Store detailed log
-		await holsterNextPut(collection, logKey, {
+		await meshNextPut(collection, logKey, {
 			event,
 			data,
 			timestamp: timestamp.toISOString()
 		});
-		
+
 		// Update latest pointer
-		const latestCollection = collection === 'computation_logs' 
+		const latestCollection = collection === 'computation_logs'
 			? 'computation_logs_latest'
 			: 'collective_tree_computation_logs_latest';
-			
-		await holsterNextPut(latestCollection, event, {
+
+		await meshNextPut(latestCollection, event, {
 			...data,
 			timestamp: timestamp.toISOString()
 		});
@@ -296,10 +296,10 @@ export async function validateBasicDataAccess(): Promise<{
 	let treesCount = 0;
 	let capacitiesAccessible = false;
 	let capacitiesCount = 0;
-	
+
 	try {
 		// Test tree access
-		const treesData = await holsterGet<Record<string, any>>(['trees']);
+		const treesData = await meshGet<Record<string, any>>(['trees']);
 		if (treesData) {
 			treesAccessible = true;
 			treesCount = Object.keys(treesData).filter(k => k !== '_').length;
@@ -309,7 +309,7 @@ export async function validateBasicDataAccess(): Promise<{
 	} catch (err) {
 		errors.push(`Tree access failed: ${err}`);
 	}
-	
+
 	try {
 		// Test capacity access
 		const capacities = await fetchAllIndividualCapacities();
@@ -318,7 +318,7 @@ export async function validateBasicDataAccess(): Promise<{
 	} catch (err) {
 		errors.push(`Capacity access failed: ${err}`);
 	}
-	
+
 	return {
 		treesAccessible,
 		treesCount,
@@ -345,19 +345,19 @@ export async function saveComputationResult(
 ): Promise<void> {
 	try {
 		ensureAuthenticated();
-		
+
 		const timestamp = new Date();
 		const resultKey = `${id}_${timestamp.getTime()}`;
-		
+
 		// Store detailed result
-		await holsterNextPut(collection, resultKey, {
+		await meshNextPut(collection, resultKey, {
 			...result,
 			timestamp: timestamp.toISOString()
 		});
-		
+
 		// Update latest pointer if specified
 		if (latestCollection) {
-			await holsterNextPut(latestCollection, id, {
+			await meshNextPut(latestCollection, id, {
 				result_key: resultKey,
 				timestamp: timestamp.toISOString(),
 				...extractLatestPointerData(result)
@@ -376,13 +376,13 @@ export async function saveComputationResult(
 function extractLatestPointerData(result: any): Record<string, any> {
 	// Extract common fields that are useful for quick access
 	const pointerData: Record<string, any> = {};
-	
+
 	if ('total_capacity' in result) pointerData.total_capacity = result.total_capacity;
 	if ('total_allocated' in result) pointerData.total_allocated = result.total_allocated;
 	if ('member_count' in result) pointerData.member_count = result.member_count;
 	if ('efficiency' in result) pointerData.efficiency = result.efficiency;
 	if ('fairness' in result) pointerData.fairness = result.fairness;
-	
+
 	return pointerData;
 }
 
@@ -394,22 +394,22 @@ export const SharedUtils = {
 	// Recognition
 	extractRecognitionFromTree,
 	fetchAllRecognitionData,
-	
+
 	// Trees
 	fetchTree,
 	fetchTrees,
 	fetchTreesAsRecord,
-	
+
 	// Capacities
 	extractCapacitiesFromTree,
 	fetchAllIndividualCapacities,
-	
+
 	// Logging
 	logComputationEvent,
-	
+
 	// Validation
 	validateBasicDataAccess,
-	
+
 	// Storage
 	saveComputationResult
 };

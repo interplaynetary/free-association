@@ -45,13 +45,13 @@ export async function sendMessageToSWWithResponse(message: SWMessage): Promise<S
 
 	return new Promise((resolve, reject) => {
 		const messageChannel = new MessageChannel();
-		
+
 		messageChannel.port1.onmessage = (event) => {
 			resolve(event.data);
 		};
 
 		registration.active.postMessage(message, [messageChannel.port2]);
-		
+
 		// Timeout after 5 seconds
 		setTimeout(() => reject(new Error('Service Worker response timeout')), 5000);
 	});
@@ -112,7 +112,7 @@ export async function requestSync(tag: string = 'sync-data'): Promise<void> {
 
 	try {
 		const registration = await navigator.serviceWorker.ready;
-		
+
 		// Try native sync API first
 		if ('sync' in registration) {
 			await (registration as any).sync.register(tag);
@@ -131,10 +131,10 @@ export async function requestSync(tag: string = 'sync-data'): Promise<void> {
 }
 
 /**
- * Request Holster data sync
+ * Request Mesh data sync
  */
-export async function requestHolsterSync(): Promise<void> {
-	await requestSync('sync-holster');
+export async function requestMeshSync(): Promise<void> {
+	await requestSync('sync-mesh');
 }
 
 /**
@@ -175,20 +175,20 @@ export async function subscribeToPushNotifications(
 
 	try {
 		const registration = await navigator.serviceWorker.ready;
-		
+
 		// Check if already subscribed
 		let subscription = await registration.pushManager.getSubscription();
-		
+
 		if (!subscription) {
 			// Subscribe to push notifications
 			subscription = await registration.pushManager.subscribe({
 				userVisibleOnly: true,
 				applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
 			});
-			
+
 			console.log('[SW] Push subscription created:', subscription.endpoint);
 		}
-		
+
 		return subscription;
 	} catch (error) {
 		console.error('[SW] Push subscription failed:', error);
@@ -207,13 +207,13 @@ export async function unsubscribeFromPushNotifications(): Promise<boolean> {
 	try {
 		const registration = await navigator.serviceWorker.ready;
 		const subscription = await registration.pushManager.getSubscription();
-		
+
 		if (subscription) {
 			await subscription.unsubscribe();
 			console.log('[SW] Push subscription removed');
 			return true;
 		}
-		
+
 		return false;
 	} catch (error) {
 		console.error('[SW] Unsubscribe failed:', error);
@@ -234,7 +234,7 @@ export async function registerPeriodicSync(
 
 	try {
 		const registration = await navigator.serviceWorker.ready;
-		
+
 		if ('periodicSync' in registration) {
 			await (registration as any).periodicSync.register(tag, {
 				minInterval
@@ -242,7 +242,7 @@ export async function registerPeriodicSync(
 			console.log('[SW] Periodic sync registered:', tag);
 			return true;
 		}
-		
+
 		console.warn('[SW] Periodic sync not supported');
 		return false;
 	} catch (error) {
@@ -258,7 +258,7 @@ export function listenToSWMessages(
 	callback: (message: SWResponse) => void
 ): () => void {
 	if (!('serviceWorker' in navigator)) {
-		return () => {};
+		return () => { };
 	}
 
 	const handler = (event: MessageEvent) => {

@@ -17,7 +17,7 @@
  * V6 UPDATE: Clean separation of pure core from reactive stores
  */
 
-import '$lib/network/holster.svelte'; // This initializes Holster (migration Phase 1)
+import '$lib/network/mesh.svelte'; // This initializes Mesh (migration Phase 1)
 
 // ═══════════════════════════════════════════════════════════════════
 // CORE PROTOCOL (Pure, framework-agnostic)

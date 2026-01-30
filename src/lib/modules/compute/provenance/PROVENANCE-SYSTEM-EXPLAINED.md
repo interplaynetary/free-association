@@ -22,7 +22,7 @@ A **production-ready cryptographic provenance system** that tracks computation l
 │     ├─ Attach ITC stamp (logical time)                         │
 │     └─ Link to parent events (Merkle-DAG)                      │
 │                                                                  │
-│  2. Store in Holster (P2P Database)                            │
+│  2. Store in Mesh (P2P Database)                            │
 │     ├─ Event storage                                            │
 │     ├─ Head index (latest per author)                          │
 │     └─ Parent index (reverse edges)                            │
@@ -270,7 +270,7 @@ const eventA = await createSignedEvent({
 // eventA.id = "0xabc..." (content-addressed)
 // eventA.sig = SEA signature proving Alice created it
 
-// 3. Store in Holster
+// 3. Store in Mesh
 await storeEvent(eventA);
 ```
 
@@ -559,7 +559,7 @@ const { proof } = await proveMembershipInDAGMap(fullDAG, event50.id);
 
 ## Performance Characteristics
 
-### Storage (Holster/P2P)
+### Storage (Mesh/P2P)
 - **Event size**: ~1-5KB per event
 - **Index overhead**: ~200 bytes per event (head + parent indexes)
 - **Total**: ~1-5KB per event
@@ -572,8 +572,8 @@ const { proof } = await proveMembershipInDAGMap(fullDAG, event50.id);
 - **leq()**: O(log N) - compare causality
 
 ### DAG Operations
-- **Store event**: O(1) - Holster put
-- **Get event**: O(1) - Holster get by ID
+- **Store event**: O(1) - Mesh put
+- **Get event**: O(1) - Mesh get by ID
 - **Traverse to roots**: O(D) - D = depth
 - **Find path**: O(N) - N = events visited (BFS)
 

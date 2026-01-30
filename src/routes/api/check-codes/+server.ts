@@ -1,12 +1,12 @@
-import {error} from "@sveltejs/kit"
-import {checkCodesSchema} from "$lib/server/schemas/holster"
-import {checkCodes} from "$lib/server/holster/invite-codes"
-import {createPOSTHandler} from "$lib/server/middleware/request-handler"
-import {ensureAuthenticated} from "$lib/server/holster/db"
+import { error } from "@sveltejs/kit"
+import { checkCodesSchema } from "$lib/server/schemas/mesh"
+import { checkCodes } from "$lib/server/mesh/invite-codes"
+import { createPOSTHandler } from "$lib/server/middleware/request-handler"
+import { ensureAuthenticated } from "$lib/server/mesh/db"
 
 export const POST = createPOSTHandler(
   checkCodesSchema,
-  async ({data}) => {
+  async ({ data }) => {
     ensureAuthenticated()
 
     if (await checkCodes(data.codes)) {
@@ -15,6 +15,6 @@ export const POST = createPOSTHandler(
 
     error(400, "duplicate code found")
   },
-  {emptyResponse: true}
+  { emptyResponse: true }
 )
 

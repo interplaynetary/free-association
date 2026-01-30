@@ -99,9 +99,9 @@ jobs:
               sudo rsync -a $APP_DIR/gun-data/ $DATA_BACKUP/gun-data/
             fi
             
-            if [ -d "$APP_DIR/holster-data" ]; then
-              echo "Backing up holster-data..."
-              sudo rsync -a $APP_DIR/holster-data/ $DATA_BACKUP/holster-data/
+            if [ -d "$APP_DIR/mesh-data" ]; then
+              echo "Backing up mesh-data..."
+              sudo rsync -a $APP_DIR/mesh-data/ $DATA_BACKUP/mesh-data/
             fi
             
             # Extract new deployment
@@ -117,11 +117,11 @@ jobs:
               sudo chown -R $USER:$USER gun-data
             fi
             
-            if [ -d "$DATA_BACKUP/holster-data" ]; then
-              echo "Restoring holster-data..."
-              mkdir -p holster-data
-              sudo rsync -a $DATA_BACKUP/holster-data/ holster-data/
-              sudo chown -R $USER:$USER holster-data
+            if [ -d "$DATA_BACKUP/mesh-data" ]; then
+              echo "Restoring mesh-data..."
+              mkdir -p mesh-data
+              sudo rsync -a $DATA_BACKUP/mesh-data/ mesh-data/
+              sudo chown -R $USER:$USER mesh-data
             fi
             
             # Install Bun if not present

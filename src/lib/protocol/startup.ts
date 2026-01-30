@@ -1,6 +1,6 @@
-import { initializeAuth } from '$lib/network/holster.svelte';
+import { initializeAuth } from '$lib/network/mesh.svelte';
 import { startStoreService } from '$lib/protocol/stores/stores.svelte';
-import { initializeCapacitySubscriptions, cleanupCapacitySubscriptions } from '$lib/network/capacity-subscriptions.svelte';
+import { initializeCapacitySubscriptions, cleanupCapacitySubscriptions } from '$lib/network/slot-subscriptions.svelte';
 import { startAllocationService } from '$lib/protocol/stores/allocation.svelte';
 import { browser } from '$app/environment';
 
@@ -32,8 +32,8 @@ export async function initializeProtocol() {
     isInitialized = true;
 
     // 1. Auth Service
-    // We MUST await this because it initializes the Holster proxy target.
-    // Without this wait, subsequent services (stores) will crash when accessing Holster.
+    // We MUST await this because it initializes the Mesh proxy target.
+    // Without this wait, subsequent services (stores) will crash when accessing Mesh.
     SERVICES.auth = await initializeAuth();
 
     // 2. Data Service (Persistent Stores + Sync)

@@ -1,28 +1,28 @@
 /**
- * Chat Read States Module - Holster Implementation
+ * Chat Read States Module - Mesh Implementation
  *
  * Manages chat read states (tracking which messages have been read in each chat)
- * using Holster with timestamp-based conflict resolution.
+ * using Mesh with timestamp-based conflict resolution.
  *
- * Pattern: Same as contacts-holster - key-value collection with timestamps
+ * Pattern: Same as contacts-mesh - key-value collection with timestamps
  */
 
 import { writable, get } from 'svelte/store';
-import { holsterUser } from '$lib/network/holster.svelte';
+import { meshUser } from '$lib/network/mesh.svelte';
 // V5: Use Zod schemas for validation
 import type { ChatReadStates } from '@playnet/free-association/schemas';
 import { ChatReadStatesSchema } from '@playnet/free-association/schemas';
-import { addTimestamp, getTimestamp, shouldPersist } from '$lib/utils/data/holsterTimestamp';
+import { addTimestamp, getTimestamp, shouldPersist } from '$lib/utils/data/meshTimestamp';
 
 // ============================================================================
 // State
 // ============================================================================
 
 // Local state for chat read states
-export const holsterChatReadStates = writable<ChatReadStates>({});
+export const meshChatReadStates = writable<ChatReadStates>({});
 
 // Loading flag
-export const isLoadingHolsterChatReadStates = writable(false);
+export const isLoadingMeshChatReadStates = writable(false);
 
 // Track last known network timestamp
 let lastNetworkTimestamp: number | null = null;
@@ -43,21 +43,21 @@ let chatReadStatesCallback: ((data: any) => void) | null = null;
  * Subscribe to user's chat read states
  */
 function subscribeToChatReadStates() {
-	if (!holsterUser.is) {
-		console.log('[CHAT-READ-STATES-HOLSTER] Cannot subscribe: no authenticated user');
+	if (!meshUser.is) {
+		console.log('[CHAT-READ-STATES-MESH] Cannot subscribe: no authenticated user');
 		return;
 	}
 
 	chatReadStatesCallback = (data: any) => {
 		if (!data) {
 			if (!hasReceivedRealData) {
-				console.log('[CHAT-READ-STATES-HOLSTER] Subscription returned null, waiting for network data...');
+				console.log('[CHAT-READ-STATES-MESH] Subscription returned null, waiting for network data...');
 			}
 			return;
 		}
 
 		if (!hasReceivedRealData) {
-			console.log('[CHAT-READ-STATES-HOLSTER] First real data received from network');
+			console.log('[CHAT-READ-STATES-MESH] First real data received from network');
 			hasReceivedRealData = true;
 		}
 
@@ -68,7 +68,7 @@ function subscribeToChatReadStates() {
 		// V5: Parse and validate with Zod
 		const parseResult = ChatReadStatesSchema.safeParse(dataOnly);
 		if (!parseResult.success) {
-			console.error('[CHAT-READ-STATES-HOLSTER] Invalid chat read states data:', parseResult.error);
+			console.error('[CHAT-READ-STATES-MESH] Invalid chat read states data:', parseResult.error);
 			return;
 		}
 
@@ -76,34 +76,34 @@ function subscribeToChatReadStates() {
 
 		// Only update if newer or first time
 		if (!lastNetworkTimestamp || (networkTimestamp && networkTimestamp > lastNetworkTimestamp)) {
-			holsterChatReadStates.set(networkReadStates);
+			meshChatReadStates.set(networkReadStates);
 			if (networkTimestamp) {
 				lastNetworkTimestamp = networkTimestamp;
 			}
-			isLoadingHolsterChatReadStates.set(false);
+			isLoadingMeshChatReadStates.set(false);
 		}
 	};
 
-	holsterUser.get('chatReadStates').on(chatReadStatesCallback, true);
+	meshUser.get('chatReadStates').on(chatReadStatesCallback, true);
 }
 
 /**
  * Initialize chat read states subscription
  */
-export function initializeHolsterChatReadStates() {
-	if (!holsterUser.is) {
-		console.log('[CHAT-READ-STATES-HOLSTER] Cannot initialize: no authenticated user');
+export function initializeMeshChatReadStates() {
+	if (!meshUser.is) {
+		console.log('[CHAT-READ-STATES-MESH] Cannot initialize: no authenticated user');
 		return;
 	}
 
 	if (isInitialized) {
-		console.log('[CHAT-READ-STATES-HOLSTER] Already initialized, skipping duplicate call');
+		console.log('[CHAT-READ-STATES-MESH] Already initialized, skipping duplicate call');
 		return;
 	}
 
-	console.log('[CHAT-READ-STATES-HOLSTER] Initializing...');
+	console.log('[CHAT-READ-STATES-MESH] Initializing...');
 	isInitialized = true;
-	isLoadingHolsterChatReadStates.set(true);
+	isLoadingMeshChatReadStates.set(true);
 
 	subscribeToChatReadStates();
 }
@@ -111,31 +111,31 @@ export function initializeHolsterChatReadStates() {
 /**
  * Cleanup chat read states subscription
  */
-export function cleanupHolsterChatReadStates() {
-	if (chatReadStatesCallback && holsterUser.is) {
-		holsterUser.get('chatReadStates').off(chatReadStatesCallback);
+export function cleanupMeshChatReadStates() {
+	if (chatReadStatesCallback && meshUser.is) {
+		meshUser.get('chatReadStates').off(chatReadStatesCallback);
 		chatReadStatesCallback = null;
 	}
-	holsterChatReadStates.set({});
+	meshChatReadStates.set({});
 	lastNetworkTimestamp = null;
 	isInitialized = false;
 	hasReceivedRealData = false;
-	console.log('[CHAT-READ-STATES-HOLSTER] Cleaned up');
+	console.log('[CHAT-READ-STATES-MESH] Cleaned up');
 }
 
 /**
- * Persist chat read states to Holster
+ * Persist chat read states to Mesh
  */
-export async function persistHolsterChatReadStates(readStates?: ChatReadStates): Promise<void> {
-	if (!holsterUser.is) {
-		console.log('[CHAT-READ-STATES-HOLSTER] Not authenticated, skipping persistence');
+export async function persistMeshChatReadStates(readStates?: ChatReadStates): Promise<void> {
+	if (!meshUser.is) {
+		console.log('[CHAT-READ-STATES-MESH] Not authenticated, skipping persistence');
 		return;
 	}
 
-	const readStatesToSave = readStates || get(holsterChatReadStates);
+	const readStatesToSave = readStates || get(meshChatReadStates);
 
 	if (!readStatesToSave || Object.keys(readStatesToSave).length === 0) {
-		console.log('[CHAT-READ-STATES-HOLSTER] No chat read states to persist');
+		console.log('[CHAT-READ-STATES-MESH] No chat read states to persist');
 		return;
 	}
 
@@ -145,16 +145,16 @@ export async function persistHolsterChatReadStates(readStates?: ChatReadStates):
 
 	// Check if safe to persist
 	if (!shouldPersist(localTimestamp, lastNetworkTimestamp)) {
-		console.warn('[CHAT-READ-STATES-HOLSTER] Skipping persist - network has newer data');
+		console.warn('[CHAT-READ-STATES-MESH] Skipping persist - network has newer data');
 		return;
 	}
 
-	console.log('[CHAT-READ-STATES-HOLSTER] Persisting chat read states...');
+	console.log('[CHAT-READ-STATES-MESH] Persisting chat read states...');
 
 	return new Promise((resolve, reject) => {
-		holsterUser.get('chatReadStates').put(timestampedData, (err: any) => {
+		meshUser.get('chatReadStates').put(timestampedData, (err: any) => {
 			if (err) {
-				console.error('[CHAT-READ-STATES-HOLSTER] Persist error:', err);
+				console.error('[CHAT-READ-STATES-MESH] Persist error:', err);
 				reject(err);
 			} else {
 				if (localTimestamp) {
@@ -170,6 +170,6 @@ export async function persistHolsterChatReadStates(readStates?: ChatReadStates):
  * Reset initialization state (for logout/re-login in same session)
  */
 export function resetInitialization() {
-	console.log('[CHAT-READ-STATES-HOLSTER] Resetting initialization state');
-	cleanupHolsterChatReadStates();
+	console.log('[CHAT-READ-STATES-MESH] Resetting initialization state');
+	cleanupMeshChatReadStates();
 }

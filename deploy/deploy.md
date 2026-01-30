@@ -6,7 +6,7 @@ description: Deploy frontend to App Platform and backend to Droplet
 
 This project uses a **split deployment architecture**:
 - **Frontend (Static)**: Deployed to Digital Ocean App Platform → `free.playnet.lol`
-- **Backend (Node.js)**: Deployed to Digital Ocean Droplet → Holster relay + API routes
+- **Backend (Node.js)**: Deployed to Digital Ocean Droplet → Mesh relay + API routes
 
 ## Architecture Overview
 
@@ -32,7 +32,7 @@ This project uses a **split deployment architecture**:
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │  SvelteKit Backend (adapter-node)                   │   │
 │  │  - Port 3000: API routes (/api/*)                   │   │
-│  │  - Port 8766: Holster relay (WebSocket)             │   │
+│  │  - Port 8766: Mesh relay (WebSocket)             │   │
 │  │  - Persistent storage: /var/www/free-association    │   │
 │  └─────────────────────────────────────────────────────┘   │
 │                                                             │
@@ -62,7 +62,7 @@ This deployment uses **path-based routing** for simplicity - no DNS configuratio
 ```
 https://free.playnet.lol/          → Static frontend (App Platform)
 https://free.playnet.lol/api/*     → Backend API (proxied to Droplet)
-https://free.playnet.lol/holster   → WebSocket (proxied to Droplet)
+https://free.playnet.lol/mesh   → WebSocket (proxied to Droplet)
 ```
 
 **Benefits:**
@@ -74,7 +74,7 @@ https://free.playnet.lol/holster   → WebSocket (proxied to Droplet)
 **How it works:**
 1. App Platform serves your static frontend
 2. App Platform proxies `/api/*` requests to your droplet
-3. App Platform proxies `/holster` WebSocket to your droplet
+3. App Platform proxies `/mesh` WebSocket to your droplet
 
 **Configuration:** See [deploy/app-platform-proxy.md](file:///home/ruzgar/Programs/playnet/free-association/deploy/app-platform-proxy.md) for App Platform proxy setup.
 
@@ -165,13 +165,13 @@ The frontend is automatically deployed via Digital Ocean App Platform when you p
 
 **IMPORTANT: Configure API Proxy**
 
-You MUST configure App Platform to proxy `/api/*` and `/holster` requests to your droplet.
+You MUST configure App Platform to proxy `/api/*` and `/mesh` requests to your droplet.
 
 See detailed instructions: [deploy/app-platform-proxy.md](file:///home/ruzgar/Programs/playnet/free-association/deploy/app-platform-proxy.md)
 
 **Quick setup:**
 - Add route: `/api` → proxy to `http://YOUR_DROPLET_IP:3000/api`
-- Add route: `/holster` → proxy to `http://YOUR_DROPLET_IP:8766/holster` (WebSocket enabled)
+- Add route: `/mesh` → proxy to `http://YOUR_DROPLET_IP:8766/mesh` (WebSocket enabled)
 
 ### Backend Deployment (Droplet)
 
@@ -185,7 +185,7 @@ BUILD_TARGET=server npm run build
 rsync -avz --delete \
   --exclude 'node_modules' \
   --exclude '.git' \
-  --exclude 'holster-data' \
+  --exclude 'mesh-data' \
   ./ user@your-droplet-ip:/var/www/free-association/
 
 # 3. SSH into droplet and install dependencies
@@ -230,10 +230,10 @@ curl https://free.playnet.lol
 curl https://api.free.playnet.lol/api/health
 ```
 
-### Check Holster Relay
+### Check Mesh Relay
 ```bash
 # Should show WebSocket upgrade
-curl -i https://api.free.playnet.lol/holster
+curl -i https://api.free.playnet.lol/mesh
 ```
 
 ### Check Service Status
@@ -261,14 +261,14 @@ sudo tail -f /var/log/nginx/free-association-error.log
 - Verify Nginx config: `sudo nginx -t`
 - Check firewall: `sudo ufw status`
 
-### Holster WebSocket not connecting
+### Mesh WebSocket not connecting
 - Verify Nginx WebSocket proxy configuration
 - Check if port 8766 is accessible
 - Review browser WebSocket connection errors
 - Ensure SSL certificate covers the domain
 
 ### Data not persisting
-- Check directory permissions: `ls -la /var/www/free-association/holster-data`
+- Check directory permissions: `ls -la /var/www/free-association/mesh-data`
 - Verify systemd `ReadWritePaths` includes data directories
 - Check disk space: `df -h`
 
@@ -290,7 +290,7 @@ sudo systemctl stop free-association
 
 # Restore data
 cd /var/www/free-association
-tar -xzf /var/backups/free-association-data/holster-data-YYYYMMDD_HHMMSS.tar.gz
+tar -xzf /var/backups/free-association-data/mesh-data-YYYYMMDD_HHMMSS.tar.gz
 
 # Start service
 sudo systemctl start free-association
@@ -325,7 +325,7 @@ sudo systemctl status free-association
 
 ### Future Improvements
 1. **Load Balancing**: Add multiple droplets behind a load balancer
-2. **Database**: Move to managed database (currently using file-based Holster)
+2. **Database**: Move to managed database (currently using file-based Mesh)
 3. **Caching**: Add Redis for session/rate limiting
 4. **Monitoring**: Add Prometheus + Grafana
 5. **CI/CD**: Automate deployment with GitHub Actions
@@ -344,7 +344,7 @@ sudo systemctl status free-association
 - **Cons**: Less flexible, harder to scale
 
 **Your architecture is correct for applications with:**
-- WebSocket requirements (Holster relay)
+- WebSocket requirements (Mesh relay)
 - Persistent data storage needs
 - Separate frontend/backend scaling requirements
 
@@ -353,4 +353,4 @@ sudo systemctl status free-association
 - Digital Ocean App Platform handles backups for the frontend automatically
 - Droplet backups are configured via cron (daily at 2 AM)
 - SSL certificates auto-renew via certbot
-- Holster data is stored persistently on the droplet filesystem
+- Mesh data is stored persistently on the droplet filesystem

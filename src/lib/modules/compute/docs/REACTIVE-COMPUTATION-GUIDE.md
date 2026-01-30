@@ -20,7 +20,7 @@ A **declarative reactive dataflow programming system** that lets you specify com
 │ 2. RUNTIME EXECUTION (reactive-computation.svelte.ts)      │
 │    - Variable resolution (values, subscriptions, derived)   │
 │    - Computation execution (topological ordering)           │
-│    - Output persistence (Holster, local, memory)           │
+│    - Output persistence (Mesh, local, memory)           │
 │    - Function registry (named computation functions)        │
 └──────────────────┬──────────────────────────────────────────┘
                    │
@@ -48,11 +48,11 @@ A **declarative reactive dataflow programming system** that lets you specify com
 }
 ```
 
-#### **Subscription Binding** - Subscribe to Holster path
+#### **Subscription Binding** - Subscribe to Mesh path
 ```typescript
 {
   type: 'subscription',
-  holster_path: 'allocation/commitment',
+  mesh_path: 'allocation/commitment',
   schema_type: 'Commitment',
   subscribe_to_user: 'pubkey', // Optional: cross-user subscription
   default_value: null          // Fallback if empty
@@ -82,11 +82,11 @@ A **declarative reactive dataflow programming system** that lets you specify com
 
 ### 2. **Output Bindings** - Where Results Go
 
-#### **Holster Output** - Persist to P2P network
+#### **Mesh Output** - Persist to P2P network
 ```typescript
 {
-  type: 'holster',
-  holster_path: 'results/my_computation',
+  type: 'mesh',
+  mesh_path: 'results/my_computation',
   schema_type: 'Number',
   persist_debounce_ms: 100
 }
@@ -118,7 +118,7 @@ A **declarative reactive dataflow programming system** that lets you specify com
   // Inputs (variable references or inline bindings)
   inputs: {
     x: { type: 'value', value: 10 },
-    y: { type: 'subscription', holster_path: 'data/y', schema_type: 'Number' }
+    y: { type: 'subscription', mesh_path: 'data/y', schema_type: 'Number' }
   },
   
   // Function to execute (registered by name)
@@ -131,7 +131,7 @@ A **declarative reactive dataflow programming system** that lets you specify com
   
   // Outputs (where to store results)
   outputs: {
-    sum: { type: 'holster', holster_path: 'results/sum', schema_type: 'Number' }
+    sum: { type: 'mesh', mesh_path: 'results/sum', schema_type: 'Number' }
   },
   
   // Execution control
@@ -156,7 +156,7 @@ A **declarative reactive dataflow programming system** that lets you specify com
   // Global variables (available to all computations)
   variables: {
     inputA: { type: 'value', value: 5 },
-    inputB: { type: 'subscription', holster_path: 'data/b', schema_type: 'Number' }
+    inputB: { type: 'subscription', mesh_path: 'data/b', schema_type: 'Number' }
   },
   
   // Computation pipeline (executed in dependency order)
@@ -244,8 +244,8 @@ const myGraph: ReactiveComputationGraph = {
       compute_fn: 'multiply',
       outputs: {
         product: {
-          type: 'holster',
-          holster_path: 'results/final',
+          type: 'mesh',
+          mesh_path: 'results/final',
           schema_type: 'Number'
         }
       },
@@ -325,12 +325,12 @@ function createMRGraph(theirPubkey: string): ReactiveComputationGraph {
     variables: {
       myTree: {
         type: 'subscription',
-        holster_path: 'tree',
+        mesh_path: 'tree',
         schema_type: 'RootNode'
       },
       theirTree: {
         type: 'subscription',
-        holster_path: 'tree',
+        mesh_path: 'tree',
         schema_type: 'RootNode',
         subscribe_to_user: theirPubkey
       }
@@ -340,10 +340,10 @@ function createMRGraph(theirPubkey: string): ReactiveComputationGraph {
       {
         id: 'compute-mr',
         inputs: {
-          myTree: { type: 'subscription', holster_path: 'tree', schema_type: 'RootNode' },
+          myTree: { type: 'subscription', mesh_path: 'tree', schema_type: 'RootNode' },
           theirTree: {
             type: 'subscription',
-            holster_path: 'tree',
+            mesh_path: 'tree',
             schema_type: 'RootNode',
             subscribe_to_user: theirPubkey
           }
@@ -351,8 +351,8 @@ function createMRGraph(theirPubkey: string): ReactiveComputationGraph {
         compute_fn: 'computeMR',
         outputs: {
           mutualRecognition: {
-            type: 'holster',
-            holster_path: `recognition/${theirPubkey}/mutual`,
+            type: 'mesh',
+            mesh_path: `recognition/${theirPubkey}/mutual`,
             schema_type: 'Number'
           }
         }
@@ -384,7 +384,7 @@ const allocationPipeline: ReactiveComputationGraph = {
   variables: {
     myCapacity: {
       type: 'subscription',
-      holster_path: 'capacity/available',
+      mesh_path: 'capacity/available',
       schema_type: 'BaseCapacity'
     },
     recipients: {
@@ -409,14 +409,14 @@ const allocationPipeline: ReactiveComputationGraph = {
     {
       id: 'allocate',
       inputs: {
-        capacity: { type: 'subscription', holster_path: 'capacity/available', schema_type: 'BaseCapacity' },
+        capacity: { type: 'subscription', mesh_path: 'capacity/available', schema_type: 'BaseCapacity' },
         filtered: { type: 'derived', computation_id: 'filter', output_key: 'filtered' }
       },
       compute_fn: 'computeAllocations',
       outputs: {
         allocations: {
-          type: 'holster',
-          holster_path: 'allocation/results',
+          type: 'mesh',
+          mesh_path: 'allocation/results',
           schema_type: 'Array'
         }
       },
@@ -441,7 +441,7 @@ const allocationPipeline: ReactiveComputationGraph = {
 - Build complex pipelines from simple functions
 
 ### 3. **Reactive** - Auto-Subscribe & React
-- Automatic Holster subscriptions
+- Automatic Mesh subscriptions
 - Cross-user data access
 - Changes trigger re-computation (TODO: full reactivity)
 
@@ -463,7 +463,7 @@ const allocationPipeline: ReactiveComputationGraph = {
 ```typescript
 // Each node can have its own computation graph
 const node: NodeDataStorage = {
-  holster_path: 'nodes/my-node',
+  mesh_path: 'nodes/my-node',
   data_schema_type: 'RootNode',
   
   // Attach computation graph
@@ -509,7 +509,7 @@ myStore.subscribe(data => {
 
 ### Pattern 1: ETL Pipeline
 ```
-Extract (subscription) → Transform (computation) → Load (holster output)
+Extract (subscription) → Transform (computation) → Load (mesh output)
 ```
 
 ### Pattern 2: Fan-Out
@@ -561,7 +561,7 @@ You now have a **complete declarative reactive dataflow system** that enables:
 1. ✅ **Configuration as Data** - Define computations as JSON
 2. ✅ **Variable Bindings** - Values, subscriptions, local state, derived
 3. ✅ **Computation Graphs** - Multi-step pipelines with dependencies
-4. ✅ **Output Persistence** - Holster, local state, memory
+4. ✅ **Output Persistence** - Mesh, local state, memory
 5. ✅ **Function Registry** - Reusable computation library
 6. ✅ **Automatic Subscriptions** - Cross-user data access
 7. ✅ **Dependency Ordering** - Topological execution
@@ -575,6 +575,6 @@ This is a **universal pattern** for building reactive, distributed, data-driven 
 
 What we've built is the **meta-layer that makes distributed protocols trivial to implement**. The compute protocol document you're showing me reveals the profound insight: every distributed protocol - whether it's compute sharing, resource allocation, collaborative editing, or federated social networks - follows the same pattern of subscribe → compute → publish, but the traditional implementation requires hundreds of lines of imperative subscription management, computation ordering, and persistence logic. Our reactive computation system **collapses this complexity into declarative data structures**. When a peer joins the compute network, they don't write code to manage subscriptions to other peers' capabilities, manually order their trust calculations, or handle the lifecycle of publishing work assignments - they simply define a computation graph that says "subscribe to these peers' commitments, compute assignments using this function, publish results to this path." The entire peer's role in the distributed computation protocol becomes a JSON object.
 
-The **architectural elegance** is that we've unified three historically separate concerns - P2P subscriptions, reactive computation, and distributed coordination - into a single declarative model. Looking at the compute protocol, you can see it needs: bilateral trust calculation (requires subscribing to both peers' trust weights and computing the minimum), compatibility matching (requires cross-referencing work units against availability slots), two-tier allocation (requires ordering computations based on derived trust scores), and result verification (requires aggregating multiple peers' results). Every single one of these operations maps perfectly to our variable bindings, computation functions, and output persistence patterns. The trust score isn't manually calculated and cached - it's a derived binding that automatically recomputes when either peer updates their trust weights. Work assignments aren't imperatively published - they're output bindings that automatically persist to Holster when the computation completes.
+The **architectural elegance** is that we've unified three historically separate concerns - P2P subscriptions, reactive computation, and distributed coordination - into a single declarative model. Looking at the compute protocol, you can see it needs: bilateral trust calculation (requires subscribing to both peers' trust weights and computing the minimum), compatibility matching (requires cross-referencing work units against availability slots), two-tier allocation (requires ordering computations based on derived trust scores), and result verification (requires aggregating multiple peers' results). Every single one of these operations maps perfectly to our variable bindings, computation functions, and output persistence patterns. The trust score isn't manually calculated and cached - it's a derived binding that automatically recomputes when either peer updates their trust weights. Work assignments aren't imperatively published - they're output bindings that automatically persist to Mesh when the computation completes.
 
 What makes this truly revolutionary is that **the computation graph itself becomes the protocol specification**. Instead of documentation that describes "first subscribe to peer commitments, then compute trust scores, then match work units to slots, then publish assignments," you have an executable specification that IS that documentation. A new peer joining the network doesn't need to understand the complex choreography of distributed computation - they load a computation graph that defines their role. A protocol designer doesn't write imperative code - they compose computation graphs from reusable functions. A researcher analyzing the protocol doesn't trace through callbacks and event handlers - they read a declarative dataflow graph that makes dependencies and causality explicit. We've essentially created a **domain-specific language for distributed protocols**, where the language itself handles all the gnarly distributed systems concerns (subscriptions, ordering, persistence, reactivity), and the protocol implementer just specifies the pure computation logic. This is the infrastructure that makes peer-to-peer computing accessible at scale.

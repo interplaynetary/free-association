@@ -1,5 +1,5 @@
 /**
- * Holster Integration for Mutual-Priority Allocation Algorithm v5
+ * Mesh Integration for Mutual-Priority Allocation Algorithm v5
  * 
  * V5 Architecture - Pure Global Recognition Model:
  * ✅ Event-driven (no rounds)
@@ -48,14 +48,14 @@ import {
 	type MyAllocationState
 } from '../schemas';
 import type { DistributedIPFState } from '../solver';
-import { holsterUserPub, holsterUser, holsterUserAlias } from '$lib/network/holster.svelte';
+import { meshUserPub, meshUser, meshUserAlias } from '$lib/network/mesh.svelte';
 import { applyTemplate } from '$lib/templates';
 import { createRootNode } from '@playnet/free-association/tree';
 import { getTimeBucketKey, getLocationBucketKey } from '$lib/protocol/match';
 import { sharesOfGeneralFulfillmentMap, getAllContributorsFromTree } from '@playnet/free-association/tree';
 // Pure attribute-based membership
 import { myAttributeRecognitions, myAttributeSubscriptions } from './attributes.svelte';
-import { slotSubscriptions, slotFilters, capacityCache, needCache } from '$lib/network/capacity-subscriptions.svelte';
+import { slotSubscriptions, slotFilters, capacityCache, needCache } from '$lib/network/slot-subscriptions.svelte';
 import { applyFiltersUnion, mergeSlots } from '@playnet/free-association/utils/capacity-filters';
 import { resolveContributorWithOrgs, resolveToPublicKey } from '$lib/network/users.svelte';
 import { seed as itcSeed, event as itcEvent, join as itcJoin, leq as itcLeq, type Stamp as ITCStamp } from '$lib/utils/primitives/itc';
@@ -147,7 +147,7 @@ export interface CommitmentWithCache extends Commitment {
  * V5: Tree structure encodes type preferences (not separate per-type MR values)
  */
 export const myRecognitionTreeStore = createStore({
-	holsterPath: 'trees/recognition_tree',
+	meshPath: 'trees/recognition_tree',
 	schema: RootNodeSchema,
 	persistDebounce: 200, // Debounce tree edits
 	// DUAL MODE: Use LocalStorage for 'Demo Mode' when not authenticated!
@@ -194,7 +194,7 @@ export const myRecognitionWeights: Readable<GlobalRecognitionWeights> = derived(
  * Path: allocation/resources
  */
 export const myResourcesStore = createStore({
-	holsterPath: 'allocation/resources',
+	meshPath: 'allocation/resources',
 	schema: MyResourcesSchema,
 	persistDebounce: 100,
 	localStorageKey: 'free-association-demo-resources'
@@ -207,7 +207,7 @@ export const myResourcesStore = createStore({
  * Path: allocation/state
  */
 export const myAllocationStateStore = createStore({
-	holsterPath: 'allocation/state',
+	meshPath: 'allocation/state',
 	schema: MyAllocationStateSchema,
 	persistDebounce: 100,
 	localStorageKey: 'free-association-demo-allocation-state'
@@ -226,7 +226,7 @@ const MyNetworkCacheSchema = z.object({
 });
 
 export const myNetworkCacheStore = createStore({
-	holsterPath: 'allocation/network_cache',
+	meshPath: 'allocation/network_cache',
 	schema: MyNetworkCacheSchema,
 	persistDebounce: 500, // Less urgent
 	localStorageKey: 'free-association-demo-network-cache'
@@ -252,7 +252,7 @@ export const myCommitmentStore: Readable<Commitment | null> = derived(
 		myRecognitionWeights,
 		myAllocationStateStore,
 		myNetworkCacheStore,
-		holsterUserPub // Need pubkey for self-checking or just context
+		meshUserPub // Need pubkey for self-checking or just context
 	],
 	([$resources, $recognition, $allocation, $cache, $pubkey]) => {
 		if (!$resources) return null; // Resources essential
@@ -292,12 +292,12 @@ export const myCommitmentStore: Readable<Commitment | null> = derived(
  * Commitment Publisher - NETWORK PERSISTENCE
  * 
  * Since myCommitmentStore is now derived (read-only), we need a specific store
- * to handle writing the aggregated commitment to the network (Holster).
+ * to handle writing the aggregated commitment to the network (Mesh).
  * 
  * Also used for `subscribeToUser` functionality for remote commitments.
  */
 export const commitmentPublisher = createStore({
-	holsterPath: 'allocation/commitment',
+	meshPath: 'allocation/commitment',
 	schema: CommitmentSchema,
 	persistDebounce: 100,
 	localStorageKey: 'free-association-demo-commitment'
@@ -325,9 +325,9 @@ async function migrateLegacyCommitment() {
 		return;
 	}
 
-	// Try to read legacy data from LocalStorage or Holster
+	// Try to read legacy data from LocalStorage or Mesh
 	const legacyStore = createStore({
-		holsterPath: 'allocation/commitment',
+		meshPath: 'allocation/commitment',
 		schema: CommitmentSchema,
 		localStorageKey: 'free-association-demo-commitment'
 	});
@@ -798,7 +798,7 @@ export const networkCapacityTypesStore: Readable<string[]> = derived(
  * - MR: Purely computed (not stored!)
  */
 export const myMutualRecognition: Readable<GlobalRecognitionWeights> = derived(
-	[holsterUserPub, myCommitmentStore],  // ✅ Only my commitment! Truly local-first!
+	[meshUserPub, myCommitmentStore],  // ✅ Only my commitment! Truly local-first!
 	([$myPub, $myCommitment]) => {
 		console.log('[🤝 MUTUAL-REC] Computing mutual recognition (local-first)...');
 
@@ -908,7 +908,7 @@ export function startStoreService(): () => void {
 	console.log('[STORES] 🚀 Starting Store Service...');
 
 	// 1. Initialize Persistent Stores
-	// Triggers loading from Holster/LocalStorage
+	// Triggers loading from Mesh/LocalStorage
 	myRecognitionTreeStore.initialize();
 	// myCommitmentStore.initialize(); // Now derived, but sub-stores need init!
 	myResourcesStore.initialize();
@@ -947,7 +947,7 @@ export function startStoreService(): () => void {
 
 	// 2. CACHE RECOGNITION (Others -> Me)
 	const unsubRecCache = networkCommitments.subscribe(($networkCommitsVersioned) => {
-		const myPub = get(holsterUserPub);
+		const myPub = get(meshUserPub);
 		if (!myPub) return;
 
 		const currentCache = get(myNetworkCacheStore);
@@ -987,7 +987,7 @@ export function startStoreService(): () => void {
 
 	// 3. CACHE SLOTS (Others -> Me)
 	const unsubSlotsCache = networkCommitments.subscribe(($networkCommitsVersioned) => {
-		const myPub = get(holsterUserPub);
+		const myPub = get(meshUserPub);
 		if (!myPub) return;
 
 		const currentCache = get(myNetworkCacheStore);
@@ -1231,7 +1231,7 @@ export function subscribeToRecognitionTree(pubKey: string) {
 		if (!tree) {
 			const deleted = networkRecognitionTrees.delete(pubKey);
 			if (deleted) {
-				console.log(`[ALLOCATION-HOLSTER-V5] 🗑️  Removed recognition tree from ${pubKey.slice(0, 20)}...`);
+				console.log(`[ALLOCATION-MESH-V5] 🗑️  Removed recognition tree from ${pubKey.slice(0, 20)}...`);
 			}
 			return;
 		}
@@ -1241,14 +1241,14 @@ export function subscribeToRecognitionTree(pubKey: string) {
 
 		if (result.applied) {
 			const changedFields = Array.from(result.changedFields!).join(', ');
-			console.log(`[ALLOCATION-HOLSTER-V5] ✅ Updated tree [${changedFields}] from ${pubKey.slice(0, 20)}...`);
+			console.log(`[ALLOCATION-MESH-V5] ✅ Updated tree [${changedFields}] from ${pubKey.slice(0, 20)}...`);
 		} else {
-			console.log(`[ALLOCATION-HOLSTER-V5] ⏭️  Skipped tree from ${pubKey.slice(0, 20)}... (${result.reason})`);
+			console.log(`[ALLOCATION-MESH-V5] ⏭️  Skipped tree from ${pubKey.slice(0, 20)}... (${result.reason})`);
 		}
 	});
 
 	activeSubscriptions.add(`${pubKey}:tree`);
-	console.log(`[ALLOCATION-HOLSTER-V5] Subscribed to ${pubKey.slice(0, 20)}... recognition tree`);
+	console.log(`[ALLOCATION-MESH-V5] Subscribed to ${pubKey.slice(0, 20)}... recognition tree`);
 }
 
 /**
@@ -1276,13 +1276,13 @@ export function subscribeToFullParticipant(pubKey: string, includeTree: boolean 
 	}
 
 	const treeNote = includeTree ? ' + tree' : '';
-	console.log(`[ALLOCATION-HOLSTER-V5] Subscribed to ${pubKey.slice(0, 20)}... (commitment${treeNote})`);
+	console.log(`[ALLOCATION-MESH-V5] Subscribed to ${pubKey.slice(0, 20)}... (commitment${treeNote})`);
 }
 
 /**
  * Unsubscribe from a participant's data (V5) - WITH VERSIONED STORES
  * 
- * Note: Holster doesn't provide explicit unsubscribe,
+ * Note: Mesh doesn't provide explicit unsubscribe,
  * so we just remove from our tracking and store
  */
 export function unsubscribeFromParticipant(pubKey: string) {
@@ -1293,7 +1293,7 @@ export function unsubscribeFromParticipant(pubKey: string) {
 	networkCommitments.delete(pubKey);
 	networkRecognitionTrees.delete(pubKey);
 
-	console.log(`[ALLOCATION-HOLSTER-V5] Unsubscribed from ${pubKey.slice(0, 20)}...`);
+	console.log(`[ALLOCATION-MESH-V5] Unsubscribed from ${pubKey.slice(0, 20)}...`);
 }
 
 /**
@@ -1335,7 +1335,7 @@ export function getAllCommitmentsRecord(): Record<string, Commitment> {
 
 	// Include our own commitment if available
 	const myCommitment = get(myCommitmentStore);
-	const myPub = get(holsterUserPub);
+	const myPub = get(meshUserPub);
 
 	console.log('[GET-ALL-COMMITMENTS] Network commitments:', Object.keys(record).length);
 	console.log('[GET-ALL-COMMITMENTS] My commitment:', myCommitment ? 'yes' : 'no');
@@ -1692,7 +1692,7 @@ export const networkNeedsIndex: Readable<SpaceTimeIndex> = readable<SpaceTimeInd
 
 		// Subscribe to my commitment changes (extract needs)
 		const unsubMyCommitment = myCommitmentStore.subscribe((myCommit) => {
-			const myPub = get(holsterUserPub);
+			const myPub = get(meshUserPub);
 			if (myPub && myCommit) {
 				scheduleUpdate(myPub, myCommit.need_slots);
 			}
@@ -1796,7 +1796,7 @@ export const networkCapacityIndex: Readable<SpaceTimeIndex> = readable<SpaceTime
 
 		// Subscribe to my commitment changes (extract capacity)
 		const unsubMyCommitment = myCommitmentStore.subscribe((myCommit) => {
-			const myPub = get(holsterUserPub);
+			const myPub = get(meshUserPub);
 			if (myPub && myCommit) {
 				scheduleUpdate(myPub, myCommit.capacity_slots);
 			}
@@ -1921,7 +1921,7 @@ export function syncSubscriptionsWithTree() {
  * 2. myRecognitionTreeStore.set(updatedTree)
  * 3. Auto-sync detects tree change
  * 4. syncSubscriptionsWithTree() runs
- * 5. Subscribes to Alice's commitment via Holster
+ * 5. Subscribes to Alice's commitment via Mesh
  * 6. Alice's commitment arrives → networkCommitments.set(alice, commitment)
  * 7. myMutualRecognition updates (reactive!)
  * 8. Commitment composed with updated MR values
@@ -1957,7 +1957,7 @@ export function enableAutoSubscriptionSync(): () => void {
  * 
  * @deprecated The pure attribute system now handles membership subscriptions automatically!
  * When you call subscribeToOrgMembership(org_id, source_pubkey), the attribute
- * system automatically subscribes to that user's attribute recognitions via Holster.
+ * system automatically subscribes to that user's attribute recognitions via Mesh.
  * 
  * This function is now a NO-OP for backward compatibility.
  * The attribute system's enableAutoAttributeSync() handles everything.
@@ -2002,7 +2002,7 @@ export function enableAutoCapacitySync(): () => void {
 	 * Called when filters change or new capacity data arrives
 	 */
 	const applyFiltersAndUpdateSlots = () => {
-		const myPub = get(holsterUserPub);
+		const myPub = get(meshUserPub);
 		if (!myPub) return;
 
 		// Get current state
@@ -2136,7 +2136,7 @@ export function enableAutoNeedSync(): () => void {
 	 * Apply filters and update slots
 	 */
 	const applyFiltersAndUpdateSlots = () => {
-		const myPub = get(holsterUserPub);
+		const myPub = get(meshUserPub);
 		if (!myPub) return;
 
 		// Get current state
@@ -2317,7 +2317,7 @@ function getMergedITCStamp(localITC?: ITCStamp | null): ITCStamp {
  * NOTE: Moved from allocation.svelte.ts to prevent circular dependency
  */
 export const totalReceivedBySlot: Readable<Record<string, Record<string, number>>> = derived(
-	[networkAllocations, holsterUserPub],
+	[networkAllocations, meshUserPub],
 	([$allocations, $myPub]) => {
 		const result: Record<string, Record<string, number>> = {};
 		if (!$myPub) return result;
@@ -2349,7 +2349,7 @@ export function composeCommitmentFromSources(totalReceivedMap?: Record<string, R
 	const tree = get(myRecognitionTreeStore);
 	const recognitionWeights = get(myRecognitionWeights);
 	const existingCommitment = get(myCommitmentStore);
-	const myPub = get(holsterUserPub);
+	const myPub = get(meshUserPub);
 
 	// Need at least tree or existing commitment
 	if (!tree && !existingCommitment) {
@@ -2750,7 +2750,7 @@ export function validateAllStores(): {
  * 
  * ✅ SIMPLIFIED: Only 2 persistent stores now (tree + commitment)!
  * 
- * This deletes all data from Holster storage for V5 stores.
+ * This deletes all data from Mesh storage for V5 stores.
  * After running this, reload the page to start fresh with JSON format.
  */
 export async function clearAllV5Stores() {
@@ -2762,12 +2762,12 @@ export async function clearAllV5Stores() {
 		// NOTE: 'allocation/need_slots' and 'allocation/capacity_slots' are derived, not persisted!
 	];
 
-	// Step 1: Clear via Holster API
+	// Step 1: Clear via Mesh API
 	for (const path of paths) {
 		try {
 			await new Promise<void>((resolve) => {
-				holsterUser.get(path).put(null, () => {
-					console.log(`[V5-MIGRATION] ✅ Cleared ${path} via Holster API`);
+				meshUser.get(path).put(null, () => {
+					console.log(`[V5-MIGRATION] ✅ Cleared ${path} via Mesh API`);
 					resolve();
 				});
 			});
@@ -2776,7 +2776,7 @@ export async function clearAllV5Stores() {
 		}
 	}
 
-	// Step 2: Clear IndexedDB directly (Gun/Holster cache)
+	// Step 2: Clear IndexedDB directly (Gun/Mesh cache)
 	try {
 		const dbs = await indexedDB.databases();
 		console.log('[V5-MIGRATION] 📦 Found IndexedDB databases:', dbs.map(db => db.name));
@@ -2851,7 +2851,7 @@ if (typeof window !== 'undefined') {
 	if (browser) {
 		// Use derived store to react to changes in tree, loading state, and auth
 		derived(
-			[myRecognitionTreeStore, myRecognitionTreeStore.loading, holsterUserPub, holsterUserAlias],
+			[myRecognitionTreeStore, myRecognitionTreeStore.loading, meshUserPub, meshUserAlias],
 			([$tree, $loading, $pub, $alias]) => ({
 				tree: $tree,
 				loading: $loading,
@@ -2899,7 +2899,7 @@ if (typeof window !== 'undefined') {
 								_updatedAt: Date.now() // Fresh timestamp
 							};
 
-							// Set it (triggers persistence to Holster)
+							// Set it (triggers persistence to Mesh)
 							myRecognitionTreeStore.set(migratedTree);
 
 							// Clear local demo data so we don't re-import

@@ -114,8 +114,8 @@ export function authenticateBasic(authHeader: string | null): AuthResult {
       .toString()
       .split(':');
 
-    // Check against configured Holster credentials
-    if (username === config.holsterUsername && password === config.holsterPassword) {
+    // Check against configured Mesh credentials
+    if (username === config.meshUsername && password === config.meshPassword) {
       return {
         authenticated: true,
         method: 'basic',

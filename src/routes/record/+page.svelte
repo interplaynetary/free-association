@@ -17,7 +17,7 @@
 		recordLoadingStates
 	} from '$lib/network/records.svelte';
 	import type { Record } from '$lib/modules/coalition/record';
-	import { holsterUser } from '$lib/network/holster';
+	import { meshUser } from '$lib/network/mesh';
 	import { userAliasesCache, userPubKeys } from '$lib/network/users.svelte';
 	import { getColorForUserId } from '$lib/utils/ui/colorUtils';
 	
@@ -109,7 +109,7 @@
 		initializeMyRecords();
 
 		// Set default to my records
-		const authState = holsterUser.is;
+		const authState = meshUser.is;
 		if (authState) {
 			selectedParticipant = authState.pub;
 			selectedParticipantName = authState.username || 'Me';
@@ -143,7 +143,7 @@
 		selectedRecord = null; // Clear selection
 
 		// Subscribe to their records if not already subscribed
-		const authState = holsterUser.is;
+		const authState = meshUser.is;
 		if (detail.id !== authState?.pub) {
 			subscribeToParticipantRecords(detail.id);
 		}

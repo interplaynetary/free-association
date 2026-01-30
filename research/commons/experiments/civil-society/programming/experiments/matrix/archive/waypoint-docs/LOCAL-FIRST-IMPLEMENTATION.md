@@ -342,7 +342,7 @@ Complementary approaches:
 | Feature | `stores.svelte.ts` | Local-First Client |
 |---------|-------------------|-------------------|
 | **Use Case** | Frontend (Svelte) | Backend/Workers |
-| **Storage** | Gun/Holster | IndexedDB |
+| **Storage** | Gun/Mesh | IndexedDB |
 | **Reactivity** | Svelte stores | Event handlers |
 | **Computation** | Local matrices | Local matrices |
 | **Sync** | Gun P2P | Background queue |

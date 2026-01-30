@@ -1,13 +1,13 @@
-import {error} from "@sveltejs/kit"
-import {createInviteCodesSchema} from "$lib/server/schemas/holster"
-import {createInviteCodes} from "$lib/server/holster/invite-codes"
-import {createPOSTHandler} from "$lib/server/middleware/request-handler"
-import {getAccountByCodeOrFail} from "$lib/server/holster/db"
+import { error } from "@sveltejs/kit"
+import { createInviteCodesSchema } from "$lib/server/schemas/mesh"
+import { createInviteCodes } from "$lib/server/mesh/invite-codes"
+import { createPOSTHandler } from "$lib/server/middleware/request-handler"
+import { getAccountByCodeOrFail } from "$lib/server/mesh/db"
 
 export const POST = createPOSTHandler(
   createInviteCodesSchema,
-  async ({data}) => {
-    const {code, count} = data
+  async ({ data }) => {
+    const { code, count } = data
 
     const account = await getAccountByCodeOrFail(code)
 
@@ -26,7 +26,7 @@ export const POST = createPOSTHandler(
   },
   {
     requireAuth: true,
-    authOptions: {allowBasic: true, allowJwt: false, allowApiKey: false},
+    authOptions: { allowBasic: true, allowJwt: false, allowApiKey: false },
     emptyResponse: true
   }
 )

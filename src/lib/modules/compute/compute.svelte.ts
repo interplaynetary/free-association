@@ -7,7 +7,7 @@
  * - Variable binding (values, subscriptions, local state, derived)
  * - Automatic subscription management
  * - Dependency-aware computation ordering
- * - Output persistence (Holster, local state, memory)
+ * - Output persistence (Mesh, local state, memory)
  * - Reactive re-computation on input changes
  * 
  * Architecture:
@@ -28,14 +28,14 @@ import type {
 	InputProvenance,
 	OutputProvenance
 } from './schema';
-import { createStore, type HolsterStore } from '../utils/primitives/store.svelte';
+import { createStore, type MeshStore } from '../utils/primitives/store.svelte';
 import { getSchema } from './node-store.svelte';
-import { holsterUser } from '$lib/network/holster.svelte';
-import { holsterUserPub as myPubKey } from '$lib/network/holster.svelte';
+import { meshUser } from '$lib/network/mesh.svelte';
+import { meshUserPub as myPubKey } from '$lib/network/mesh.svelte';
 import { getMyITCStamp, incrementMyITCStamp } from '$lib/utils/primitives/itc.svelte';
-import { 
-	getProgramHash, 
-	prefixHolsterPath, 
+import {
+	getProgramHash,
+	prefixMeshPath,
 	buildProgramDataPath,
 	registerProgram,
 	hashContent,
@@ -107,7 +107,7 @@ interface ResolvedVariable {
 /**
  * Resolve a variable binding to a readable store
  * 
- * @param programHash - Program hash to prefix holster paths
+ * @param programHash - Program hash to prefix mesh paths
  */
 async function resolveVariableBinding(
 	binding: VariableBinding,
@@ -121,119 +121,119 @@ async function resolveVariableBinding(
 			const store = writable(binding.value);
 			return { type: 'value', store };
 		}
-		
+
 		case 'subscription': {
-			// Holster subscription - create store
+			// Mesh subscription - create store
 			const schema = getSchema(binding.schema_type);
 			if (!schema) {
 				console.error(`[REACTIVE-COMPUTE] Unknown schema type: ${binding.schema_type}`);
 				const fallback = writable(binding.default_value ?? null);
 				return { type: 'subscription', store: fallback };
 			}
-			
-			// Prefix holster path with program hash
-			const holsterPath = programHash 
-				? prefixHolsterPath(programHash, binding.holster_path)
-				: binding.holster_path;
-			
-			const holsterStore = createStore({
-				holsterPath,
+
+			// Prefix mesh path with program hash
+			const meshPath = programHash
+				? prefixMeshPath(programHash, binding.mesh_path)
+				: binding.mesh_path;
+
+			const meshStore = createStore({
+				meshPath,
 				schema: schema,
 				persistDebounce: 0
 			});
-			
-			if (!holsterStore) {
-				console.error(`[REACTIVE-COMPUTE] Failed to create store for ${holsterPath}`);
+
+			if (!meshStore) {
+				console.error(`[REACTIVE-COMPUTE] Failed to create store for ${meshPath}`);
 				const fallback = writable(binding.default_value ?? null);
 				return { type: 'subscription', store: fallback };
 			}
-			
+
 			// Initialize store
-			holsterStore.initialize();
-			
+			meshStore.initialize();
+
 			// Subscribe to user if specified
 			if (binding.subscribe_to_user) {
-				holsterStore.subscribeToUser(binding.subscribe_to_user, (data) => {
+				meshStore.subscribeToUser(binding.subscribe_to_user, (data) => {
 					console.log(`[REACTIVE-COMPUTE] Received data from ${binding.subscribe_to_user?.slice(0, 20)}...`);
 				});
-				
+
 				// Track peer subscription in subscription namespace (Phase 1)
 				registerPeerSubscription(
 					binding.subscribe_to_user,
-					binding.holster_path,
+					binding.mesh_path,
 					binding.schema_type,
-					`${programHash || 'default'}_${binding.holster_path}`
+					`${programHash || 'default'}_${binding.mesh_path}`
 				).catch(err => {
 					console.warn('[REACTIVE-COMPUTE] Failed to track peer subscription:', err);
 				});
 			} else {
 				// Track local subscription in subscription namespace (Phase 1)
 				registerLocalSubscription(
-					binding.holster_path,
+					binding.mesh_path,
 					binding.schema_type,
-					`${programHash || 'default'}_${binding.holster_path}`
+					`${programHash || 'default'}_${binding.mesh_path}`
 				).catch(err => {
 					console.warn('[REACTIVE-COMPUTE] Failed to track local subscription:', err);
 				});
 			}
-			
+
 			// Cleanup function
-			const cleanup = () => holsterStore.cleanup();
-			
-			return { type: 'subscription', store: holsterStore, cleanup };
+			const cleanup = () => meshStore.cleanup();
+
+			return { type: 'subscription', store: meshStore, cleanup };
 		}
-		
+
 		case 'fetch': {
-			// One-time Holster fetch (non-reactive, uses .get())
+			// One-time Mesh fetch (non-reactive, uses .get())
 			const schema = getSchema(binding.schema_type);
 			if (!schema) {
 				console.error(`[REACTIVE-COMPUTE] Unknown schema type: ${binding.schema_type}`);
 				const fallback = writable(binding.default_value ?? null);
 				return { type: 'fetch', store: fallback };
 			}
-			
-			// Prefix holster path with program hash
-			const holsterPath = programHash 
-				? prefixHolsterPath(programHash, binding.holster_path)
-				: binding.holster_path;
-			
-			// Fetch data using Holster.get()
+
+			// Prefix mesh path with program hash
+			const meshPath = programHash
+				? prefixMeshPath(programHash, binding.mesh_path)
+				: binding.mesh_path;
+
+			// Fetch data using Mesh.get()
 			const fetchData = async (): Promise<any> => {
-				if (!holsterUser.is) {
+				if (!meshUser.is) {
 					console.warn('[REACTIVE-COMPUTE] Not authenticated, cannot fetch');
 					return binding.default_value ?? null;
 				}
-				
+
 				return new Promise((resolve) => {
-					// Build Holster path
-					let holsterRef = binding.fetch_from_user
-						? holsterUser.get([binding.fetch_from_user, holsterPath])
-						: holsterUser.get(holsterPath);
-					
+					// Build Mesh path
+					let meshRef = binding.fetch_from_user
+						? meshUser.get([binding.fetch_from_user, meshPath])
+						: meshUser.get(meshPath);
+
 					// Set timeout for wait period
 					const timeoutMs = binding.wait_ms ?? 100;
 					const timeout = setTimeout(() => {
-						console.log(`[REACTIVE-COMPUTE] Fetch timeout after ${timeoutMs}ms: ${holsterPath}`);
+						console.log(`[REACTIVE-COMPUTE] Fetch timeout after ${timeoutMs}ms: ${meshPath}`);
 						resolve(binding.default_value ?? null);
 					}, timeoutMs);
-					
+
 					// Perform one-time get
-					holsterRef.get((data: any) => {
+					meshRef.get((data: any) => {
 						clearTimeout(timeout);
-						
+
 						if (!data || data === null) {
-							console.log(`[REACTIVE-COMPUTE] Fetch returned null: ${holsterPath}`);
+							console.log(`[REACTIVE-COMPUTE] Fetch returned null: ${meshPath}`);
 							resolve(binding.default_value ?? null);
 							return;
 						}
-						
-						// Remove Holster metadata
+
+						// Remove Mesh metadata
 						const { _updatedAt, ...actualData } = data;
-						
+
 						// Validate with schema
 						const validation = schema.safeParse(actualData);
 						if (validation.success) {
-							console.log(`[REACTIVE-COMPUTE] Fetched data from ${holsterPath}`);
+							console.log(`[REACTIVE-COMPUTE] Fetched data from ${meshPath}`);
 							resolve(validation.data);
 						} else {
 							console.warn(`[REACTIVE-COMPUTE] Fetch validation failed:`, validation.error);
@@ -242,36 +242,36 @@ async function resolveVariableBinding(
 					});
 				});
 			};
-			
+
 			// Fetch immediately and wait for result
 			const value = await fetchData();
 			const store = writable(value);
-			
+
 			return { type: 'fetch', store };
 		}
-		
+
 		case 'local': {
 			// Read from local state path
 			const pathParts = binding.state_path.split('.');
 			let value = localState;
-			
+
 			for (const part of pathParts) {
 				value = value?.[part];
 			}
-			
+
 			if (value === undefined) {
 				value = binding.default_value ?? null;
 			}
-			
+
 			const store = writable(value);
 			return { type: 'local', store };
 		}
-		
+
 		case 'derived': {
 			// Reference derived computation result
 			const computationResults = derivedResults.get(binding.computation_id);
 			const value = computationResults?.get(binding.output_key) ?? binding.default_value ?? null;
-			
+
 			const store = writable(value);
 			return { type: 'derived', store };
 		}
@@ -285,7 +285,7 @@ async function resolveVariableBinding(
 /**
  * Handle output binding - persist computation result
  * 
- * @param programHash - Program hash to prefix holster paths
+ * @param programHash - Program hash to prefix mesh paths
  */
 async function handleOutputBinding(
 	outputKey: string,
@@ -295,50 +295,50 @@ async function handleOutputBinding(
 	programHash?: string
 ): Promise<void> {
 	switch (binding.type) {
-		case 'holster': {
-			// Persist to Holster
+		case 'mesh': {
+			// Persist to Mesh
 			const schema = binding.schema_type ? getSchema(binding.schema_type) : null;
 			if (!schema) {
 				console.warn(`[REACTIVE-COMPUTE] No schema for output ${outputKey}, using 'Any'`);
 			}
-			
-			// Prefix holster path with program hash
-			const holsterPath = programHash 
-				? prefixHolsterPath(programHash, binding.holster_path)
-				: binding.holster_path;
-			
+
+			// Prefix mesh path with program hash
+			const meshPath = programHash
+				? prefixMeshPath(programHash, binding.mesh_path)
+				: binding.mesh_path;
+
 			// Write to space-stores (Phase 1)
 			if (programHash) {
 				writeOutput(
 					programHash,
 					outputKey,
 					value,
-					binding.holster_path
+					binding.mesh_path
 				).catch(err => {
 					console.warn('[REACTIVE-COMPUTE] Failed to write output to space-stores:', err);
 				});
 			}
-			
-			// Also write to the actual holster path (for backwards compat & immediate availability)
+
+			// Also write to the actual mesh path (for backwards compat & immediate availability)
 			const store = createStore({
-				holsterPath,
+				meshPath,
 				schema: schema || getSchema('Any')!,
 				persistDebounce: binding.persist_debounce_ms ?? 0
 			});
-			
+
 			if (store) {
 				store.initialize();
 				store.set(value);
-				console.log(`[REACTIVE-COMPUTE] Persisted ${outputKey} to ${holsterPath}`);
+				console.log(`[REACTIVE-COMPUTE] Persisted ${outputKey} to ${meshPath}`);
 			}
 			break;
 		}
-		
+
 		case 'local': {
 			// Store in local state
 			const pathParts = binding.state_path.split('.');
 			let current = localState;
-			
+
 			for (let i = 0; i < pathParts.length - 1; i++) {
 				const part = pathParts[i];
 				if (!current[part]) {
@@ -346,12 +346,12 @@ async function handleOutputBinding(
 				}
 				current = current[part];
 			}
-			
+
 			current[pathParts[pathParts.length - 1]] = value;
 			console.log(`[REACTIVE-COMPUTE] Stored ${outputKey} to local state: ${binding.state_path}`);
 			break;
 		}
-		
+
 		case 'memory': {
 			// Keep in memory only (handled by caller)
 			console.log(`[REACTIVE-COMPUTE] Keeping ${outputKey} in memory only`);
@@ -367,7 +367,7 @@ async function handleOutputBinding(
 /**
  * Execute a single computation
  * 
- * @param programHash - Program hash to prefix holster paths
+ * @param programHash - Program hash to prefix mesh paths
  */
 async function executeComputation(
 	computation: Computation,
@@ -377,17 +377,17 @@ async function executeComputation(
 	programHash?: string
 ): Promise<Map<string, any>> {
 	console.log(`[REACTIVE-COMPUTE] Executing computation: ${computation.id}`);
-	
+
 	// Get computation function
 	const fn = getComputationFunction(computation.compute_fn);
 	if (!fn) {
 		console.error(`[REACTIVE-COMPUTE] Unknown computation function: ${computation.compute_fn}`);
 		return new Map();
 	}
-	
+
 	// Resolve inputs
 	const inputValues: Record<string, any> = {};
-	
+
 	for (const [inputName, inputBinding] of Object.entries(computation.inputs)) {
 		// Check if it's a variable reference
 		const variable = variables.get(inputName);
@@ -397,27 +397,27 @@ async function executeComputation(
 			// Treat as inline binding
 			const resolved = await resolveVariableBinding(inputBinding, localState, derivedResults, programHash);
 			inputValues[inputName] = get(resolved.store);
-			
+
 			// Cleanup inline binding
 			resolved.cleanup?.();
 		}
 	}
-	
+
 	// Resolve local bindings (variables scoped to this computation)
 	const localBindings: Record<string, any> = {};
 	if (computation.local_bindings) {
 		for (const [localName, localBinding] of Object.entries(computation.local_bindings)) {
 			const resolved = await resolveVariableBinding(localBinding, localState, derivedResults, programHash);
 			localBindings[localName] = get(resolved.store);
-			
+
 			// Cleanup local binding
 			resolved.cleanup?.();
 		}
 	}
-	
+
 	// Merge inputs and local bindings
 	const allInputs = { ...inputValues, ...localBindings };
-	
+
 	// Execute computation
 	let result: any;
 	try {
@@ -426,17 +426,17 @@ async function executeComputation(
 		console.error(`[REACTIVE-COMPUTE] Error executing ${computation.id}:`, error);
 		return new Map();
 	}
-	
+
 	// Store results in memory
 	const outputResults = new Map<string, any>();
 	for (const [outputKey, outputBinding] of Object.entries(computation.outputs)) {
 		const value = result[outputKey];
 		outputResults.set(outputKey, value);
-		
+
 		// Handle output binding
 		await handleOutputBinding(outputKey, value, outputBinding, localState, programHash);
 	}
-	
+
 	// Track computation result in space-stores (Phase 1)
 	if (programHash) {
 		writeComputationResult(
@@ -447,7 +447,7 @@ async function executeComputation(
 			console.warn('[REACTIVE-COMPUTE] Failed to write computation result to space-stores:', err);
 		});
 	}
-	
+
 	return outputResults;
 }
 
@@ -458,15 +458,15 @@ function topologicalSort(computations: Computation[]): Computation[] {
 	const sorted: Computation[] = [];
 	const visited = new Set<string>();
 	const visiting = new Set<string>();
-	
+
 	const visit = (comp: Computation) => {
 		if (visited.has(comp.id)) return;
 		if (visiting.has(comp.id)) {
 			throw new Error(`Circular dependency detected: ${comp.id}`);
 		}
-		
+
 		visiting.add(comp.id);
-		
+
 		// Visit dependencies first
 		if (comp.depends_on) {
 			for (const depId of comp.depends_on) {
@@ -476,7 +476,7 @@ function topologicalSort(computations: Computation[]): Computation[] {
 				}
 			}
 		}
-		
+
 		// Check for implicit dependencies (derived inputs)
 		for (const inputBinding of Object.values(comp.inputs)) {
 			if (inputBinding.type === 'derived') {
@@ -486,16 +486,16 @@ function topologicalSort(computations: Computation[]): Computation[] {
 				}
 			}
 		}
-		
+
 		visiting.delete(comp.id);
 		visited.add(comp.id);
 		sorted.push(comp);
 	};
-	
+
 	for (const comp of computations) {
 		visit(comp);
 	}
-	
+
 	return sorted;
 }
 
@@ -518,29 +518,29 @@ export class ComputationGraphRuntime {
 	private debounceTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 	private subscriptionUnsubscribers: (() => void)[] = [];
 	private reactiveMode = false;
-	
+
 	// Provenance tracking
 	private provenanceLog = new Map<string, ComputationProvenance>();
 	private enableProvenance = true; // Track provenance by default
-	
+
 	constructor(graph: ReactiveComputationGraph, options?: { enableProvenance?: boolean }) {
 		this.graph = graph;
-		
+
 		// Get or compute program hash
 		this.programHash = getProgramHash(graph);
-		
+
 		// Register program in global registry
 		registerProgram(graph);
-		
+
 		// Configure provenance tracking
 		if (options?.enableProvenance !== undefined) {
 			this.enableProvenance = options.enableProvenance;
 		}
-		
+
 		console.log(`[REACTIVE-COMPUTE] Created runtime for program: ${graph.id} (hash: ${this.programHash})`);
 		console.log(`[REACTIVE-COMPUTE] Provenance tracking: ${this.enableProvenance ? 'enabled' : 'disabled'}`);
 	}
-	
+
 	/**
 	 * Initialize the runtime
 	 * - Set up variable bindings
@@ -550,17 +550,17 @@ export class ComputationGraphRuntime {
 		console.log(`[REACTIVE-COMPUTE] Initializing graph: ${this.graph.id}`);
 		console.log(`[REACTIVE-COMPUTE] Program hash: ${this.programHash}`);
 		console.log(`[REACTIVE-COMPUTE] All data will be namespaced under: ${this.programHash}/*`);
-		
+
 		// Resolve all variables
 		for (const [varName, binding] of Object.entries(this.graph.variables)) {
 			const resolved = await resolveVariableBinding(binding, this.localState, this.derivedResults, this.programHash);
 			this.variables.set(varName, resolved);
 			console.log(`[REACTIVE-COMPUTE] Resolved variable: ${varName} (${binding.type})`);
 		}
-		
+
 		console.log(`[REACTIVE-COMPUTE] Initialized ${this.variables.size} variables`);
 	}
-	
+
 	/**
 	 * Execute all computations in dependency order
 	 * 
@@ -571,13 +571,13 @@ export class ComputationGraphRuntime {
 			console.warn('[REACTIVE-COMPUTE] Computation already running, skipping');
 			return;
 		}
-		
+
 		this.isRunning = true;
-		
+
 		try {
 			// Get computations to execute
 			let computationsToExecute = this.graph.computations;
-			
+
 			if (computationId) {
 				// Execute only specific computation (and dependencies)
 				const computation = computationsToExecute.find(c => c.id === computationId);
@@ -590,17 +590,17 @@ export class ComputationGraphRuntime {
 			} else {
 				console.log(`[REACTIVE-COMPUTE] Executing ${this.graph.computations.length} computations`);
 			}
-			
+
 			// Sort computations topologically
 			const sorted = topologicalSort(computationsToExecute);
-			
+
 			// Execute in order
 			for (const computation of sorted) {
 				if (!computation.enabled) {
 					console.log(`[REACTIVE-COMPUTE] Skipping disabled computation: ${computation.id}`);
 					continue;
 				}
-				
+
 				// Handle debounce
 				if (computation.debounce_ms && computation.debounce_ms > 0) {
 					await this.executeWithDebounce(computation);
@@ -608,7 +608,7 @@ export class ComputationGraphRuntime {
 					await this.executeComputationInternal(computation);
 				}
 			}
-			
+
 			console.log('[REACTIVE-COMPUTE] Execution complete');
 		} catch (error) {
 			console.error('[REACTIVE-COMPUTE] Execution error:', error);
@@ -616,7 +616,7 @@ export class ComputationGraphRuntime {
 			this.isRunning = false;
 		}
 	}
-	
+
 	/**
 	 * Execute a single computation (internal helper)
 	 */
@@ -625,17 +625,17 @@ export class ComputationGraphRuntime {
 		if (this.enableProvenance) {
 			incrementMyITCStamp();
 		}
-		
+
 		// Track input provenance
 		const inputProvenance = new Map<string, InputProvenance>();
-		
+
 		if (this.enableProvenance) {
 			// Collect input data and hash it
 			for (const [name, binding] of Object.entries(computation.inputs)) {
 				let value: any;
 				let source: 'value' | 'subscription' | 'fetch' | 'local' | 'derived' = binding.type;
 				let path: string | undefined;
-				
+
 				// Get the actual value
 				if (binding.type === 'local') {
 					value = this.localState[binding.state_path];
@@ -647,14 +647,14 @@ export class ComputationGraphRuntime {
 					const variable = this.variables.get(name);
 					value = variable ? get(variable.store) : undefined;
 				}
-				
+
 				// Extract path if applicable
 				if (binding.type === 'subscription') {
-					path = binding.holster_path;
+					path = binding.mesh_path;
 				} else if (binding.type === 'fetch') {
-					path = binding.holster_path;
+					path = binding.mesh_path;
 				}
-				
+
 				// Create input provenance
 				inputProvenance.set(name, {
 					source,
@@ -664,19 +664,19 @@ export class ComputationGraphRuntime {
 				});
 			}
 		}
-		
+
 		// Execute computation
-				const results = await executeComputation(
-					computation,
-					this.variables,
-					this.localState,
+		const results = await executeComputation(
+			computation,
+			this.variables,
+			this.localState,
 			this.derivedResults,
 			this.programHash
-				);
-				
-				// Store derived results
-				this.derivedResults.set(computation.id, results);
-		
+		);
+
+		// Store derived results
+		this.derivedResults.set(computation.id, results);
+
 		// Create provenance record
 		if (this.enableProvenance) {
 			// Safely get myPubKey (may not be initialized in test environment)
@@ -687,29 +687,29 @@ export class ComputationGraphRuntime {
 				// Not in browser environment or store not initialized
 				myPub = null;
 			}
-			
+
 			const currentITC = getMyITCStamp();
-			
+
 			// Hash outputs
 			const outputProvenance = new Map<string, OutputProvenance>();
 			for (const [name, binding] of Object.entries(computation.outputs)) {
 				const outputValue = results.get(name);
 				outputProvenance.set(name, {
-					path: binding.type === 'holster' ? binding.holster_path : '',
+					path: binding.type === 'mesh' ? binding.mesh_path : '',
 					contentHash: hashContent(outputValue)
 				});
 			}
-			
+
 			// Create deterministic hash
 			const computationHash = hashComputation(computation);
 			const inputHashes = Object.fromEntries(
 				Array.from(inputProvenance.entries()).map(([name, prov]) => [name, prov.contentHash])
 			);
 			const deterministicHash = createDeterministicHash(computationHash, inputHashes);
-			
+
 			// Create provenance ID (unique identifier for this execution)
 			const provenanceId = `${this.programHash}_${computation.id}_${Date.now()}`;
-			
+
 			// Create full provenance record (V2: using ITC stamps)
 			const provenance: ComputationProvenance = {
 				id: provenanceId,
@@ -724,118 +724,118 @@ export class ComputationGraphRuntime {
 				deterministicHash,
 				parents: [] // TODO: Track parent provenance IDs
 			};
-			
-		// Store provenance
-		this.provenanceLog.set(computation.id, provenance);
-		
-		// Write provenance to space-stores (Phase 1)
-		const provenanceSignature = createProvenanceSignature(provenance);
-		writeProvenanceToSpace(
-			this.programHash,
-			provenance.id,
-			{
-				record: provenance,
-				signature: provenanceSignature
-			}
-		).catch(err => {
-			console.warn('[PROVENANCE] Failed to write provenance to space-stores:', err);
-		});
-		
-		console.log(`[PROVENANCE] Created provenance for ${computation.id}`);
-		console.log(`[PROVENANCE]   Deterministic hash: ${deterministicHash}`);
-		console.log(`[PROVENANCE]   ITC stamp: ${JSON.stringify(currentITC)}`);
-		
-		// Store outputs with hybrid storage strategy
-		// Only execute if holsterUser is available (not in test environment)
-		if (holsterUser && holsterUser.is) {
-			for (const [name, binding] of Object.entries(computation.outputs)) {
-				if (binding.type === 'holster') {
-					const outputValue = results.get(name);
-					const timestamp = Date.now();
-					const provenanceSig = createProvenanceSignature(provenance);
-					
-					// Prepare data with provenance metadata
-					const dataWithProvenance = {
-						data: outputValue,
-						_provenance: provenance,
-						_updatedAt: timestamp
-					};
-					
-					// 1. Store at CANONICAL path (latest, easy to query)
-					const canonicalPath = prefixHolsterPath(this.programHash, binding.holster_path);
-					
-					if (myPub) {
-						// Cross-user: use array format [pubkey, path]
-						holsterUser.get([myPub, canonicalPath]).put(dataWithProvenance);
-						console.log(`[PROVENANCE] Canonical: ~${myPub}/${canonicalPath}`);
-					} else {
-						// Current user: use string path
-						holsterUser.get(canonicalPath).put(dataWithProvenance);
-						console.log(`[PROVENANCE] Canonical: ${canonicalPath}`);
+
+			// Store provenance
+			this.provenanceLog.set(computation.id, provenance);
+
+			// Write provenance to space-stores (Phase 1)
+			const provenanceSignature = createProvenanceSignature(provenance);
+			writeProvenanceToSpace(
+				this.programHash,
+				provenance.id,
+				{
+					record: provenance,
+					signature: provenanceSignature
+				}
+			).catch(err => {
+				console.warn('[PROVENANCE] Failed to write provenance to space-stores:', err);
+			});
+
+			console.log(`[PROVENANCE] Created provenance for ${computation.id}`);
+			console.log(`[PROVENANCE]   Deterministic hash: ${deterministicHash}`);
+			console.log(`[PROVENANCE]   ITC stamp: ${JSON.stringify(currentITC)}`);
+
+			// Store outputs with hybrid storage strategy
+			// Only execute if meshUser is available (not in test environment)
+			if (meshUser && meshUser.is) {
+				for (const [name, binding] of Object.entries(computation.outputs)) {
+					if (binding.type === 'mesh') {
+						const outputValue = results.get(name);
+						const timestamp = Date.now();
+						const provenanceSig = createProvenanceSignature(provenance);
+
+						// Prepare data with provenance metadata
+						const dataWithProvenance = {
+							data: outputValue,
+							_provenance: provenance,
+							_updatedAt: timestamp
+						};
+
+						// 1. Store at CANONICAL path (latest, easy to query)
+						const canonicalPath = prefixMeshPath(this.programHash, binding.mesh_path);
+
+						if (myPub) {
+							// Cross-user: use array format [pubkey, path]
+							meshUser.get([myPub, canonicalPath]).put(dataWithProvenance);
+							console.log(`[PROVENANCE] Canonical: ~${myPub}/${canonicalPath}`);
+						} else {
+							// Current user: use string path
+							meshUser.get(canonicalPath).put(dataWithProvenance);
+							console.log(`[PROVENANCE] Canonical: ${canonicalPath}`);
+						}
+
+						// 2. Store at VERSIONED path (immutable history)
+						const versionPath = `${canonicalPath}/_versions/${provenanceSig}`;
+						const immutableData = {
+							...dataWithProvenance,
+							_immutable: true
+						};
+
+						if (myPub) {
+							meshUser.get([myPub, versionPath]).put(immutableData);
+							console.log(`[PROVENANCE] Version: ~${myPub}/${versionPath}`);
+						} else {
+							meshUser.get(versionPath).put(immutableData);
+							console.log(`[PROVENANCE] Version: ${versionPath}`);
+						}
+
+						// 3. Update LATEST index (pointer to current version)
+						const latestIndexPath = `${this.programHash}/_index/latest/${binding.mesh_path}`;
+
+						if (myPub) {
+							meshUser.get([myPub, latestIndexPath]).put(provenanceSig);
+						} else {
+							meshUser.get(latestIndexPath).put(provenanceSig);
+						}
+
+						// 4. Update COMPUTATIONS index (all outputs of this computation)
+						const compIndexPath = `${this.programHash}/_index/computations/${computation.id}`;
+
+						if (myPub) {
+							meshUser.get([myPub, compIndexPath]).set(binding.mesh_path);
+						} else {
+							meshUser.get(compIndexPath).set(binding.mesh_path);
+						}
+
+						// 5. Update LINEAGE index (provenance lineage for traversal)
+						const lineageIndexPath = `${this.programHash}/_index/lineage/${provenance.id}`;
+						const lineageData = {
+							computationId: computation.id,
+							programHash: this.programHash,
+							inputs: Object.keys(provenance.inputs),
+							outputs: [binding.mesh_path],
+							timestamp: timestamp,
+							itcStamp: currentITC
+						};
+
+						if (myPub) {
+							meshUser.get([myPub, lineageIndexPath]).put(lineageData);
+						} else {
+							meshUser.get(lineageIndexPath).put(lineageData);
+						}
+
+						console.log(`[PROVENANCE] ✅ Hybrid storage complete for ${binding.mesh_path}`);
+						console.log(`[PROVENANCE]   - Canonical path (latest)`);
+						console.log(`[PROVENANCE]   - Versioned path (immutable)`);
+						console.log(`[PROVENANCE]   - Latest index updated`);
+						console.log(`[PROVENANCE]   - Computation index updated`);
+						console.log(`[PROVENANCE]   - Lineage index updated`);
 					}
-					
-					// 2. Store at VERSIONED path (immutable history)
-					const versionPath = `${canonicalPath}/_versions/${provenanceSig}`;
-					const immutableData = {
-						...dataWithProvenance,
-						_immutable: true
-					};
-					
-					if (myPub) {
-						holsterUser.get([myPub, versionPath]).put(immutableData);
-						console.log(`[PROVENANCE] Version: ~${myPub}/${versionPath}`);
-					} else {
-						holsterUser.get(versionPath).put(immutableData);
-						console.log(`[PROVENANCE] Version: ${versionPath}`);
-					}
-					
-					// 3. Update LATEST index (pointer to current version)
-					const latestIndexPath = `${this.programHash}/_index/latest/${binding.holster_path}`;
-					
-					if (myPub) {
-						holsterUser.get([myPub, latestIndexPath]).put(provenanceSig);
-					} else {
-						holsterUser.get(latestIndexPath).put(provenanceSig);
-					}
-					
-					// 4. Update COMPUTATIONS index (all outputs of this computation)
-					const compIndexPath = `${this.programHash}/_index/computations/${computation.id}`;
-					
-					if (myPub) {
-						holsterUser.get([myPub, compIndexPath]).set(binding.holster_path);
-					} else {
-						holsterUser.get(compIndexPath).set(binding.holster_path);
-					}
-					
-					// 5. Update LINEAGE index (provenance lineage for traversal)
-					const lineageIndexPath = `${this.programHash}/_index/lineage/${provenance.id}`;
-					const lineageData = {
-						computationId: computation.id,
-						programHash: this.programHash,
-						inputs: Object.keys(provenance.inputs),
-						outputs: [binding.holster_path],
-						timestamp: timestamp,
-						itcStamp: currentITC
-					};
-					
-					if (myPub) {
-						holsterUser.get([myPub, lineageIndexPath]).put(lineageData);
-					} else {
-						holsterUser.get(lineageIndexPath).put(lineageData);
-					}
-					
-					console.log(`[PROVENANCE] ✅ Hybrid storage complete for ${binding.holster_path}`);
-					console.log(`[PROVENANCE]   - Canonical path (latest)`);
-					console.log(`[PROVENANCE]   - Versioned path (immutable)`);
-					console.log(`[PROVENANCE]   - Latest index updated`);
-					console.log(`[PROVENANCE]   - Computation index updated`);
-					console.log(`[PROVENANCE]   - Lineage index updated`);
 				}
 			}
 		}
 	}
-	}
-	
+
 	/**
 	 * Execute a computation with debounce
 	 */
@@ -845,7 +845,7 @@ export class ComputationGraphRuntime {
 		if (existingTimeout) {
 			clearTimeout(existingTimeout);
 		}
-		
+
 		// Set new timeout
 		return new Promise((resolve) => {
 			const timeout = setTimeout(async () => {
@@ -853,11 +853,11 @@ export class ComputationGraphRuntime {
 				this.debounceTimeouts.delete(computation.id);
 				resolve();
 			}, computation.debounce_ms);
-			
+
 			this.debounceTimeouts.set(computation.id, timeout);
 		});
 	}
-	
+
 	/**
 	 * Enable reactive mode - automatically re-execute when inputs change
 	 */
@@ -866,21 +866,21 @@ export class ComputationGraphRuntime {
 			console.warn('[REACTIVE-COMPUTE] Reactivity already enabled');
 			return;
 		}
-		
+
 		console.log('[REACTIVE-COMPUTE] Enabling reactivity');
 		this.reactiveMode = true;
-		
+
 		// Subscribe to all subscription-type variables
 		for (const [varName, variable] of this.variables) {
 			if (variable.type === 'subscription') {
 				const unsubscribe = variable.store.subscribe((value) => {
 					console.log(`[REACTIVE-COMPUTE] Variable changed: ${varName}, triggering re-execution`);
-					
+
 					// Find computations that depend on this variable
 					const affectedComputations = this.graph.computations.filter(comp => {
 						return Object.keys(comp.inputs).includes(varName);
 					});
-					
+
 					// Re-execute affected computations
 					for (const comp of affectedComputations) {
 						if (comp.enabled) {
@@ -890,14 +890,14 @@ export class ComputationGraphRuntime {
 						}
 					}
 				});
-				
+
 				this.subscriptionUnsubscribers.push(unsubscribe);
 			}
 		}
-		
+
 		console.log(`[REACTIVE-COMPUTE] Watching ${this.subscriptionUnsubscribers.length} variables`);
 	}
-	
+
 	/**
 	 * Disable reactive mode
 	 */
@@ -905,17 +905,17 @@ export class ComputationGraphRuntime {
 		if (!this.reactiveMode) {
 			return;
 		}
-		
+
 		console.log('[REACTIVE-COMPUTE] Disabling reactivity');
 		this.reactiveMode = false;
-		
+
 		// Unsubscribe from all variables
 		for (const unsubscribe of this.subscriptionUnsubscribers) {
 			unsubscribe();
 		}
 		this.subscriptionUnsubscribers = [];
 	}
-	
+
 	/**
 	 * Get current value of a variable
 	 */
@@ -923,14 +923,14 @@ export class ComputationGraphRuntime {
 		const variable = this.variables.get(name);
 		return variable ? get(variable.store) : null;
 	}
-	
+
 	/**
 	 * Get result of a computation
 	 */
 	getComputationResult(computationId: string, outputKey: string): any {
 		return this.derivedResults.get(computationId)?.get(outputKey) ?? null;
 	}
-	
+
 	/**
 	 * Get all results from a computation
 	 */
@@ -938,7 +938,7 @@ export class ComputationGraphRuntime {
 		const results = this.derivedResults.get(computationId);
 		return results ? Object.fromEntries(results.entries()) : {};
 	}
-	
+
 	/**
 	 * Set a variable value (for 'value' type variables)
 	 */
@@ -957,7 +957,7 @@ export class ComputationGraphRuntime {
 			console.warn(`[REACTIVE-COMPUTE] Cannot set non-value variable: ${name}`);
 		}
 	}
-	
+
 	/**
 	 * Update local state
 	 */
@@ -965,139 +965,139 @@ export class ComputationGraphRuntime {
 		Object.assign(this.localState, updates);
 		console.log('[REACTIVE-COMPUTE] Updated local state');
 	}
-	
+
 	/**
 	 * Cleanup - unsubscribe and cleanup stores
 	 */
 	async cleanup(): Promise<void> {
 		console.log('[REACTIVE-COMPUTE] Cleaning up runtime');
-		
+
 		// Disable reactivity
 		this.disableReactivity();
-		
+
 		// Clear all debounce timeouts
 		for (const timeout of this.debounceTimeouts.values()) {
 			clearTimeout(timeout);
 		}
 		this.debounceTimeouts.clear();
-		
+
 		// Cleanup all variable subscriptions
 		for (const [name, variable] of this.variables) {
 			variable.cleanup?.();
 		}
-		
+
 		this.variables.clear();
 		this.derivedResults.clear();
 		this.localState = {};
-		
+
 		console.log('[REACTIVE-COMPUTE] Cleanup complete');
 	}
-	
+
 	/**
 	 * Check if runtime is in reactive mode
 	 */
 	isReactive(): boolean {
 		return this.reactiveMode;
 	}
-	
+
 	/**
 	 * Get the program hash
 	 */
 	getProgramHash(): string {
 		return this.programHash;
 	}
-	
+
 	// ═══════════════════════════════════════════════════════════════════
 	// PROVENANCE QUERY METHODS
 	// ═══════════════════════════════════════════════════════════════════
-	
+
 	/**
 	 * Get provenance record for a computation
 	 */
 	getProvenance(computationId: string): ComputationProvenance | undefined {
 		return this.provenanceLog.get(computationId);
 	}
-	
+
 	/**
 	 * Get latest data from canonical path
 	 * 
 	 * This is the recommended way to query computation results in RDL programs.
 	 * Returns data with provenance metadata.
 	 */
-	async getLatest(holsterPath: string, fromUser?: string): Promise<any | null> {
-		const canonicalPath = prefixHolsterPath(this.programHash, holsterPath);
-		
+	async getLatest(meshPath: string, fromUser?: string): Promise<any | null> {
+		const canonicalPath = prefixMeshPath(this.programHash, meshPath);
+
 		try {
 			if (fromUser) {
 				// Query specific user's data
 				return await new Promise((resolve) => {
-					holsterUser.get([fromUser, canonicalPath]).once((data: any) => {
+					meshUser.get([fromUser, canonicalPath]).once((data: any) => {
 						resolve(data || null);
 					});
 				});
 			} else {
 				// Query current user's data
 				return await new Promise((resolve) => {
-					holsterUser.get(canonicalPath).once((data: any) => {
+					meshUser.get(canonicalPath).once((data: any) => {
 						resolve(data || null);
 					});
 				});
 			}
 		} catch (error) {
-			console.error(`[PROVENANCE-QUERY] Error fetching latest from ${holsterPath}:`, error);
+			console.error(`[PROVENANCE-QUERY] Error fetching latest from ${meshPath}:`, error);
 			return null;
 		}
 	}
-	
+
 	/**
 	 * Get all versions of data from version history
 	 * 
 	 * Returns array of all versions with their provenance.
 	 */
-	async getAllVersions(holsterPath: string, fromUser?: string): Promise<any[]> {
-		const canonicalPath = prefixHolsterPath(this.programHash, holsterPath);
+	async getAllVersions(meshPath: string, fromUser?: string): Promise<any[]> {
+		const canonicalPath = prefixMeshPath(this.programHash, meshPath);
 		const versionPath = `${canonicalPath}/_versions`;
-		
+
 		try {
 			return await new Promise((resolve) => {
 				const versions: any[] = [];
-				
-				const ref = fromUser 
-					? holsterUser.get([fromUser, versionPath])
-					: holsterUser.get(versionPath);
-				
+
+				const ref = fromUser
+					? meshUser.get([fromUser, versionPath])
+					: meshUser.get(versionPath);
+
 				ref.map().once((data: any, key: string) => {
 					if (data && key !== '_') {
 						versions.push({ ...data, _versionKey: key });
 					}
 				});
-				
+
 				// Give Gun time to collect all versions
 				setTimeout(() => resolve(versions), 100);
 			});
 		} catch (error) {
-			console.error(`[PROVENANCE-QUERY] Error fetching versions from ${holsterPath}:`, error);
+			console.error(`[PROVENANCE-QUERY] Error fetching versions from ${meshPath}:`, error);
 			return [];
 		}
 	}
-	
+
 	/**
 	 * Get specific version by provenance signature
 	 */
 	async getVersion(
-		holsterPath: string,
+		meshPath: string,
 		provenanceSignature: string,
 		fromUser?: string
 	): Promise<any | null> {
-		const canonicalPath = prefixHolsterPath(this.programHash, holsterPath);
+		const canonicalPath = prefixMeshPath(this.programHash, meshPath);
 		const versionPath = `${canonicalPath}/_versions/${provenanceSignature}`;
-		
+
 		try {
 			return await new Promise((resolve) => {
 				const ref = fromUser
-					? holsterUser.get([fromUser, versionPath])
-					: holsterUser.get(versionPath);
-				
+					? meshUser.get([fromUser, versionPath])
+					: meshUser.get(versionPath);
+
 				ref.once((data: any) => {
 					resolve(data || null);
 				});
@@ -1107,7 +1107,7 @@ export class ComputationGraphRuntime {
 			return null;
 		}
 	}
-	
+
 	/**
 	 * Get all outputs of a specific computation
 	 * 
@@ -1118,21 +1118,21 @@ export class ComputationGraphRuntime {
 		fromUser?: string
 	): Promise<string[]> {
 		const indexPath = `${this.programHash}/_index/computations/${computationId}`;
-		
+
 		try {
 			return await new Promise((resolve) => {
 				const outputs: string[] = [];
-				
+
 				const ref = fromUser
-					? holsterUser.get([fromUser, indexPath])
-					: holsterUser.get(indexPath);
-				
+					? meshUser.get([fromUser, indexPath])
+					: meshUser.get(indexPath);
+
 				ref.map().once((path: string) => {
 					if (path && typeof path === 'string') {
 						outputs.push(path);
 					}
 				});
-				
+
 				setTimeout(() => resolve(outputs), 100);
 			});
 		} catch (error) {
@@ -1140,7 +1140,7 @@ export class ComputationGraphRuntime {
 			return [];
 		}
 	}
-	
+
 	/**
 	 * Get lineage information for a provenance ID
 	 * 
@@ -1148,13 +1148,13 @@ export class ComputationGraphRuntime {
 	 */
 	async getLineage(provenanceId: string, fromUser?: string): Promise<any | null> {
 		const lineagePath = `${this.programHash}/_index/lineage/${provenanceId}`;
-		
+
 		try {
 			return await new Promise((resolve) => {
 				const ref = fromUser
-					? holsterUser.get([fromUser, lineagePath])
-					: holsterUser.get(lineagePath);
-				
+					? meshUser.get([fromUser, lineagePath])
+					: meshUser.get(lineagePath);
+
 				ref.once((data: any) => {
 					resolve(data || null);
 				});
@@ -1164,7 +1164,7 @@ export class ComputationGraphRuntime {
 			return null;
 		}
 	}
-	
+
 	/**
 	 * Trace computation lineage upstream (what produced this?)
 	 * 
@@ -1178,29 +1178,29 @@ export class ComputationGraphRuntime {
 		const chain: any[] = [];
 		let currentId = provenanceId;
 		let depth = 0;
-		
+
 		while (currentId && depth < maxDepth) {
 			const lineage = await this.getLineage(currentId, fromUser);
 			if (!lineage) break;
-			
+
 			chain.push(lineage);
-			
+
 			// Get parent provenance ID from inputs
 			// (Would need to store parent IDs in lineage data)
 			// For now, stop at first level
 			break;
 		}
-		
+
 		return chain;
 	}
-	
+
 	/**
 	 * Get all provenance records
 	 */
 	getAllProvenance(): Map<string, ComputationProvenance> {
 		return new Map(this.provenanceLog);
 	}
-	
+
 	/**
 	 * Verify a computation result against its provenance
 	 * 
@@ -1216,7 +1216,7 @@ export class ComputationGraphRuntime {
 		provenance: ComputationProvenance
 	): Promise<boolean> {
 		console.log(`[PROVENANCE-VERIFY] Verifying computation: ${computationId}`);
-		
+
 		// 1. Verify deterministic hash
 		const expectedHash = createDeterministicHash(
 			provenance.computationHash,
@@ -1224,23 +1224,23 @@ export class ComputationGraphRuntime {
 				Object.entries(provenance.inputs).map(([name, inp]) => [name, inp.contentHash])
 			)
 		);
-		
+
 		if (expectedHash !== provenance.deterministicHash) {
 			console.error('[PROVENANCE-VERIFY] ❌ Deterministic hash mismatch');
 			console.error(`  Expected: ${expectedHash}`);
 			console.error(`  Got: ${provenance.deterministicHash}`);
 			return false;
 		}
-		
+
 		console.log(`[PROVENANCE-VERIFY] ✅ Deterministic hash valid: ${expectedHash}`);
-		
+
 		// 2. Find computation in graph
 		const computation = this.graph.computations.find(c => c.id === computationId);
 		if (!computation) {
 			console.error(`[PROVENANCE-VERIFY] ❌ Computation not found: ${computationId}`);
 			return false;
 		}
-		
+
 		// 3. Verify computation hash matches
 		const currentComputationHash = hashComputation(computation);
 		if (currentComputationHash !== provenance.computationHash) {
@@ -1250,32 +1250,32 @@ export class ComputationGraphRuntime {
 			// This might be ok - just means different version
 			// Continue verification...
 		}
-		
+
 		// 4. Verify output hash
 		const resultHash = hashContent(claimedResult);
-		
+
 		// Find the first output (or could check all outputs)
 		const firstOutput = Object.values(provenance.outputs)[0];
 		if (!firstOutput) {
 			console.error('[PROVENANCE-VERIFY] ❌ No outputs in provenance');
 			return false;
 		}
-		
+
 		const expectedOutputHash = firstOutput.contentHash;
-		
+
 		if (resultHash !== expectedOutputHash) {
 			console.error('[PROVENANCE-VERIFY] ❌ Output hash mismatch');
 			console.error(`  Expected: ${expectedOutputHash}`);
 			console.error(`  Got: ${resultHash}`);
 			return false;
 		}
-		
+
 		console.log(`[PROVENANCE-VERIFY] ✅ Output hash valid: ${resultHash}`);
 		console.log(`[PROVENANCE-VERIFY] ✅ Verification passed for ${computationId}`);
-		
+
 		return true;
 	}
-	
+
 	/**
 	 * Re-execute a computation and compare with provenance
 	 * 
@@ -1286,31 +1286,31 @@ export class ComputationGraphRuntime {
 		provenance: ComputationProvenance
 	): Promise<boolean> {
 		console.log(`[PROVENANCE-VERIFY] Re-executing ${computationId} for verification`);
-		
+
 		// Find computation
 		const computation = this.graph.computations.find(c => c.id === computationId);
 		if (!computation) {
 			console.error(`[PROVENANCE-VERIFY] ❌ Computation not found`);
 			return false;
 		}
-		
+
 		// TODO: Set up inputs to match provenance.inputs
 		// This is complex because we'd need to restore the exact input state
 		// For now, just verify hashes
-		
+
 		console.warn('[PROVENANCE-VERIFY] Re-execution not yet implemented, using hash verification');
-		
+
 		// Get current result from derived results
 		const currentResult = this.derivedResults.get(computationId);
 		if (!currentResult) {
 			console.error('[PROVENANCE-VERIFY] ❌ No current result available');
 			return false;
 		}
-		
+
 		// Verify first output
 		const firstOutputName = Object.keys(provenance.outputs)[0];
 		const firstOutputValue = currentResult.get(firstOutputName);
-		
+
 		return await this.verifyComputationResult(computationId, firstOutputValue, provenance);
 	}
 }
@@ -1344,14 +1344,14 @@ export async function createReactiveComputation(
 	const runtime = new ComputationGraphRuntime(graph);
 	await runtime.initialize();
 	await runtime.execute();
-	
+
 	// Enable reactivity - auto-recompute when subscription variables change
 	runtime.enableReactivity();
-	
+
 	const cleanup = async () => {
 		await runtime.cleanup();
 	};
-	
+
 	return { runtime, cleanup };
 }
 

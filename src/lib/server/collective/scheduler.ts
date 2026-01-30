@@ -30,7 +30,7 @@ export interface RecognitionData {
 
 export interface ComputationCallbacks {
 	/**
-	 * Fetch all recognition data from database/holster
+	 * Fetch all recognition data from database/mesh
 	 * This should return the current recognition relationships between all participants
 	 */
 	fetchRecognitionData: () => Promise<RecognitionData[]>;

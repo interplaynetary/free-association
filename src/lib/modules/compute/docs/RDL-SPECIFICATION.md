@@ -57,7 +57,7 @@ Zod schemas with `.describe()` are both:
 - Human-readable (for documentation)
 
 ```typescript
-holster_path: HolsterPathSchema.describe('Path in Holster to subscribe to')
+mesh_path: MeshPathSchema.describe('Path in Mesh to subscribe to')
 // ↑ This description is part of the schema itself
 ```
 
@@ -79,20 +79,20 @@ Zod makes schema evolution easier:
 RDL Specification
 ├── Primitives (foundational types)
 │   ├── Identifier
-│   ├── HolsterPath
+│   ├── MeshPath
 │   ├── PubKey
 │   ├── SchemaTypeName
 │   └── FunctionName
 │
 ├── Variable Bindings (where data comes from)
 │   ├── value          - Static literals
-│   ├── subscription   - Reactive Holster subscriptions
-│   ├── fetch          - One-time Holster fetch
+│   ├── subscription   - Reactive Mesh subscriptions
+│   ├── fetch          - One-time Mesh fetch
 │   ├── local          - Local state references
 │   └── derived        - Computation outputs
 │
 ├── Output Bindings (where results go)
-│   ├── holster        - Network-replicated storage
+│   ├── mesh        - Network-replicated storage
 │   ├── local          - Session-local state
 │   └── memory         - Ephemeral (for chaining)
 │
@@ -148,7 +148,7 @@ RDL Specification
 ```typescript
 // Primitive schemas
 export const IdentifierSchema: z.ZodSchema<Identifier>;
-export const HolsterPathSchema: z.ZodSchema<HolsterPath>;
+export const MeshPathSchema: z.ZodSchema<MeshPath>;
 export const PubKeySchema: z.ZodSchema<PubKey>;
 export const SchemaTypeNameSchema: z.ZodSchema<SchemaTypeName>;
 export const FunctionNameSchema: z.ZodSchema<FunctionName>;
@@ -168,7 +168,7 @@ export const ComputationProvenanceSchema: z.ZodSchema<ComputationProvenance>;
 
 // Corresponding TypeScript types (auto-generated from Zod)
 export type Identifier = z.infer<typeof IdentifierSchema>;
-export type HolsterPath = z.infer<typeof HolsterPathSchema>;
+export type MeshPath = z.infer<typeof MeshPathSchema>;
 // ... (all types auto-generated)
 ```
 
@@ -187,7 +187,7 @@ const myProgram: ReactiveComputationGraph = {
   variables: {
     myData: {
       type: 'subscription',
-      holster_path: 'data/input',
+      mesh_path: 'data/input',
       schema_type: 'DataType'
     }
   },
@@ -198,7 +198,7 @@ const myProgram: ReactiveComputationGraph = {
     },
     compute_fn: 'processData',
     outputs: {
-      result: { type: 'holster', holster_path: 'data/output' }
+      result: { type: 'mesh', mesh_path: 'data/output' }
     }
   }]
 };

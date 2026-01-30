@@ -1,14 +1,14 @@
-import {error} from "@sveltejs/kit"
-import {claimInviteCodeSchema} from "$lib/server/schemas/holster"
-import {user, holster, inviteCodes, host} from "$lib/server/holster/core"
-import {holsterNext, holsterNextPut, holsterEncrypt, ensureAuthenticated, holsterDelete} from "$lib/server/holster/db"
-import {newCode, validateEmail} from "$lib/server/holster/utils"
-import {createPOSTHandler} from "$lib/server/middleware/request-handler"
+import { error } from "@sveltejs/kit"
+import { claimInviteCodeSchema } from "$lib/server/schemas/mesh"
+import { user, mesh, inviteCodes, host } from "$lib/server/mesh/core"
+import { meshNext, meshNextPut, meshEncrypt, ensureAuthenticated, meshDelete } from "$lib/server/mesh/db"
+import { newCode, validateEmail } from "$lib/server/mesh/utils"
+import { createPOSTHandler } from "$lib/server/middleware/request-handler"
 
 export const POST = createPOSTHandler(
   claimInviteCodeSchema,
-  async ({data: requestData}) => {
-    const {code, pub, epub, username: userName, email} = requestData
+  async ({ data: requestData }) => {
+    const { code, pub, epub, username: userName, email } = requestData
     const invite = inviteCodes.get(code)
 
     if (!invite) {
@@ -19,9 +19,9 @@ export const POST = createPOSTHandler(
 
     // Prepare account data
     const validate = newCode()
-    const encValidate = await holsterEncrypt(validate, user.is)
-    const encEmail = await holsterEncrypt(email, user.is)
-    
+    const encValidate = await meshEncrypt(validate, user.is)
+    const encEmail = await meshEncrypt(email, user.is)
+
     const accountData = {
       pub,
       epub,
@@ -36,27 +36,27 @@ export const POST = createPOSTHandler(
     }
 
     // Create account
-    await holsterNextPut("accounts", code, accountData)
+    await meshNextPut("accounts", code, accountData)
 
     // Map code to user's public key for easier login
-    await holsterNextPut("map", "account:" + pub, code)
+    await meshNextPut("map", "account:" + pub, code)
 
     // Send validation email
     validateEmail(userName, email, code, validate)
 
     // Remove invite code from available codes
-    await holsterDelete("available", ["invite_codes", invite.key].join('/'))
+    await meshDelete("available", ["invite_codes", invite.key].join('/'))
 
     // Remove from in-memory cache
     inviteCodes.delete(code)
-    
+
     if (code === "admin") {
       return ""
     }
 
     // Clean up shared codes from invite owner (async operation)
-    const ownerAccount = await holsterNext("accounts", invite.owner)
-    
+    const ownerAccount = await meshNext("accounts", invite.owner)
+
     if (!ownerAccount || !(ownerAccount as any).epub) {
       console.log(`Account not found for invite.owner: ${invite.owner}`)
       return ""
@@ -70,14 +70,14 @@ export const POST = createPOSTHandler(
         if (!codes) return
 
         try {
-          const secret = await holster.SEA.secret(ownerAccount, user.is)
-          
+          const secret = await mesh.SEA.secret(ownerAccount, user.is)
+
           for (const [key, encrypted] of Object.entries(codes)) {
             if (!key || !encrypted) continue
 
-            const shared = await holster.SEA.decrypt(encrypted, secret)
+            const shared = await mesh.SEA.decrypt(encrypted, secret)
             if (code === shared) {
-              await holsterDelete("shared", ["invite_codes", invite.owner, key].join('/'))
+              await meshDelete("shared", ["invite_codes", invite.owner, key].join('/'))
               break
             }
           }
@@ -88,6 +88,6 @@ export const POST = createPOSTHandler(
 
     return ""
   },
-  {emptyResponse: true}
+  { emptyResponse: true }
 )
 

@@ -1,6 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import { CompletionRequestSchema, RoutingResponseSchema, HealthReportSchema, type CompletionRequest, type RoutingResponse } from '$lib/server/schemas';
+import { CompletionRequestSchema, RoutingResponseSchema, HealthReportSchema, OpenRouterResponseSchema, type CompletionRequest, type RoutingResponse, type OpenRouterResponse } from '$lib/server/schemas';
 import { requireAuth } from '$lib/server/middleware/unified-auth';
 import { checkGeneralRateLimit, checkAiRateLimit, checkTokenRateLimit } from '$lib/server/middleware/rate-limit';
 import { config } from '$lib/server/config';
@@ -29,7 +29,7 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
     }
 
     const requestData: CompletionRequest = parsed.data;
-    const { prompt, messages, maxTokens, max_tokens, temperature, model: requestedModel } = requestData;
+    const { prompt, messages, maxTokens, max_tokens, temperature, model: requestedModel, response_format, provider, models, route, transforms, plugins, user: requestUser } = requestData;
 
     // Normalize max_tokens
     const normalizedMaxTokens = maxTokens || max_tokens || 1024;
@@ -100,12 +100,21 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
       console.log('[AI-COMPLETION] Using raw messages/prompt');
     }
 
-    const requestBody = {
+    const requestBody: any = {
       model: routing.model,
       messages: requestMessages,
       max_tokens: requestMaxTokens,
       temperature: requestTemperature
     };
+
+    // Add optional OpenRouter parameters
+    if (response_format) requestBody.response_format = response_format;
+    if (provider) requestBody.provider = provider;
+    if (models) requestBody.models = models;
+    if (route) requestBody.route = route;
+    if (transforms) requestBody.transforms = transforms;
+    if (plugins) requestBody.plugins = plugins;
+    if (requestUser || userId) requestBody.user = requestUser || userId;
 
     const headers = {
       'Content-Type': 'application/json',
@@ -126,25 +135,40 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
     const result: any = await providerResponse.json();
 
     // Step 4: Report key health back to key pool
-    let healthStatus: 'healthy' | 'degraded' | 'failed' | 'rate_limited' | 'depleted' =
-      providerResponse.ok ? 'healthy' :
-        providerResponse.status === 429 ? 'rate_limited' : 'degraded';
+    let healthStatus: 'healthy' | 'degraded' | 'failed' | 'rate_limited' | 'depleted' = 'healthy';
+    let errorMessage: string | null = null;
 
-    // Check for depleted credits
-    if (!providerResponse.ok && result.error?.message?.includes('insufficient')) {
-      healthStatus = 'depleted';
+    if (!providerResponse.ok) {
+      // OpenRouter-specific error handling
+      const errorCode = result.error?.code;
+      errorMessage = result.error?.message || 'Unknown error';
+
+      switch (errorCode) {
+        case 'insufficient_credits':
+        case 'insufficient_quota':
+          healthStatus = 'depleted';
+          break;
+        case 'rate_limit_exceeded':
+          healthStatus = 'rate_limited';
+          break;
+        case 'invalid_request_error':
+        case 'context_length_exceeded':
+          // Don't mark key as unhealthy for client errors
+          healthStatus = 'healthy';
+          break;
+        default:
+          healthStatus = providerResponse.status === 429 ? 'rate_limited' : 'failed';
+      }
     }
 
-    // Extract cost
-    const cost = result.usage
-      ? (result.usage.prompt_tokens * 0.000001) + (result.usage.completion_tokens * 0.000001)
-      : null;
+    // Extract cost - use OpenRouter's accurate total_cost field
+    const cost = result.usage?.total_cost || null;
 
     // Fire and forget health report
     const healthReport = HealthReportSchema.parse({
       key: routing.key,
       status: healthStatus,
-      error: providerResponse.ok ? null : result.error?.message,
+      error: errorMessage,
       cost
     });
 
@@ -161,7 +185,9 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
         model: routing.model,
         provider: routing.provider,
         flow: routing.flow?.name,
-        responseTimeMs: responseTime
+        responseTimeMs: responseTime,
+        generationId: result.id, // OpenRouter generation ID for analytics
+        cost: cost // Include cost in routing metadata
       }
     }, { status: providerResponse.status });
 

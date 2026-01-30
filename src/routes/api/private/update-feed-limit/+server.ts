@@ -1,12 +1,12 @@
-import {error} from "@sveltejs/kit"
-import {updateFeedLimitSchema} from "$lib/server/schemas/holster"
-import {getAccountByCodeOrFail, holsterNextPut} from "$lib/server/holster/db"
-import {createPOSTHandler} from "$lib/server/middleware/request-handler"
+import { error } from "@sveltejs/kit"
+import { updateFeedLimitSchema } from "$lib/server/schemas/mesh"
+import { getAccountByCodeOrFail, meshNextPut } from "$lib/server/mesh/db"
+import { createPOSTHandler } from "$lib/server/middleware/request-handler"
 
 export const POST = createPOSTHandler(
   updateFeedLimitSchema,
-  async ({data}) => {
-    const {code, limit} = data
+  async ({ data }) => {
+    const { code, limit } = data
 
     const account = await getAccountByCodeOrFail(code)
 
@@ -14,12 +14,12 @@ export const POST = createPOSTHandler(
       error(400, "Email not validated")
     }
 
-    await holsterNextPut("accounts", code, {feeds: limit})
+    await meshNextPut("accounts", code, { feeds: limit })
     return ""
   },
   {
     requireAuth: true,
-    authOptions: {allowBasic: true, allowJwt: false, allowApiKey: false},
+    authOptions: { allowBasic: true, allowJwt: false, allowApiKey: false },
     emptyResponse: true
   }
 )

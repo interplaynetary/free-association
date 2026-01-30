@@ -30,9 +30,9 @@ In your App Platform dashboard:
    - **Preserve Path Prefix:** Yes
 
 3. Add another route for WebSocket:
-   - **Path:** `/holster`
+   - **Path:** `/mesh`
    - **Type:** `Proxy`
-   - **Destination:** `http://YOUR_DROPLET_IP:8766/holster`
+   - **Destination:** `http://YOUR_DROPLET_IP:8766/mesh`
    - **Preserve Path Prefix:** Yes
    - **Enable WebSocket:** Yes
 
@@ -97,8 +97,8 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
     
-    # Holster WebSocket proxy
-    location /holster {
+    # Mesh WebSocket proxy
+    location /mesh {
         proxy_pass http://YOUR_DROPLET_IP:8766;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
@@ -152,9 +152,9 @@ async function handleRequest(request) {
     })
   }
   
-  // Proxy /holster to WebSocket
-  if (url.pathname === '/holster') {
-    const wsUrl = `ws://YOUR_DROPLET_IP:8766/holster`
+  // Proxy /mesh to WebSocket
+  if (url.pathname === '/mesh') {
+    const wsUrl = `ws://YOUR_DROPLET_IP:8766/mesh`
     // WebSocket upgrade logic
   }
   
@@ -229,7 +229,7 @@ curl https://free.playnet.lol/api/health
 
 ```javascript
 // In browser console at https://free.playnet.lol
-const ws = new WebSocket('wss://free.playnet.lol/holster');
+const ws = new WebSocket('wss://free.playnet.lol/mesh');
 ws.onopen = () => console.log('Connected!');
 ```
 
@@ -273,8 +273,8 @@ If App Platform doesn't support WebSocket proxying well, you can:
 ```typescript
 // In your code
 const wsUrl = import.meta.env.DEV 
-  ? 'ws://localhost:8766/holster'
-  : 'wss://YOUR_DROPLET_DOMAIN:8766/holster';
+  ? 'ws://localhost:8766/mesh'
+  : 'wss://YOUR_DROPLET_DOMAIN:8766/mesh';
 ```
 
 This requires:

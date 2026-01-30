@@ -40,11 +40,11 @@ Create `src/lib/server/collective/callbacks.ts`:
 import type { ComputationCallbacks } from './scheduler';
 import type { RecognitionData, BaseCapacity, BaseNeed } from '$lib/protocol/collective/schemas';
 import type { Node } from '$lib/protocol/schemas';
-import { user } from '$lib/server/holster/core';
+import { user } from '$lib/server/mesh/core';
 import { sharesOfGeneralFulfillmentMap } from '$lib/protocol/tree';
 
 /**
- * Real implementation using Holster and your database
+ * Real implementation using Mesh and your database
  */
 export function createCallbacks(): ComputationCallbacks {
 	return {
@@ -55,16 +55,16 @@ export function createCallbacks(): ComputationCallbacks {
 			const recognitionData: RecognitionData[] = [];
 			
 			try {
-				// Get all users from Holster
+				// Get all users from Mesh
 				const usersPath = 'users/';
-				const usersList = await user.holster.list(usersPath);
+				const usersList = await user.mesh.list(usersPath);
 				
 				// For each user, fetch their recognition tree
 				for (const userId of usersList) {
 					const treePath = `trees/${userId}/recognition_tree`;
 					
 					try {
-						const tree = await user.holster.get(treePath);
+						const tree = await user.mesh.get(treePath);
 						if (!tree) continue;
 						
 						// Extract recognition shares from tree
@@ -99,12 +99,12 @@ export function createCallbacks(): ComputationCallbacks {
 				// Query your database for capacities
 				// This is a placeholder - adapt to your actual database
 				const capacitiesPath = 'capacities/';
-				const capacitiesList = await user.holster.list(capacitiesPath);
+				const capacitiesList = await user.mesh.list(capacitiesPath);
 				
 				const autoUpdateCapacities: BaseCapacity[] = [];
 				
 				for (const capacityId of capacitiesList) {
-					const capacity = await user.holster.get(`capacities/${capacityId}`);
+					const capacity = await user.mesh.get(`capacities/${capacityId}`);
 					
 					if (capacity && capacity.auto_update_members_by_mrd) {
 						autoUpdateCapacities.push(capacity);
@@ -129,9 +129,9 @@ export function createCallbacks(): ComputationCallbacks {
 			timestamp: Date
 		): Promise<void> {
 			try {
-				// Update capacity in Holster
+				// Update capacity in Mesh
 				const capacityPath = `capacities/${capacityId}`;
-				const capacity = await user.holster.get(capacityPath);
+				const capacity = await user.mesh.get(capacityPath);
 				
 				if (capacity) {
 					// Update members and timestamp
@@ -141,11 +141,11 @@ export function createCallbacks(): ComputationCallbacks {
 						last_membership_update: timestamp.toISOString()
 					};
 					
-					await user.holster.set(capacityPath, updatedCapacity);
+					await user.mesh.set(capacityPath, updatedCapacity);
 					
 					// Optional: Store history
 					const historyPath = `capacity_membership_history/${capacityId}/${timestamp.getTime()}`;
-					await user.holster.set(historyPath, {
+					await user.mesh.set(historyPath, {
 						capacity_id: capacityId,
 						members,
 						added,
@@ -171,12 +171,12 @@ export function createCallbacks(): ComputationCallbacks {
 		async fetchCapacitiesForAllocation(): Promise<BaseCapacity[]> {
 			try {
 				const capacitiesPath = 'capacities/';
-				const capacitiesList = await user.holster.list(capacitiesPath);
+				const capacitiesList = await user.mesh.list(capacitiesPath);
 				
 				const capacities: BaseCapacity[] = [];
 				
 				for (const capacityId of capacitiesList) {
-					const capacity = await user.holster.get(`capacities/${capacityId}`);
+					const capacity = await user.mesh.get(`capacities/${capacityId}`);
 					
 					// Only include capacities with slots
 					if (capacity && capacity.capacity_slots && capacity.capacity_slots.length > 0) {
@@ -197,12 +197,12 @@ export function createCallbacks(): ComputationCallbacks {
 		async fetchNeeds(): Promise<Map<string, BaseNeed>> {
 			try {
 				const needsPath = 'needs/';
-				const needsList = await user.holster.list(needsPath);
+				const needsList = await user.mesh.list(needsPath);
 				
 				const needsMap = new Map<string, BaseNeed>();
 				
 				for (const needId of needsList) {
-					const need = await user.holster.get(`needs/${needId}`);
+					const need = await user.mesh.get(`needs/${needId}`);
 					
 					// Only include open or partially-fulfilled needs
 					if (need && ['open', 'partially-fulfilled'].includes(need.status)) {
@@ -226,7 +226,7 @@ export function createCallbacks(): ComputationCallbacks {
 			for (const memberId of memberIds) {
 				try {
 					const treePath = `trees/${memberId}/recognition_tree`;
-					const tree = await user.holster.get(treePath);
+					const tree = await user.mesh.get(treePath);
 					
 					if (tree) {
 						trees.set(memberId, tree);
@@ -248,7 +248,7 @@ export function createCallbacks(): ComputationCallbacks {
 				
 				// Store computation result
 				const resultPath = `allocation_computations/${capacityId}/${timestamp.getTime()}`;
-				await user.holster.set(resultPath, {
+				await user.mesh.set(resultPath, {
 					capacity_id: capacityId,
 					...allocations,
 					timestamp: timestamp.toISOString()
@@ -256,7 +256,7 @@ export function createCallbacks(): ComputationCallbacks {
 				
 				// Update latest allocation pointer
 				const latestPath = `allocation_computations/${capacityId}/latest`;
-				await user.holster.set(latestPath, {
+				await user.mesh.set(latestPath, {
 					timestamp: timestamp.toISOString(),
 					result_path: resultPath
 				});
@@ -280,7 +280,7 @@ export function createCallbacks(): ComputationCallbacks {
 				const timestamp = new Date();
 				const logPath = `computation_logs/${event}/${timestamp.getTime()}`;
 				
-				await user.holster.set(logPath, {
+				await user.mesh.set(logPath, {
 					event,
 					data,
 					timestamp: timestamp.toISOString()
@@ -299,8 +299,8 @@ export function createCallbacks(): ComputationCallbacks {
 Update `src/hooks.server.ts`:
 
 ```typescript
-import { initializeHolster, user } from "$lib/server/holster/core"
-import { initializeMonitoring } from "$lib/server/holster/monitoring"
+import { initializeMesh, user } from "$lib/server/mesh/core"
+import { initializeMonitoring } from "$lib/server/mesh/monitoring"
 import { getRegistry } from "$lib/server/data-relay"
 import { env } from "$env/dynamic/private"
 import { startScheduler } from "$lib/server/collective"
@@ -309,9 +309,9 @@ import { createCallbacks } from "$lib/server/collective/callbacks"
 let initialized = false
 
 if (!initialized) {
-  initializeHolster()
+  initializeMesh()
     .then(() => {
-      console.log("Holster initialized successfully")
+      console.log("Mesh initialized successfully")
       initializeMonitoring()
 
       // Initialize Data Relay System
@@ -334,7 +334,7 @@ if (!initialized) {
       }
     })
     .catch(err => {
-      console.error("Failed to initialize Holster:", err)
+      console.error("Failed to initialize Mesh:", err)
     })
   
   initialized = true
@@ -421,8 +421,8 @@ Watch server logs for computation events:
 
 ### Callback errors
 
-1. Ensure Holster is initialized before scheduler starts
-2. Verify data paths exist in Holster
+1. Ensure Mesh is initialized before scheduler starts
+2. Verify data paths exist in Mesh
 3. Add error handling to callback implementations
 4. Check data format matches expected schemas
 

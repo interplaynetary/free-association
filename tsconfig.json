@@ -18,7 +18,7 @@
 	},
 	"exclude": [
 		"docs/**/*",
-		"holster-data/**/*",
+		"mesh-data/**/*",
 		"deploy/**/*",
 		"node_modules/**/*",
 		".svelte-kit/**/*",

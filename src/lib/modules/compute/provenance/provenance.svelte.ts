@@ -30,7 +30,7 @@
  */
 
 import { get } from 'svelte/store';
-import { holsterUserPub } from '$lib/network/holster.svelte';
+import { meshUserPub } from '$lib/network/mesh.svelte';
 import { getMyITCStamp, incrementMyITCStamp } from '../v2/algorithm.svelte';
 
 // Re-export types
@@ -116,22 +116,22 @@ import type {
 export interface CreateEventOptions {
 	/** Event payload (application-specific data) */
 	payload: any;
-	
+
 	/** Parent event IDs (empty for seed events) */
 	parents: Hash[];
-	
+
 	/** Event type (default: 'generic') */
 	eventType?: EventType;
-	
+
 	/** Optional: Merkle root for attachments */
 	merkleRoot?: Hash;
-	
+
 	/** Optional: Event tags */
 	tags?: string[];
-	
+
 	/** Whether to auto-store the event (default: true) */
 	autoStore?: boolean;
-	
+
 	/** Whether to verify before storing (default: false) */
 	verifyBeforeStore?: boolean;
 }
@@ -143,7 +143,7 @@ export interface CreateEventOptions {
  * It handles:
  * - ITC stamp management (increment)
  * - Signing with SEA
- * - Optional storage in Holster
+ * - Optional storage in Mesh
  * - Optional verification
  * 
  * @param options - Event creation options
@@ -160,17 +160,17 @@ export async function createEvent(options: CreateEventOptions): Promise<Provenan
 		autoStore = true,
 		verifyBeforeStore = false
 	} = options;
-	
+
 	// Check authentication
-	const author = get(holsterUserPub);
+	const author = get(meshUserPub);
 	if (!author) {
 		throw new Error('User must be authenticated to create events');
 	}
-	
+
 	// Get and increment ITC stamp
 	const itcStamp = getMyITCStamp();
 	incrementMyITCStamp(); // Increment for next event
-	
+
 	// Build event body
 	const eventBody: EventBody = {
 		author,
@@ -185,17 +185,17 @@ export async function createEvent(options: CreateEventOptions): Promise<Provenan
 			tags
 		}
 	};
-	
+
 	// Sign event
 	const { eventId, signature } = await signEvent(eventBody);
-	
+
 	// Construct full event
 	const event: ProvenanceEvent = {
 		id: eventId,
 		...eventBody,
 		sig: signature
 	};
-	
+
 	// Optional: Verify before storing
 	if (verifyBeforeStore) {
 		const { verifyEventIntegrity } = await import('./provenance-signing.svelte');
@@ -204,14 +204,14 @@ export async function createEvent(options: CreateEventOptions): Promise<Provenan
 			throw new Error(`Event verification failed: ${result.errors.join(', ')}`);
 		}
 	}
-	
+
 	// Optional: Auto-store
 	if (autoStore) {
 		await storeEvent(event, verifyBeforeStore);
 	}
-	
+
 	console.log(`[PROVENANCE] Created event: ${eventId.substring(0, 16)}...`);
-	
+
 	return event;
 }
 
@@ -234,7 +234,7 @@ export async function createComputationEvent(options: {
 		...options,
 		eventType: 'computation'
 	});
-	
+
 	return event as ComputationEvent;
 }
 
@@ -272,7 +272,7 @@ export async function createComputationEventFromLegacy(
 		outputs: legacyProvenance.outputs,
 		deterministicHash: legacyProvenance.deterministicHash as Hash
 	};
-	
+
 	// Create event
 	return await createComputationEvent({
 		payload,
@@ -329,7 +329,7 @@ export async function isComputationVerified(
 ): Promise<{ verified: boolean; errors: string[] }> {
 	const { verifyEvent } = await import('./provenance-verification.svelte');
 	const { getEvent } = await import('./provenance-dag.svelte');
-	
+
 	const event = await getEvent(computationEventId);
 	if (!event) {
 		return {
@@ -337,7 +337,7 @@ export async function isComputationVerified(
 			errors: ['Event not found']
 		};
 	}
-	
+
 	const result = await verifyEvent(event, true);
 	return {
 		verified: result.valid,
@@ -374,8 +374,8 @@ export function getProvenanceSystemStatus(): {
 	itcAvailable: boolean;
 	version: string;
 } {
-	const author = get(holsterUserPub);
-	
+	const author = get(meshUserPub);
+
 	return {
 		enabled: true,
 		authenticated: !!author,
@@ -393,12 +393,12 @@ export default {
 	createEvent,
 	createComputationEvent,
 	createComputationEventFromLegacy,
-	
+
 	// Queries
 	getLatestComputationEvents,
 	getComputationLineage,
 	isComputationVerified,
-	
+
 	// System
 	initializeProvenanceSystem,
 	getProvenanceSystemStatus

@@ -1,9 +1,9 @@
-import {json, error} from "@sveltejs/kit"
-import type {RequestHandler} from "@sveltejs/kit"
-import {getRegistry} from "$lib/server/data-relay"
-import {user} from "$lib/server/holster/core"
-import {createGETHandler} from "$lib/server/middleware/request-handler"
-import {requireAuthEvent} from "$lib/server/middleware/unified-auth"
+import { json, error } from "@sveltejs/kit"
+import type { RequestHandler } from "@sveltejs/kit"
+import { getRegistry } from "$lib/server/data-relay"
+import { user } from "$lib/server/mesh/core"
+import { createGETHandler } from "$lib/server/middleware/request-handler"
+import { requireAuthEvent } from "$lib/server/middleware/unified-auth"
 
 /**
  * Generic Data Relay Endpoint
@@ -21,9 +21,9 @@ import {requireAuthEvent} from "$lib/server/middleware/unified-auth"
  */
 export const POST: RequestHandler = async (event) => {
   // Check for authentication
-  requireAuthEvent(event, {allowBasic: true, allowJwt: false, allowApiKey: false})
+  requireAuthEvent(event, { allowBasic: true, allowJwt: false, allowApiKey: false })
 
-  const {type} = event.params
+  const { type } = event.params
   const data = await event.request.json()
 
   try {
@@ -46,7 +46,7 @@ export const POST: RequestHandler = async (event) => {
           error: result.error,
           status: result.status,
         },
-        {status: statusCode},
+        { status: statusCode },
       )
     }
 
@@ -66,8 +66,8 @@ export const POST: RequestHandler = async (event) => {
  * GET /api/relay/{type}
  */
 export const GET = createGETHandler(
-  async ({event}) => {
-    const {type} = event.params
+  async ({ event }) => {
+    const { type } = event.params
 
     const registry = getRegistry(user)
     const stats = await registry.getEngineStats(type!)
@@ -83,7 +83,7 @@ export const GET = createGETHandler(
   },
   {
     requireAuth: true,
-    authOptions: {allowBasic: true, allowJwt: false, allowApiKey: false}
+    authOptions: { allowBasic: true, allowJwt: false, allowApiKey: false }
   }
 )
 

@@ -4,9 +4,9 @@ import type {
   SubscriptionResult,
   LimitCheckResult,
 } from "./config"
-import {z} from "zod"
+import { z } from "zod"
 
-// Type for Gun/Holster user instance
+// Type for Gun/Mesh user instance
 type User = any
 
 /**
@@ -49,7 +49,7 @@ export function createFieldBasedLimitChecker(
     const limit = account[limitField]
 
     if (limit === null || limit === undefined) {
-      return {allowed: true, current}
+      return { allowed: true, current }
     }
 
     if (current >= limit) {
@@ -61,7 +61,7 @@ export function createFieldBasedLimitChecker(
       }
     }
 
-    return {allowed: true, current, limit}
+    return { allowed: true, current, limit }
   }
 }
 
@@ -157,7 +157,7 @@ export async function updateSubscriberCount(
       }
 
       const newCount = Math.max(0, (resource.subscriber_count || 0) + delta)
-      
+
       user
         .get(collection)
         .next(resourceId)
@@ -187,7 +187,7 @@ export async function updateAccountSubscriptionCount(
       }
 
       const newCount = Math.max(0, (account[countField] || 0) + delta)
-      
+
       user
         .get("accounts")
         .next(accountCode)
@@ -225,8 +225,8 @@ export function createStandardSubscribeHandler(
         resourceCollection,
         resourceId,
         resourceMetadata
-          ? {...resourceMetadata, subscriber_count: 0}
-          : {subscriber_count: 0},
+          ? { ...resourceMetadata, subscriber_count: 0 }
+          : { subscriber_count: 0 },
       )
 
       // Update subscriber count
@@ -276,7 +276,7 @@ export function createStandardUnsubscribeHandler(
 
       return {
         success: true,
-        data: {subscriber_count: newCount},
+        data: { subscriber_count: newCount },
       }
     } catch (error) {
       return {

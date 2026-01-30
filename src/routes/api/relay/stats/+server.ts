@@ -1,6 +1,6 @@
-import {getRegistry} from "$lib/server/data-relay"
-import {user} from "$lib/server/holster/core"
-import {createGETHandler} from "$lib/server/middleware/request-handler"
+import { getRegistry } from "$lib/server/data-relay"
+import { user } from "$lib/server/mesh/core"
+import { createGETHandler } from "$lib/server/middleware/request-handler"
 
 /**
  * Get aggregated statistics across all relay types
@@ -43,7 +43,7 @@ export const GET = createGETHandler(
   },
   {
     requireAuth: true,
-    authOptions: {allowBasic: true, allowJwt: false, allowApiKey: false}
+    authOptions: { allowBasic: true, allowJwt: false, allowApiKey: false }
   }
 )
 

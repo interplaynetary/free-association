@@ -5,7 +5,7 @@
 	import { types, type ResourceType } from '$lib/protocol/resource-types';
 	import { myAllocationsAsProvider } from '$lib/protocol/stores/allocation.svelte';
 	import { networkAllocations } from '$lib/protocol/stores/stores.svelte';
-	import { holsterUserPub } from '$lib/network/holster.svelte';
+	import { meshUserPub } from '$lib/network/mesh.svelte';
 	import { getUserName } from '$lib/network/users.svelte';
 	import Chat from '$lib/components/Chat.svelte';
 	import { getReactiveUnreadCount } from '$lib/chat/chat.svelte';
@@ -87,7 +87,7 @@
 	// Reactive allocation data - derived from stores
 	const myAllocations = $derived($myAllocationsAsProvider.allocations || []);
 	const allNetworkAllocations = $derived($networkAllocations);
-	const myPubKey = $derived($holsterUserPub);
+	const myPubKey = $derived($meshUserPub);
 	
 	// Get allocations map for all slots (reactive)
 	const capacityAllocationsMap = $derived.by(() => {

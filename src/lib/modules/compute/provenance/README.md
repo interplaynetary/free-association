@@ -10,7 +10,7 @@ A complete event-based provenance system with cryptographic signatures, Merkle-D
 │                                                              │
 │  ┌─────────────┐   ┌──────────────┐   ┌─────────────────┐ │
 │  │   Events    │──▶│   Signing    │──▶│   DAG Store     │ │
-│  │  (Schema)   │   │    (SEA)     │   │   (Holster)     │ │
+│  │  (Schema)   │   │    (SEA)     │   │   (Mesh)     │ │
 │  └─────────────┘   └──────────────┘   └─────────────────┘ │
 │         │                  │                     │          │
 │         ▼                  ▼                     ▼          │
@@ -92,7 +92,7 @@ Cryptographic operations:
 ### 3. DAG Management (`provenance-dag.svelte.ts`)
 
 Storage and traversal:
-- `storeEvent()` - Store in Holster
+- `storeEvent()` - Store in Mesh
 - `getEvent()` - Retrieve event
 - `traverseToRoots()` - Backward traversal
 - `findPath()` - Find path between events

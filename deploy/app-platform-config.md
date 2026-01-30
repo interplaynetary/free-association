@@ -27,7 +27,7 @@ The [.do/app.yaml](file:///home/ruzgar/Programs/playnet/free-association/.do/app
 2. Go to App Platform dashboard → Settings → Routes
 3. Add custom routes:
    - `/api` → `http://YOUR_DROPLET_IP:3000/api`
-   - `/holster` → `http://YOUR_DROPLET_IP:8766/holster`
+   - `/mesh` → `http://YOUR_DROPLET_IP:8766/mesh`
 
 **Note:** Route configuration via UI is persistent - you only need to set it once.
 

@@ -1,18 +1,18 @@
 /**
- * Browser-Compatible Git-Holster Storage Adapter
+ * Browser-Compatible Git-Mesh Storage Adapter
  * 
  * Client-side Git operations using isomorphic-git + LightningFS in the browser
- * Syncs with Holster for distributed storage
+ * Syncs with Mesh for distributed storage
  */
 import * as git from "isomorphic-git"
 import LightningFS from "@isomorphic-git/lightning-fs"
-import { holsterUser } from "$lib/network/holster"
+import { meshUser } from "$lib/network/mesh"
 
 // ═══════════════════════════════════════════════════════════════════
 // FILESYSTEM SETUP
 // ═══════════════════════════════════════════════════════════════════
 
-const FS = new LightningFS("holster-git-browser", { wipe: false })
+const FS = new LightningFS("mesh-git-browser", { wipe: false })
 const pfs = FS.promises
 
 // ═══════════════════════════════════════════════════════════════════
@@ -40,14 +40,14 @@ export function getGitState(): GitState {
 // ═══════════════════════════════════════════════════════════════════
 
 export function repoPath(pub: string, repo: string): string {
-  return `/holster/${pub}/git/${repo}`
+  return `/mesh/${pub}/git/${repo}`
 }
 
 export function getCurrentRepoPath(repo: string): string {
-  if (!holsterUser.is) {
+  if (!meshUser.is) {
     throw new Error("No authenticated user")
   }
-  return repoPath(holsterUser.is.pub, repo)
+  return repoPath(meshUser.is.pub, repo)
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -56,18 +56,18 @@ export function getCurrentRepoPath(repo: string): string {
 
 export async function initRepo(repo: string): Promise<string> {
   try {
-    if (!holsterUser.is) {
+    if (!meshUser.is) {
       throw new Error("No authenticated user")
     }
-    
+
     const dir = getCurrentRepoPath(repo)
     await pfs.mkdir(dir, { recursive: true })
     await git.init({ fs: pfs, dir, defaultBranch: 'main' })
-    
+
     state.currentRepo = repo
     state.lastError = null
     state.initialized = true
-    
+
     console.log(`[GIT] ✓ Initialized repo: ${repo}`)
     return dir
   } catch (error) {
@@ -81,10 +81,10 @@ export async function writeFile(repo: string, filepath: string, content: string)
     const dir = getCurrentRepoPath(repo)
     const fullPath = `${dir}/${filepath}`
     const dirPath = fullPath.substring(0, fullPath.lastIndexOf('/'))
-    
+
     await pfs.mkdir(dirPath, { recursive: true })
     await pfs.writeFile(fullPath, content, 'utf8')
-    
+
     console.log(`[GIT] ✓ Wrote: ${filepath}`)
     state.lastError = null
   } catch (error) {
@@ -98,7 +98,7 @@ export async function readFile(repo: string, filepath: string): Promise<string> 
     const dir = getCurrentRepoPath(repo)
     const fullPath = `${dir}/${filepath}`
     const content = await pfs.readFile(fullPath, 'utf8')
-    
+
     state.lastError = null
     return content
   } catch (error) {
@@ -111,7 +111,7 @@ export async function addFile(repo: string, filepath: string): Promise<void> {
   try {
     const dir = getCurrentRepoPath(repo)
     await git.add({ fs: pfs, dir, filepath })
-    
+
     console.log(`[GIT] ✓ Added: ${filepath}`)
     state.lastError = null
   } catch (error) {
@@ -122,31 +122,31 @@ export async function addFile(repo: string, filepath: string): Promise<void> {
 
 export async function commit(repo: string, message: string): Promise<string> {
   try {
-    if (!holsterUser.is) {
+    if (!meshUser.is) {
       throw new Error("No authenticated user")
     }
-    
+
     const dir = getCurrentRepoPath(repo)
-    
+
     const sha = await git.commit({
       fs: pfs,
       dir,
       message,
       author: {
-        name: holsterUser.is.username || 'anonymous',
-        email: `${holsterUser.is.pub}@holster`,
+        name: meshUser.is.username || 'anonymous',
+        email: `${meshUser.is.pub}@mesh`,
         timestamp: Math.floor(Date.now() / 1000)
       },
       committer: {
-        name: holsterUser.is.username || 'anonymous',
-        email: `${holsterUser.is.pub}@holster`,
+        name: meshUser.is.username || 'anonymous',
+        email: `${meshUser.is.pub}@mesh`,
         timestamp: Math.floor(Date.now() / 1000)
       }
     })
-    
+
     console.log(`[GIT] ✓ Commit: ${sha}`)
     state.lastError = null
-    
+
     return sha
   } catch (error) {
     state.lastError = error instanceof Error ? error.message : String(error)
@@ -158,7 +158,7 @@ export async function log(repo: string, limit: number = 10): Promise<any[]> {
   try {
     const dir = getCurrentRepoPath(repo)
     const commits = await git.log({ fs: pfs, dir, depth: limit, ref: 'HEAD' })
-    
+
     state.lastError = null
     return commits
   } catch (error) {
@@ -175,11 +175,11 @@ export async function status(repo: string): Promise<{
   try {
     const dir = getCurrentRepoPath(repo)
     const statusMatrix = await git.statusMatrix({ fs: pfs, dir })
-    
+
     const staged: string[] = []
     const modified: string[] = []
     const untracked: string[] = []
-    
+
     for (const [filepath, head, workdir, stage] of statusMatrix) {
       if (head === 0 && workdir === 2 && stage === 2) {
         staged.push(filepath)
@@ -189,7 +189,7 @@ export async function status(repo: string): Promise<{
         untracked.push(filepath)
       }
     }
-    
+
     state.lastError = null
     return { staged, modified, untracked }
   } catch (error) {
@@ -199,37 +199,37 @@ export async function status(repo: string): Promise<{
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// HOLSTER SYNC (PUSH/PULL)
+// MESH SYNC (PUSH/PULL)
 // ═══════════════════════════════════════════════════════════════════
 
 export async function push(repo: string, onProgress?: (current: number, total: number) => void): Promise<string> {
   try {
-    if (!holsterUser.is) {
+    if (!meshUser.is) {
       throw new Error("No authenticated user")
     }
-    
-    const pub = holsterUser.is.pub
+
+    const pub = meshUser.is.pub
     const dir = getCurrentRepoPath(repo)
-    
-    console.log(`[GIT] Pushing ${repo} to Holster...`)
-    
+
+    console.log(`[GIT] Pushing ${repo} to Mesh...`)
+
     // Get HEAD commit
     const headOid = await git.resolveRef({ fs: pfs, dir, ref: 'HEAD' })
     console.log(`[GIT]   HEAD: ${headOid}`)
-    
+
     // Walk all reachable objects from HEAD
     const oids = await git.listObjects({ fs: pfs, dir, oids: [headOid] })
     console.log(`[GIT]   Objects: ${oids.length}`)
-    
-    // Store each object in Holster
+
+    // Store each object in Mesh
     let stored = 0
     for (const oid of oids) {
       try {
         const { object, type } = await git.readObject({ fs: pfs, dir, oid })
         const data = Buffer.from(object).toString('base64')
-        
+
         await new Promise<void>((resolve, reject) => {
-          holsterUser.get(`git/${repo}/objects/${oid}`).put({
+          meshUser.get(`git/${repo}/objects/${oid}`).put({
             type,
             data,
             time: Date.now()
@@ -241,17 +241,17 @@ export async function push(repo: string, onProgress?: (current: number, total: n
             }
           })
         })
-        
+
         stored++
         onProgress?.(stored, oids.length)
       } catch (error) {
         console.error(`[GIT]   ✗ Failed to store object ${oid}:`, error)
       }
     }
-    
+
     // Update ref
     await new Promise<void>((resolve, reject) => {
-      holsterUser.get(`git/${repo}/refs/heads/main`).put({
+      meshUser.get(`git/${repo}/refs/heads/main`).put({
         sha: headOid,
         time: Date.now()
       }, (ack: any) => {
@@ -262,10 +262,10 @@ export async function push(repo: string, onProgress?: (current: number, total: n
         }
       })
     })
-    
-    console.log(`[GIT] ✓ Pushed ${stored} objects to Holster`)
+
+    console.log(`[GIT] ✓ Pushed ${stored} objects to Mesh`)
     state.lastError = null
-    
+
     return headOid
   } catch (error) {
     state.lastError = error instanceof Error ? error.message : String(error)
@@ -275,20 +275,20 @@ export async function push(repo: string, onProgress?: (current: number, total: n
 
 export async function pull(repo: string, fromPub?: string, onProgress?: (current: number, total: number) => void): Promise<void> {
   try {
-    if (!holsterUser.is) {
+    if (!meshUser.is) {
       throw new Error("No authenticated user")
     }
-    
-    const sourcePub = fromPub || holsterUser.is.pub
+
+    const sourcePub = fromPub || meshUser.is.pub
     const dir = getCurrentRepoPath(repo)
-    
-    console.log(`[GIT] Pulling ${repo} from Holster...`)
+
+    console.log(`[GIT] Pulling ${repo} from Mesh...`)
     console.log(`[GIT]   Source: ${sourcePub.slice(0, 20)}...`)
-    
+
     // Get remote ref
     const refData = await new Promise<any>((resolve, reject) => {
       const timeout = setTimeout(() => reject(new Error('Timeout fetching remote ref')), 10000)
-      holsterUser.get(sourcePub).get(`git/${repo}/refs/heads/main`).once((data: any) => {
+      meshUser.get(sourcePub).get(`git/${repo}/refs/heads/main`).once((data: any) => {
         clearTimeout(timeout)
         if (!data || !data.sha) {
           reject(new Error('No remote ref found'))
@@ -297,22 +297,22 @@ export async function pull(repo: string, fromPub?: string, onProgress?: (current
         }
       })
     })
-    
+
     console.log(`[GIT]   Remote HEAD: ${refData.sha}`)
-    
+
     // Fetch all objects recursively
     const fetchedOids = new Set<string>()
     const toFetch = [refData.sha]
     let fetched = 0
-    
+
     while (toFetch.length > 0) {
       const oid = toFetch.pop()!
       if (fetchedOids.has(oid)) continue
-      
-      // Get object from Holster
+
+      // Get object from Mesh
       const objData = await new Promise<any>((resolve, reject) => {
         const timeout = setTimeout(() => reject(new Error(`Timeout fetching ${oid}`)), 10000)
-        holsterUser.get(sourcePub).get(`git/${repo}/objects/${oid}`).once((data: any) => {
+        meshUser.get(sourcePub).get(`git/${repo}/objects/${oid}`).once((data: any) => {
           clearTimeout(timeout)
           if (!data || !data.data) {
             reject(new Error(`Object ${oid} not found`))
@@ -321,7 +321,7 @@ export async function pull(repo: string, fromPub?: string, onProgress?: (current
           }
         })
       })
-      
+
       // Write object to local git
       const objectBuffer = Buffer.from(objData.data, 'base64')
       await git.writeObject({
@@ -331,11 +331,11 @@ export async function pull(repo: string, fromPub?: string, onProgress?: (current
         object: objectBuffer,
         oid
       })
-      
+
       fetchedOids.add(oid)
       fetched++
       onProgress?.(fetched, fetched + toFetch.length)
-      
+
       // Parse object to find references
       if (objData.type === 'commit') {
         const commit = await git.readCommit({ fs: pfs, dir, oid })
@@ -350,9 +350,9 @@ export async function pull(repo: string, fromPub?: string, onProgress?: (current
         })
       }
     }
-    
-    console.log(`[GIT] ✓ Pulled ${fetchedOids.size} objects from Holster`)
-    
+
+    console.log(`[GIT] ✓ Pulled ${fetchedOids.size} objects from Mesh`)
+
     // Update local ref
     await git.writeRef({
       fs: pfs,
@@ -361,7 +361,7 @@ export async function pull(repo: string, fromPub?: string, onProgress?: (current
       value: refData.sha,
       force: true
     })
-    
+
     state.lastError = null
   } catch (error) {
     state.lastError = error instanceof Error ? error.message : String(error)

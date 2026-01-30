@@ -1,8 +1,8 @@
-import {json, error} from "@sveltejs/kit"
-import type {RequestHandler} from "@sveltejs/kit"
-import {getRegistry} from "$lib/server/data-relay"
-import {user} from "$lib/server/holster/core"
-import {createGETHandler} from "$lib/server/middleware/request-handler"
+import { json, error } from "@sveltejs/kit"
+import type { RequestHandler } from "@sveltejs/kit"
+import { getRegistry } from "$lib/server/data-relay"
+import { user } from "$lib/server/mesh/core"
+import { createGETHandler } from "$lib/server/middleware/request-handler"
 
 /**
  * Get subscription information for a relay type
@@ -15,8 +15,8 @@ import {createGETHandler} from "$lib/server/middleware/request-handler"
  * - Schema information
  */
 export const GET = createGETHandler(
-  async ({event}) => {
-    const {type} = event.params
+  async ({ event }) => {
+    const { type } = event.params
 
     const registry = getRegistry(user)
     const engine = registry.get(type)
@@ -26,7 +26,7 @@ export const GET = createGETHandler(
     }
 
     const subscriptionManager = engine.getSubscriptionManager()
-    
+
     if (!subscriptionManager) {
       return {
         supported: false,
@@ -44,7 +44,7 @@ export const GET = createGETHandler(
   },
   {
     requireAuth: true,
-    authOptions: {allowBasic: true, allowJwt: false, allowApiKey: false}
+    authOptions: { allowBasic: true, allowJwt: false, allowApiKey: false }
   }
 )
 

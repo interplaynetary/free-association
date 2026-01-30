@@ -10,12 +10,12 @@ import {
 	wouldCreateCycle,
 	createRootNode
 } from '@playnet/free-association/tree';
-import { holsterUserPub as userPub } from '$lib/network/holster.svelte';
+import { meshUserPub as userPub } from '$lib/network/mesh.svelte';
 import { myRecognitionTreeStore as userTree } from '$lib/protocol/stores/stores.svelte';
 import { demoTreeStore } from '$lib/demo/tree.svelte';
 
 // User identification is handled via username (alias) and userpub (public key)
-// Authentication and data persistence managed through Holster
+// Authentication and data persistence managed through Mesh
 
 type ToastType = 'info' | 'success' | 'warning' | 'error';
 
@@ -23,7 +23,7 @@ type ToastType = 'info' | 'success' | 'warning' | 'error';
  * Core Reactive Stores
  *
  * These stores form the foundation of our state management:
- * - userPub: The authenticated user's public key from Holster
+ * - userPub: The authenticated user's public key from Mesh
  * - userTree: The complete tree structure for the current user (imported from state)
  * - currentPath: The navigation path (array of node IDs) in the tree
  */
@@ -118,7 +118,7 @@ function getCurrentTree() {
 
 	// For homepage (both authenticated and unauthenticated), use userTree
 	// userTree (myRecognitionTreeStore) now handles both modes:
-	// - Authenticated: Syncs with Holster
+	// - Authenticated: Syncs with Mesh
 	// - Unauthenticated: Syncs with LocalStorage (Demo Mode)
 	const tree = get(userTree);
 	console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: getCurrentTree (userTree)', {
@@ -180,7 +180,7 @@ function updateTreeStore(updatedTree: any) {
 
 	// For homepage (both authenticated and unauthenticated), update userTree
 	// userTree (myRecognitionTreeStore) now handles both modes:
-	// - Authenticated: Syncs with Holster
+	// - Authenticated: Syncs with Mesh
 	// - Unauthenticated: Syncs with LocalStorage (Demo Mode)
 	userTree.set(updatedTree);
 	console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: updateTreeStore (userTree)', {
@@ -335,11 +335,11 @@ export const globalState = $state({
 		return path.length > 1;
 	},
 	// Reset all state (logout)
-	// V5: Don't manually set tree - let Holster handle it (will reload on next login)
+	// V5: Don't manually set tree - let Mesh handle it (will reload on next login)
 	resetState: () => {
 		console.log('[TRACE] [ENTER] src/lib/global.svelte.ts: resetState');
-		// ✅ DON'T manually set an empty tree - let Holster handle tree state
-		// This ensures Holster properly reloads the tree from network on next login
+		// ✅ DON'T manually set an empty tree - let Mesh handle tree state
+		// This ensures Mesh properly reloads the tree from network on next login
 		// const emptyTree = createRootNode('root', 'My Values');
 		// userTree.set(emptyTree);
 

@@ -4,7 +4,7 @@
  * Demonstrates the declarative dataflow programming system for:
  * - Variable bindings (values, subscriptions, local state, derived)
  * - Computation graphs with dependencies
- * - Output persistence (Holster, local state, memory)
+ * - Output persistence (Mesh, local state, memory)
  */
 
 import type { ReactiveComputationGraph } from '../v1/schemas';
@@ -35,14 +35,14 @@ registerComputationFunction('multiply', ({ a, b }: { a: number; b: number }) => 
  */
 export const simpleComputationGraph: ReactiveComputationGraph = {
 	id: 'simple-math',
-	
+
 	variables: {
 		// Static values
 		x: { type: 'value', value: 2 },
 		y: { type: 'value', value: 3 },
 		z: { type: 'value', value: 4 }
 	},
-	
+
 	computations: [
 		{
 			id: 'step1',
@@ -82,7 +82,7 @@ registerComputationFunction('computeMutualRecognition', ({ myTree, theirTree }: 
 	const myRecognition = 0.7; // Mock: should calculate from trees
 	const theirRecognition = 0.6;
 	const mutualRecognition = Math.min(myRecognition, theirRecognition);
-	
+
 	return {
 		myShare: myRecognition,
 		theirShare: theirRecognition,
@@ -96,54 +96,54 @@ registerComputationFunction('computeMutualRecognition', ({ myTree, theirTree }: 
 export function createMutualRecognitionGraph(theirPubkey: string): ReactiveComputationGraph {
 	return {
 		id: 'mutual-recognition',
-		
+
 		variables: {
 			// Subscribe to my tree
 			myTree: {
 				type: 'subscription',
-				holster_path: 'tree',
+				mesh_path: 'tree',
 				schema_type: 'RootNode',
 				default_value: null
 			},
-			
+
 			// Subscribe to their tree
 			theirTree: {
 				type: 'subscription',
-				holster_path: 'tree',
+				mesh_path: 'tree',
 				schema_type: 'RootNode',
 				subscribe_to_user: theirPubkey,
 				default_value: null
 			}
 		},
-		
+
 		computations: [
 			{
 				id: 'compute-mr',
 				inputs: {
-					myTree: { type: 'subscription', holster_path: 'tree', schema_type: 'RootNode' },
+					myTree: { type: 'subscription', mesh_path: 'tree', schema_type: 'RootNode' },
 					theirTree: {
 						type: 'subscription',
-						holster_path: 'tree',
+						mesh_path: 'tree',
 						schema_type: 'RootNode',
 						subscribe_to_user: theirPubkey
 					}
 				},
 				compute_fn: 'computeMutualRecognition',
 				outputs: {
-					// Store each result in Holster
+					// Store each result in Mesh
 					myShare: {
-						type: 'holster',
-						holster_path: `recognition/${theirPubkey}/my_share`,
+						type: 'mesh',
+						mesh_path: `recognition/${theirPubkey}/my_share`,
 						schema_type: 'Number'
 					},
 					theirShare: {
-						type: 'holster',
-						holster_path: `recognition/${theirPubkey}/their_share`,
+						type: 'mesh',
+						mesh_path: `recognition/${theirPubkey}/their_share`,
 						schema_type: 'Number'
 					},
 					mutualRecognition: {
-						type: 'holster',
-						holster_path: `recognition/${theirPubkey}/mutual`,
+						type: 'mesh',
+						mesh_path: `recognition/${theirPubkey}/mutual`,
 						schema_type: 'Number'
 					}
 				},
@@ -176,13 +176,13 @@ registerComputationFunction('formatResults', ({ sum, avg, count }: any) => {
 
 export const pipelineGraph: ReactiveComputationGraph = {
 	id: 'data-pipeline',
-	
+
 	variables: {
 		// Input data
 		rawData: { type: 'value', value: [1, 5, 10, 15, 20, 25, 30] },
 		threshold: { type: 'value', value: 10 }
 	},
-	
+
 	computations: [
 		// Step 1: Filter
 		{
@@ -196,7 +196,7 @@ export const pipelineGraph: ReactiveComputationGraph = {
 				filtered: { type: 'memory' }
 			}
 		},
-		
+
 		// Step 2: Aggregate
 		{
 			id: 'aggregate',
@@ -211,7 +211,7 @@ export const pipelineGraph: ReactiveComputationGraph = {
 			},
 			depends_on: ['filter']
 		},
-		
+
 		// Step 3: Format
 		{
 			id: 'format',
@@ -241,9 +241,9 @@ registerComputationFunction('computeAllocation', ({ myCapacity, theirNeed, mutua
 	const totalAvailable = myCapacity?.total || 0;
 	const theirRequest = theirNeed?.amount || 0;
 	const mrShare = mutualRecognition || 0;
-	
+
 	const allocated = Math.min(theirRequest, totalAvailable * mrShare);
-	
+
 	return {
 		allocated,
 		remaining: totalAvailable - allocated,
@@ -254,60 +254,60 @@ registerComputationFunction('computeAllocation', ({ myCapacity, theirNeed, mutua
 export function createAllocationGraph(recipientPubkey: string): ReactiveComputationGraph {
 	return {
 		id: 'allocation-computation',
-		
+
 		variables: {
-			// My capacity (from Holster)
+			// My capacity (from Mesh)
 			myCapacity: {
 				type: 'subscription',
-				holster_path: 'capacity/main',
+				mesh_path: 'capacity/main',
 				schema_type: 'BaseCapacity',
 				default_value: { total: 0 }
 			},
-			
-			// Their need (from their Holster)
+
+			// Their need (from their Mesh)
 			theirNeed: {
 				type: 'subscription',
-				holster_path: 'needs/primary',
+				mesh_path: 'needs/primary',
 				schema_type: 'BaseNeed',
 				subscribe_to_user: recipientPubkey,
 				default_value: { amount: 0 }
 			},
-			
+
 			// Pre-computed MR (from previous graph)
 			mutualRecognition: {
 				type: 'subscription',
-				holster_path: `recognition/${recipientPubkey}/mutual`,
+				mesh_path: `recognition/${recipientPubkey}/mutual`,
 				schema_type: 'Number',
 				default_value: 0
 			}
 		},
-		
+
 		computations: [
 			{
 				id: 'allocate',
 				inputs: {
 					myCapacity: {
 						type: 'subscription',
-						holster_path: 'capacity/main',
+						mesh_path: 'capacity/main',
 						schema_type: 'BaseCapacity'
 					},
 					theirNeed: {
 						type: 'subscription',
-						holster_path: 'needs/primary',
+						mesh_path: 'needs/primary',
 						schema_type: 'BaseNeed',
 						subscribe_to_user: recipientPubkey
 					},
 					mutualRecognition: {
 						type: 'subscription',
-						holster_path: `recognition/${recipientPubkey}/mutual`,
+						mesh_path: `recognition/${recipientPubkey}/mutual`,
 						schema_type: 'Number'
 					}
 				},
 				compute_fn: 'computeAllocation',
 				outputs: {
 					allocated: {
-						type: 'holster',
-						holster_path: `allocation/${recipientPubkey}/amount`,
+						type: 'mesh',
+						mesh_path: `allocation/${recipientPubkey}/amount`,
 						schema_type: 'Number',
 						persist_debounce_ms: 100
 					},
@@ -316,8 +316,8 @@ export function createAllocationGraph(recipientPubkey: string): ReactiveComputat
 						state_path: 'allocation.remaining'
 					},
 					fulfillmentRate: {
-						type: 'holster',
-						holster_path: `allocation/${recipientPubkey}/rate`,
+						type: 'mesh',
+						mesh_path: `allocation/${recipientPubkey}/rate`,
 						schema_type: 'Number'
 					}
 				},
@@ -336,13 +336,13 @@ export function createAllocationGraph(recipientPubkey: string): ReactiveComputat
  */
 export async function runSimpleExample() {
 	console.log('=== Simple Computation Example ===');
-	
+
 	const runtime = await executeComputationGraph(simpleComputationGraph);
-	
+
 	// Get results
 	const result = runtime.getComputationResult('step2', 'product');
 	console.log('Result:', result); // Should be 20
-	
+
 	await runtime.cleanup();
 }
 
@@ -351,14 +351,14 @@ export async function runSimpleExample() {
  */
 export async function runMutualRecognitionExample(theirPubkey: string) {
 	console.log('=== Mutual Recognition Example ===');
-	
+
 	const graph = createMutualRecognitionGraph(theirPubkey);
 	const runtime = await executeComputationGraph(graph);
-	
+
 	// Get MR value
 	const mr = runtime.getComputationResult('compute-mr', 'mutualRecognition');
 	console.log('Mutual Recognition:', mr);
-	
+
 	// Runtime keeps subscriptions active for reactivity
 	return runtime; // Cleanup when done
 }
@@ -368,13 +368,13 @@ export async function runMutualRecognitionExample(theirPubkey: string) {
  */
 export async function runPipelineExample() {
 	console.log('=== Data Pipeline Example ===');
-	
+
 	const runtime = await executeComputationGraph(pipelineGraph);
-	
+
 	// Get final report
 	const report = runtime.getComputationResult('format', 'report');
 	console.log('Report:', report);
-	
+
 	await runtime.cleanup();
 }
 
@@ -383,17 +383,17 @@ export async function runPipelineExample() {
  */
 export async function runAllocationExample(recipientPubkey: string) {
 	console.log('=== Allocation Computation Example ===');
-	
+
 	const graph = createAllocationGraph(recipientPubkey);
 	const runtime = await executeComputationGraph(graph);
-	
+
 	// Get allocation results
 	const allocated = runtime.getComputationResult('allocate', 'allocated');
 	const rate = runtime.getComputationResult('allocate', 'fulfillmentRate');
-	
+
 	console.log('Allocated:', allocated);
 	console.log('Fulfillment Rate:', (rate * 100).toFixed(1) + '%');
-	
+
 	// Keep runtime alive for reactive updates
 	return runtime;
 }
@@ -407,19 +407,19 @@ export async function runAllocationExample(recipientPubkey: string) {
  */
 export async function runInteractiveExample() {
 	console.log('=== Interactive Runtime Example ===');
-	
+
 	const runtime = new ComputationGraphRuntime(simpleComputationGraph);
 	await runtime.initialize();
-	
+
 	// Initial execution
 	await runtime.execute();
 	console.log('Initial result:', runtime.getComputationResult('step2', 'product'));
-	
+
 	// Update variable
 	runtime.setVariable('x', 10);
 	await runtime.execute();
 	console.log('After update:', runtime.getComputationResult('step2', 'product'));
-	
+
 	await runtime.cleanup();
 }
 
@@ -441,34 +441,34 @@ registerComputationFunction('compareData', ({ fetchedData, subscribedData }: any
 export function createFetchVsSubscriptionGraph(userPubkey: string): ReactiveComputationGraph {
 	return {
 		id: 'fetch-vs-subscription',
-		
+
 		variables: {
 			// One-time fetch - gets current value, doesn't update
 			userTreeOnce: {
 				type: 'fetch',
-				holster_path: 'tree',
+				mesh_path: 'tree',
 				schema_type: 'TreeNode',
 				fetch_from_user: userPubkey,
 				wait_ms: 200,
 				default_value: null
 			},
-			
+
 			// Reactive subscription - updates when data changes
 			userTreeLive: {
 				type: 'subscription',
-				holster_path: 'tree',
+				mesh_path: 'tree',
 				schema_type: 'TreeNode',
 				subscribe_to_user: userPubkey,
 				default_value: null
 			}
 		},
-		
+
 		computations: [
 			{
 				id: 'compare',
 				inputs: {
-					fetchedData: { type: 'fetch', holster_path: 'tree', schema_type: 'TreeNode', fetch_from_user: userPubkey, wait_ms: 200 },
-					subscribedData: { type: 'subscription', holster_path: 'tree', schema_type: 'TreeNode', subscribe_to_user: userPubkey }
+					fetchedData: { type: 'fetch', mesh_path: 'tree', schema_type: 'TreeNode', fetch_from_user: userPubkey, wait_ms: 200 },
+					subscribedData: { type: 'subscription', mesh_path: 'tree', schema_type: 'TreeNode', subscribe_to_user: userPubkey }
 				},
 				compute_fn: 'compareData',
 				outputs: {
@@ -490,22 +490,22 @@ export function createFetchVsSubscriptionGraph(userPubkey: string): ReactiveComp
  */
 export async function runReactiveExample() {
 	console.log('=== Reactive Mode Example ===');
-	
+
 	const runtime = new ComputationGraphRuntime(createMutualRecognitionGraph('peer-pubkey'));
 	await runtime.initialize();
 	await runtime.execute();
-	
+
 	console.log('Initial result:', runtime.getComputationResults('compute-mr'));
-	
+
 	// Enable reactive mode - computation will auto-rerun when subscriptions change
 	runtime.enableReactivity();
 	console.log('Reactive mode enabled - will auto-recompute when subscriptions change');
-	
+
 	// The computation will automatically re-run when myTree or theirTree subscriptions update
-	
+
 	// Wait a bit to see reactive updates...
 	await new Promise(resolve => setTimeout(resolve, 5000));
-	
+
 	// Disable reactivity and cleanup
 	runtime.disableReactivity();
 	await runtime.cleanup();
@@ -520,21 +520,21 @@ export async function runReactiveExample() {
  */
 registerComputationFunction('search', ({ query, threshold }: { query: string; threshold: number }) => {
 	// Mock search implementation
-	const results = query.length >= threshold 
+	const results = query.length >= threshold
 		? [`Result for "${query}" 1`, `Result for "${query}" 2`]
 		: [];
-	
+
 	return { results, resultCount: results.length };
 });
 
 export const debouncedSearchGraph: ReactiveComputationGraph = {
 	id: 'debounced-search',
-	
+
 	variables: {
 		searchQuery: { type: 'value', value: '' },
 		minLength: { type: 'value', value: 3 }
 	},
-	
+
 	computations: [
 		{
 			id: 'search',
@@ -557,26 +557,26 @@ export const debouncedSearchGraph: ReactiveComputationGraph = {
  */
 export async function runDebouncedExample() {
 	console.log('=== Debounced Computation Example ===');
-	
+
 	const runtime = new ComputationGraphRuntime(debouncedSearchGraph);
 	await runtime.initialize();
-	
+
 	// Simulate rapid typing
 	runtime.updateLocalState({ searchQuery: 't' });
 	await runtime.execute();
-	
+
 	runtime.updateLocalState({ searchQuery: 'te' });
 	await runtime.execute();
-	
+
 	runtime.updateLocalState({ searchQuery: 'tes' });
 	await runtime.execute();
-	
+
 	runtime.updateLocalState({ searchQuery: 'test' });
 	await runtime.execute();
-	
+
 	// Wait for debounce to complete
 	await new Promise(resolve => setTimeout(resolve, 400));
-	
+
 	console.log('Search result:', runtime.getComputationResults('search'));
 	await runtime.cleanup();
 }
@@ -597,11 +597,11 @@ registerComputationFunction('computeWithConstants', ({ input, PI, E }: any) => {
 
 export const localBindingsGraph: ReactiveComputationGraph = {
 	id: 'local-bindings',
-	
+
 	variables: {
 		radius: { type: 'value', value: 5 }
 	},
-	
+
 	computations: [
 		{
 			id: 'compute',
@@ -627,7 +627,7 @@ export const localBindingsGraph: ReactiveComputationGraph = {
  */
 export async function runLocalBindingsExample() {
 	console.log('=== Local Bindings Example ===');
-	
+
 	const runtime = await executeComputationGraph(localBindingsGraph);
 	console.log('Circle area:', runtime.getComputationResult('compute', 'circleArea'));
 	console.log('Exponential:', runtime.getComputationResult('compute', 'exponential'));

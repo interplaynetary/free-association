@@ -31,7 +31,7 @@
     /peerPubKey/peerPubKeyEncryptedData
     ...
 
-(Currently in holster replication is outside the user-space, but we want it to be stored in the user space)
+(Currently in mesh replication is outside the user-space, but we want it to be stored in the user space)
 
 ### Subscriptions
 

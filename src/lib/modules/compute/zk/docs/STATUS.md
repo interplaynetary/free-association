@@ -174,7 +174,7 @@ const { proof, totalAllocated } = await proveAllocationRollup(
 
 - ✅ No Mina blockchain required
 - ✅ Works in any JavaScript environment
-- ✅ P2P proof sharing via Holster
+- ✅ P2P proof sharing via Mesh
 - ✅ Export/import proofs as JSON
 - ✅ Verifiable by anyone
 

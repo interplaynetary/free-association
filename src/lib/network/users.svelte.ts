@@ -4,33 +4,33 @@ import type { Writable } from 'svelte/store';
 import type { Contact, ContactsCollectionData } from '$lib/protocol/schemas';
 import { ContactSchema } from '$lib/protocol/schemas';
 
-// V5: Import Holster contacts module (from v5 commons)
+// V5: Import Mesh contacts module (from v5 commons)
 import {
-	holsterContacts,
-	isLoadingHolsterContacts,
-	initializeHolsterContacts,
-	cleanupHolsterContacts,
-	persistHolsterContacts,
-	updateHolsterContactsStore,
-	deleteHolsterContact
+	meshContacts,
+	isLoadingMeshContacts,
+	initializeMeshContacts,
+	cleanupMeshContacts,
+	persistMeshContacts,
+	updateMeshContactsStore,
+	deleteMeshContact
 } from './contacts.svelte';
 
 // Import organizations module for org_id resolution
 import { globalOrganizations, getOrganizationName, cleanupOrganizations } from './organizations.svelte';
 
 // ================================
-// USERS LIST SUBSCRIPTION (Holster)
+// USERS LIST SUBSCRIPTION (Mesh)
 // ================================
 
 console.log('[TRACE] src/lib/network/users.svelte.ts: <module scope>');
 
-import { holster } from '$lib/network/holster.svelte';
+import { mesh } from '$lib/network/mesh.svelte';
 
 let usersListCallback: ((data: any) => void) | null = null;
 let isUsersListInitialized = false;
 
 /**
- * Subscribe to freely-associating-players list from Holster
+ * Subscribe to freely-associating-players list from Mesh
  */
 function subscribeToUsersList() {
 	console.log('[TRACE] [ENTER] src/lib/network/users.svelte.ts: subscribeToUsersList');
@@ -84,7 +84,7 @@ function subscribeToUsersList() {
 		});
 	};
 
-	holster.get('freely-associating-players').on(usersListCallback, true);
+	mesh.get('freely-associating-players').on(usersListCallback, true);
 	isUsersListInitialized = true;
 	console.log('[TRACE] [EXIT] src/lib/network/users.svelte.ts: subscribeToUsersList');
 }
@@ -125,15 +125,15 @@ export async function cleanupUsersList() {
 }
 
 // ================================
-// CORE USER & CONTACT STORES (V5: Holster-Only)
+// CORE USER & CONTACT STORES (V5: Mesh-Only)
 // ================================
 
 // User tracking stores
 export const userPubKeys = writable<string[]>([]);
 
-// V5: Contact management stores (Holster-only)
-export const userContacts: Writable<ContactsCollectionData> = holsterContacts as Writable<ContactsCollectionData>;
-export const isLoadingContacts = isLoadingHolsterContacts;
+// V5: Contact management stores (Mesh-only)
+export const userContacts: Writable<ContactsCollectionData> = meshContacts as Writable<ContactsCollectionData>;
+export const isLoadingContacts = isLoadingMeshContacts;
 export const contactSearchQuery = writable('');
 
 // Unified entity system - membership is just an attribute now
@@ -204,7 +204,7 @@ export const userNamesOrAliasesCache = derived(
 );
 
 // ================================
-// CONTACT LIFECYCLE FUNCTIONS (V5: Holster-Only)
+// CONTACT LIFECYCLE FUNCTIONS (V5: Mesh-Only)
 // ================================
 
 /**
@@ -213,7 +213,7 @@ export const userNamesOrAliasesCache = derived(
  */
 export function initializeContacts() {
 	console.log('[TRACE] [ENTER] src/lib/network/users.svelte.ts: initializeContacts');
-	initializeHolsterContacts();
+	initializeMeshContacts();
 	console.log('[TRACE] [EXIT] src/lib/network/users.svelte.ts: initializeContacts');
 }
 
@@ -223,7 +223,7 @@ export function initializeContacts() {
  */
 export function cleanupContacts() {
 	console.log('[TRACE] [ENTER] src/lib/network/users.svelte.ts: cleanupContacts');
-	cleanupHolsterContacts();
+	cleanupMeshContacts();
 	console.log('[TRACE] [EXIT] src/lib/network/users.svelte.ts: cleanupContacts');
 }
 
@@ -233,7 +233,7 @@ export function cleanupContacts() {
  */
 export async function persistContacts(contacts?: ContactsCollectionData) {
 	console.log('[TRACE] [ENTER] src/lib/network/users.svelte.ts: persistContacts');
-	const result = await persistHolsterContacts(contacts);
+	const result = await persistMeshContacts(contacts);
 	console.log('[TRACE] [EXIT] src/lib/network/users.svelte.ts: persistContacts');
 	return result;
 }
@@ -277,8 +277,8 @@ export async function createContact(
 		[contact_id]: validatedContact
 	};
 
-	// V5: Update store and persist (Holster-only) - WAIT for persistence!
-	await updateHolsterContactsStore(updatedContacts);
+	// V5: Update store and persist (Mesh-only) - WAIT for persistence!
+	await updateMeshContactsStore(updatedContacts);
 
 	// Force update the names cache immediately to ensure reactivity
 	if (hasValidPublicKey) {
@@ -335,18 +335,18 @@ export function updateContact(contact_id: string, updates: Partial<Contact>): vo
 		[contact_id]: validatedContact
 	};
 
-	// V5: Update store and persist (Holster-only)
-	updateHolsterContactsStore(updatedContacts);
+	// V5: Update store and persist (Mesh-only)
+	updateMeshContactsStore(updatedContacts);
 	console.log('[TRACE] [EXIT] src/lib/network/users.svelte.ts: updateContact');
 }
 
 /**
- * Delete a contact (V5: Holster-only)
+ * Delete a contact (V5: Mesh-only)
  */
 export async function deleteContact(contact_id: string): Promise<void> {
 	console.log('[TRACE] [ENTER] src/lib/network/users.svelte.ts: deleteContact', { contact_id });
-	// Use Holster-specific delete that sets to null
-	await deleteHolsterContact(contact_id);
+	// Use Mesh-specific delete that sets to null
+	await deleteMeshContact(contact_id);
 	console.log('[TRACE] [EXIT] src/lib/network/users.svelte.ts: deleteContact');
 }
 
@@ -463,7 +463,7 @@ export function resolveToPublicKeys(identifiers: string[]): string[] {
 // ================================
 
 /**
- * Get alias for a user by public key (V5: Holster-only)
+ * Get alias for a user by public key (V5: Mesh-only)
  * Returns cached alias or fallback to truncated ID
  */
 export async function getUserAlias(pubkey: string) {
@@ -473,7 +473,7 @@ export async function getUserAlias(pubkey: string) {
 		return cache[pubkey];
 	}
 
-	// V5: Holster user data is loaded via holster.svelte.ts subscription
+	// V5: Mesh user data is loaded via mesh.svelte.ts subscription
 	// No need to fetch directly - data comes through reactive stores
 	// If not in cache yet, return fallback
 	console.log(`[USER-NAME-V5] Alias not yet cached for ${pubkey}, using fallback`);

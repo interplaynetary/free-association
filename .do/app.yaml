@@ -3,7 +3,7 @@
 # 
 # Monolithic deployment using Bun adapter
 # - Full SvelteKit app with API routes
-# - Holster WebSocket support
+# - Mesh WebSocket support
 # - Everything runs on App Platform
 #
 

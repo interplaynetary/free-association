@@ -2,20 +2,20 @@
  * Provenance DAG Management
  * 
  * This module manages the Merkle-DAG of provenance events:
- * - Event storage and retrieval (Holster)
+ * - Event storage and retrieval (Mesh)
  * - Head tracking (latest events per author)
  * - Parent indexing (reverse edges for traversal)
  * - DAG traversal (BFS/DFS)
  * - Lineage queries
  * 
- * Storage Structure (in Holster user space):
+ * Storage Structure (in Mesh user space):
  * ~{myPubKey}/provenance/
  *   events/{eventId}         -> EventStoreEntry
  *   heads/{authorId}         -> HeadIndexEntry
  *   parents/{parentId}       -> ParentIndexEntry
  */
 
-import { holster, holsterUser, holsterUserPub } from '$lib/network/holster.svelte';
+import { mesh, meshUser, meshUserPub } from '$lib/network/mesh.svelte';
 import { get } from 'svelte/store';
 import type {
 	ProvenanceEvent,
@@ -34,27 +34,27 @@ import {
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * Build Holster paths for provenance DAG storage
+ * Build Mesh paths for provenance DAG storage
  */
 export const ProvenancePaths = {
 	/** Event storage path */
-	event: (pubKey: string, eventId: Hash) => 
+	event: (pubKey: string, eventId: Hash) =>
 		`~${pubKey}/provenance/events/${eventId}`,
-	
+
 	/** Head index path (latest events per author) */
-	head: (pubKey: string, authorId: string) => 
+	head: (pubKey: string, authorId: string) =>
 		`~${pubKey}/provenance/heads/${authorId}`,
-	
+
 	/** Parent index path (reverse edges) */
-	parent: (pubKey: string, parentId: Hash) => 
+	parent: (pubKey: string, parentId: Hash) =>
 		`~${pubKey}/provenance/parents/${parentId}`,
-	
+
 	/** All events path (for listing) */
-	allEvents: (pubKey: string) => 
+	allEvents: (pubKey: string) =>
 		`~${pubKey}/provenance/events`,
-	
+
 	/** All heads path (for listing) */
-	allHeads: (pubKey: string) => 
+	allHeads: (pubKey: string) =>
 		`~${pubKey}/provenance/heads`
 };
 
@@ -63,7 +63,7 @@ export const ProvenancePaths = {
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * Store a provenance event in Holster
+ * Store a provenance event in Mesh
  * 
  * Writes to:
  * - /provenance/events/{eventId} (event store entry)
@@ -78,11 +78,11 @@ export async function storeEvent(
 	event: ProvenanceEvent,
 	verified: boolean = false
 ): Promise<void> {
-	const myPub = get(holsterUserPub);
+	const myPub = get(meshUserPub);
 	if (!myPub) {
 		throw new Error('User not authenticated - cannot store events');
 	}
-	
+
 	try {
 		// Create store entry
 		const storeEntry: EventStoreEntry = {
@@ -90,10 +90,10 @@ export async function storeEvent(
 			stored_at: Date.now(),
 			verified
 		};
-		
+
 		// Store event
 		await new Promise<void>((resolve, reject) => {
-			holster
+			mesh
 				.get(ProvenancePaths.event(myPub, event.id))
 				.put(storeEntry, (err: any) => {
 					if (err) {
@@ -104,17 +104,17 @@ export async function storeEvent(
 					}
 				});
 		});
-		
+
 		// Update head index
 		await updateHeadIndex(event.author, event.id);
-		
+
 		// Update parent indexes
 		for (const parentId of event.parents) {
 			await updateParentIndex(parentId, event.id);
 		}
-		
+
 		console.log(`[PROVENANCE-DAG] Stored event: ${event.id.substring(0, 16)}...`);
-		
+
 	} catch (error) {
 		console.error('[PROVENANCE-DAG] Failed to store event:', error);
 		throw error;
@@ -122,7 +122,7 @@ export async function storeEvent(
 }
 
 /**
- * Retrieve a provenance event from Holster
+ * Retrieve a provenance event from Mesh
  * 
  * @param eventId - Event ID to retrieve
  * @param fromUser - Optional: retrieve from another user's space
@@ -132,27 +132,27 @@ export async function getEvent(
 	eventId: Hash,
 	fromUser?: string
 ): Promise<ProvenanceEvent | null> {
-	const pubKey = fromUser || get(holsterUserPub);
+	const pubKey = fromUser || get(meshUserPub);
 	if (!pubKey) {
 		throw new Error('No public key available');
 	}
-	
+
 	return new Promise((resolve) => {
-		holster
+		mesh
 			.get(ProvenancePaths.event(pubKey, eventId))
 			.once((data: any) => {
 				if (!data) {
 					resolve(null);
 					return;
 				}
-				
+
 				const entry = parseEventStoreEntry(data);
 				if (!entry) {
 					console.warn('[PROVENANCE-DAG] Invalid event store entry:', eventId);
 					resolve(null);
 					return;
 				}
-				
+
 				resolve(entry.event);
 			});
 	});
@@ -185,14 +185,14 @@ export async function getEventsBatch(
 	fromUser?: string
 ): Promise<Map<Hash, ProvenanceEvent>> {
 	const events = new Map<Hash, ProvenanceEvent>();
-	
+
 	for (const eventId of eventIds) {
 		const event = await getEvent(eventId, fromUser);
 		if (event) {
 			events.set(eventId, event);
 		}
 	}
-	
+
 	return events;
 }
 
@@ -207,27 +207,27 @@ export async function getEventsBatch(
  * @param eventId - New event ID
  */
 async function updateHeadIndex(authorId: string, eventId: Hash): Promise<void> {
-	const myPub = get(holsterUserPub);
+	const myPub = get(meshUserPub);
 	if (!myPub) return;
-	
+
 	return new Promise((resolve, reject) => {
 		const path = ProvenancePaths.head(myPub, authorId);
-		
+
 		// Get current head entry
-		holster.get(path).once((data: any) => {
+		mesh.get(path).once((data: any) => {
 			const currentEntry = data ? parseHeadEntry(data) : null;
-			
+
 			// Create or update head entry
 			const headEntry: HeadIndexEntry = {
 				author: authorId,
-				event_ids: currentEntry 
-					? [...new Set([...currentEntry.event_ids, eventId])] 
+				event_ids: currentEntry
+					? [...new Set([...currentEntry.event_ids, eventId])]
 					: [eventId],
 				updated_at: Date.now()
 			};
-			
+
 			// Store updated head entry
-			holster.get(path).put(headEntry, (err: any) => {
+			mesh.get(path).put(headEntry, (err: any) => {
 				if (err) {
 					console.error('[PROVENANCE-DAG] Error updating head index:', err);
 					reject(err);
@@ -250,18 +250,18 @@ export async function getHeadEvents(
 	authorId: string,
 	fromUser?: string
 ): Promise<Hash[]> {
-	const pubKey = fromUser || get(holsterUserPub);
+	const pubKey = fromUser || get(meshUserPub);
 	if (!pubKey) return [];
-	
+
 	return new Promise((resolve) => {
-		holster
+		mesh
 			.get(ProvenancePaths.head(pubKey, authorId))
 			.once((data: any) => {
 				if (!data) {
 					resolve([]);
 					return;
 				}
-				
+
 				const entry = parseHeadEntry(data);
 				resolve(entry ? entry.event_ids : []);
 			});
@@ -287,27 +287,27 @@ function parseHeadEntry(data: any): HeadIndexEntry | null {
  * @param childId - Child event ID (the new event)
  */
 async function updateParentIndex(parentId: Hash, childId: Hash): Promise<void> {
-	const myPub = get(holsterUserPub);
+	const myPub = get(meshUserPub);
 	if (!myPub) return;
-	
+
 	return new Promise((resolve, reject) => {
 		const path = ProvenancePaths.parent(myPub, parentId);
-		
+
 		// Get current parent entry
-		holster.get(path).once((data: any) => {
+		mesh.get(path).once((data: any) => {
 			const currentEntry = data ? parseParentEntry(data) : null;
-			
+
 			// Create or update parent entry
 			const parentEntry: ParentIndexEntry = {
 				parent_id: parentId,
-				child_ids: currentEntry 
-					? [...new Set([...currentEntry.child_ids, childId])] 
+				child_ids: currentEntry
+					? [...new Set([...currentEntry.child_ids, childId])]
 					: [childId],
 				updated_at: Date.now()
 			};
-			
+
 			// Store updated parent entry
-			holster.get(path).put(parentEntry, (err: any) => {
+			mesh.get(path).put(parentEntry, (err: any) => {
 				if (err) {
 					console.error('[PROVENANCE-DAG] Error updating parent index:', err);
 					reject(err);
@@ -330,18 +330,18 @@ export async function getChildren(
 	parentId: Hash,
 	fromUser?: string
 ): Promise<Hash[]> {
-	const pubKey = fromUser || get(holsterUserPub);
+	const pubKey = fromUser || get(meshUserPub);
 	if (!pubKey) return [];
-	
+
 	return new Promise((resolve) => {
-		holster
+		mesh
 			.get(ProvenancePaths.parent(pubKey, parentId))
 			.once((data: any) => {
 				if (!data) {
 					resolve([]);
 					return;
 				}
-				
+
 				const entry = parseParentEntry(data);
 				resolve(entry ? entry.child_ids : []);
 			});
@@ -378,26 +378,26 @@ export async function traverseToRoots(
 	const visited = new Set<Hash>();
 	const events: ProvenanceEvent[] = [];
 	const queue: Array<{ id: Hash; depth: number }> = [{ id: targetId, depth: 0 }];
-	
+
 	while (queue.length > 0) {
 		const { id, depth } = queue.shift()!;
-		
+
 		// Skip if already visited or max depth reached
 		if (visited.has(id) || depth > maxDepth) {
 			continue;
 		}
-		
+
 		visited.add(id);
-		
+
 		// Get event
 		const event = await getEvent(id, fromUser);
 		if (!event) {
 			console.warn('[PROVENANCE-DAG] Event not found during traversal:', id);
 			continue;
 		}
-		
+
 		events.push(event);
-		
+
 		// Add parents to queue
 		for (const parentId of event.parents) {
 			if (!visited.has(parentId)) {
@@ -405,7 +405,7 @@ export async function traverseToRoots(
 			}
 		}
 	}
-	
+
 	return events;
 }
 
@@ -427,26 +427,26 @@ export async function traverseToLeaves(
 	const visited = new Set<Hash>();
 	const events: ProvenanceEvent[] = [];
 	const queue: Array<{ id: Hash; depth: number }> = [{ id: rootId, depth: 0 }];
-	
+
 	while (queue.length > 0) {
 		const { id, depth } = queue.shift()!;
-		
+
 		// Skip if already visited or max depth reached
 		if (visited.has(id) || depth > maxDepth) {
 			continue;
 		}
-		
+
 		visited.add(id);
-		
+
 		// Get event
 		const event = await getEvent(id, fromUser);
 		if (!event) {
 			console.warn('[PROVENANCE-DAG] Event not found during traversal:', id);
 			continue;
 		}
-		
+
 		events.push(event);
-		
+
 		// Add children to queue
 		const children = await getChildren(id, fromUser);
 		for (const childId of children) {
@@ -455,7 +455,7 @@ export async function traverseToLeaves(
 			}
 		}
 	}
-	
+
 	return events;
 }
 
@@ -474,35 +474,35 @@ export async function findPath(
 ): Promise<ProvenanceEvent[] | null> {
 	const visited = new Set<Hash>();
 	const queue: Array<{ id: Hash; path: Hash[] }> = [{ id: fromId, path: [fromId] }];
-	
+
 	while (queue.length > 0) {
 		const { id, path } = queue.shift()!;
-		
+
 		// Found target
 		if (id === toId) {
 			// Reconstruct events from path
 			const events = await getEventsBatch(path, fromUser);
 			return path.map(eventId => events.get(eventId)!).filter(e => e);
 		}
-		
+
 		// Skip if already visited
 		if (visited.has(id)) {
 			continue;
 		}
-		
+
 		visited.add(id);
-		
+
 		// Get event
 		const event = await getEvent(id, fromUser);
 		if (!event) continue;
-		
+
 		// Check parents (backward)
 		for (const parentId of event.parents) {
 			if (!visited.has(parentId)) {
 				queue.push({ id: parentId, path: [...path, parentId] });
 			}
 		}
-		
+
 		// Check children (forward)
 		const children = await getChildren(id, fromUser);
 		for (const childId of children) {
@@ -511,7 +511,7 @@ export async function findPath(
 			}
 		}
 	}
-	
+
 	return null;
 }
 
@@ -526,13 +526,13 @@ export async function findPath(
  * @returns Promise resolving to array of root events
  */
 export async function getRootEvents(fromUser?: string): Promise<ProvenanceEvent[]> {
-	const pubKey = fromUser || get(holsterUserPub);
+	const pubKey = fromUser || get(meshUserPub);
 	if (!pubKey) return [];
-	
+
 	// This is inefficient - would need an index for roots
 	// For now, we traverse all events and filter
 	// TODO: Add root index for efficient queries
-	
+
 	console.warn('[PROVENANCE-DAG] getRootEvents() requires full scan - performance issue');
 	return [];
 }
@@ -544,12 +544,12 @@ export async function getRootEvents(fromUser?: string): Promise<ProvenanceEvent[
  * @returns Promise resolving to array of leaf events
  */
 export async function getLeafEvents(fromUser?: string): Promise<ProvenanceEvent[]> {
-	const pubKey = fromUser || get(holsterUserPub);
+	const pubKey = fromUser || get(meshUserPub);
 	if (!pubKey) return [];
-	
+
 	// This is inefficient - would need to scan all events
 	// TODO: Add leaf index or use head index
-	
+
 	console.warn('[PROVENANCE-DAG] getLeafEvents() requires full scan - performance issue');
 	return [];
 }
@@ -577,15 +577,15 @@ export async function countEvents(fromUser?: string): Promise<number> {
  * @returns Promise that resolves when deletion is complete
  */
 export async function deleteEvent(eventId: Hash): Promise<void> {
-	const myPub = get(holsterUserPub);
+	const myPub = get(meshUserPub);
 	if (!myPub) {
 		throw new Error('User not authenticated');
 	}
-	
+
 	console.warn('[PROVENANCE-DAG] Deleting event - this breaks DAG integrity:', eventId);
-	
+
 	return new Promise((resolve, reject) => {
-		holster.get(ProvenancePaths.event(myPub, eventId)).put(null, (err: any) => {
+		mesh.get(ProvenancePaths.event(myPub, eventId)).put(null, (err: any) => {
 			if (err) {
 				reject(err);
 			} else {

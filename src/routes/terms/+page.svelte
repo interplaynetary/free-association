@@ -18,7 +18,7 @@ Free-Association is a **hybrid service** combining centralized and peer-to-peer 
 **Centralized Services (We Operate):**
 - Account registration and authentication system
 - Invite code management
-- Gun/Holster relay servers for P2P data synchronization
+- Gun/Mesh relay servers for P2P data synchronization
 - AI gateway service (optional AI features)
 - Email validation and password reset services
 - RSS feed management and data relay services
@@ -26,7 +26,7 @@ Free-Association is a **hybrid service** combining centralized and peer-to-peer 
 
 **Decentralized P2P Components:**
 - Recognition tree data (stored locally and synced P2P)
-- Direct peer-to-peer data synchronization via Gun/Holster
+- Direct peer-to-peer data synchronization via Gun/Mesh
 - Local computation of allocations and mutual recognition
 - Browser-based interface (runs locally on your device)
 

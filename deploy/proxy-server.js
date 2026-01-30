@@ -3,7 +3,7 @@
  * 
  * This is a simple Bun server that proxies:
  * - /api/* → Droplet backend (port 3000)
- * - /holster → Droplet WebSocket (port 8766)
+ * - /mesh → Droplet WebSocket (port 8766)
  * 
  * Only needed if using the 'services' approach in app.yaml
  * (requires paid App Platform plan)
@@ -57,8 +57,8 @@ const server = Bun.serve({
             }
         }
 
-        // Proxy /holster to WebSocket server
-        if (url.pathname === '/holster') {
+        // Proxy /mesh to WebSocket server
+        if (url.pathname === '/mesh') {
             const targetUrl = `http://${DROPLET_IP}:8766${url.pathname}${url.search}`;
             console.log(`[WS] ${req.method} ${url.pathname} → ${targetUrl}`);
 
@@ -102,7 +102,7 @@ const server = Bun.serve({
 
 console.log(`✅ Bun proxy server running on port ${PORT}`);
 console.log(`   /api/* → http://${DROPLET_IP}:3000`);
-console.log(`   /holster → http://${DROPLET_IP}:8766`);
+console.log(`   /mesh → http://${DROPLET_IP}:8766`);
 
 // Graceful shutdown
 process.on('SIGTERM', () => {

@@ -1,11 +1,11 @@
 #!/usr/bin/env bun
 /**
- * Holster + Git CLI
+ * Mesh + Git CLI
  * 
- * A command-line interface for managing Git repositories with Holster storage.
+ * A command-line interface for managing Git repositories with Mesh storage.
  * 
  * Commands:
- *   create <username> <password>           - Create a new Holster user
+ *   create <username> <password>           - Create a new Mesh user
  *   auth <username> <password>             - Authenticate and load user
  *   change-pass <old> <new>                - Change password for current user
  *   logout                                 - Sign out current user
@@ -16,11 +16,11 @@
  *   git-commit <repo> <message>            - Commit staged changes
  *   git-status <repo>                      - Show repository status
  *   git-log <repo> [limit]                 - Show commit history
- *   git-push <repo>                        - Push repository to Holster
- *   git-pull <repo> [pubkey]               - Pull repository from Holster
+ *   git-push <repo>                        - Push repository to Mesh
+ *   git-pull <repo> [pubkey]               - Pull repository from Mesh
  */
 
-import { user } from "./holster.js"
+import { user } from "./mesh.ts"
 import * as gitAdapter from "./git-adapter.ts"
 
 // ═══════════════════════════════════════════════════════════════════
@@ -43,10 +43,10 @@ async function waitForAuth(timeout: number = 5000): Promise<void> {
 
 function showHelp(): void {
   console.log(`
-Holster + Git CLI
+Mesh + Git CLI
 
 AUTHENTICATION COMMANDS:
-  create <username> <password>           Create a new Holster user
+  create <username> <password>           Create a new Mesh user
   auth <username> <password>             Authenticate and load user
   change-pass <old> <new>                Change password for current user
   logout                                 Sign out current user
@@ -58,8 +58,8 @@ GIT COMMANDS:
   git-commit <repo> <message>            Commit staged changes
   git-status <repo>                      Show repository status
   git-log <repo> [limit]                 Show commit history
-  git-push <repo>                        Push repository to Holster
-  git-pull <repo> [pubkey]               Pull repository from Holster
+  git-push <repo>                        Push repository to Mesh
+  git-pull <repo> [pubkey]               Pull repository from Mesh
 
 EXAMPLES:
   # Create account and initialize repo
@@ -124,7 +124,7 @@ async function handleChangePassword(oldPassword: string, newPassword: string): P
   if (!user.is) {
     throw new Error("Not authenticated. Run 'auth' first.")
   }
-  
+
   return new Promise((resolve, reject) => {
     console.log(`Changing password for: ${user.is.username}`)
     user.change(user.is.username, oldPassword, newPassword, (ack: any) => {
@@ -144,7 +144,7 @@ function handleLogout(): void {
     console.log("Not authenticated")
     return
   }
-  
+
   const username = user.is.username
   user.leave()
   console.log(`✓ Logged out: ${username}`)
@@ -156,12 +156,12 @@ function handleLogout(): void {
 
 async function main(): Promise<void> {
   const [cmd, ...args] = process.argv.slice(2)
-  
+
   if (!cmd || cmd === 'help' || cmd === '--help' || cmd === '-h') {
     showHelp()
     return
   }
-  
+
   try {
     switch (cmd) {
       // Authentication commands
@@ -173,7 +173,7 @@ async function main(): Promise<void> {
         await handleCreate(username, password)
         break
       }
-      
+
       case "auth": {
         const [username, password] = args
         if (!username || !password) {
@@ -182,7 +182,7 @@ async function main(): Promise<void> {
         await handleAuth(username, password)
         break
       }
-      
+
       case "change-pass": {
         const [oldPass, newPass] = args
         if (!oldPass || !newPass) {
@@ -191,12 +191,12 @@ async function main(): Promise<void> {
         await handleChangePassword(oldPass, newPass)
         break
       }
-      
+
       case "logout": {
         handleLogout()
         break
       }
-      
+
       // Git commands
       case "git-init": {
         const [repo] = args
@@ -206,7 +206,7 @@ async function main(): Promise<void> {
         await gitAdapter.initRepo(repo)
         break
       }
-      
+
       case "git-write": {
         const [repo, filepath, ...contentParts] = args
         if (!repo || !filepath || contentParts.length === 0) {
@@ -216,7 +216,7 @@ async function main(): Promise<void> {
         await gitAdapter.writeFile(repo, filepath, content)
         break
       }
-      
+
       case "git-add": {
         const [repo, filepath] = args
         if (!repo || !filepath) {
@@ -225,7 +225,7 @@ async function main(): Promise<void> {
         await gitAdapter.addFile(repo, filepath)
         break
       }
-      
+
       case "git-commit": {
         const [repo, ...msgParts] = args
         if (!repo || msgParts.length === 0) {
@@ -235,7 +235,7 @@ async function main(): Promise<void> {
         await gitAdapter.commit(repo, message)
         break
       }
-      
+
       case "git-status": {
         const [repo] = args
         if (!repo) {
@@ -244,7 +244,7 @@ async function main(): Promise<void> {
         await gitAdapter.status(repo)
         break
       }
-      
+
       case "git-log": {
         const [repo, limitStr] = args
         if (!repo) {
@@ -254,7 +254,7 @@ async function main(): Promise<void> {
         await gitAdapter.log(repo, limit)
         break
       }
-      
+
       case "git-push": {
         const [repo] = args
         if (!repo) {
@@ -263,7 +263,7 @@ async function main(): Promise<void> {
         await gitAdapter.push(repo)
         break
       }
-      
+
       case "git-pull": {
         const [repo, pubkey] = args
         if (!repo) {
@@ -272,14 +272,14 @@ async function main(): Promise<void> {
         await gitAdapter.pull(repo, pubkey)
         break
       }
-      
+
       default:
         console.error(`Unknown command: ${cmd}`)
         showHelp()
         process.exit(1)
     }
-    
-    // Give Holster time to sync
+
+    // Give Mesh time to sync
     await sleep(500)
     process.exit(0)
   } catch (error) {

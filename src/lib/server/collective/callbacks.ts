@@ -1,18 +1,18 @@
 /**
  * Collective Recognition Scheduler Callbacks Implementation
  * 
- * Real implementation using Holster database utilities
+ * Real implementation using Mesh database utilities
  */
 
 import type { ComputationCallbacks } from './scheduler';
 import type { RecognitionData, BaseCapacity, BaseNeed } from '$lib/protocol/collective/schemas';
 import type { Node } from '$lib/protocol/schemas';
-import { holsterGet, holsterNextPut, holsterGetArray, ensureAuthenticated } from '$lib/server/holster/db';
-import { user } from '$lib/server/holster/core';
+import { meshGet, meshNextPut, meshGetArray, ensureAuthenticated } from '$lib/server/mesh/db';
+import { user } from '$lib/server/mesh/core';
 import { SharedUtils } from './shared-utils';
 
 /**
- * Production implementation using Holster
+ * Production implementation using Mesh
  */
 export function createCallbacks(): ComputationCallbacks {
 	return {
@@ -23,16 +23,16 @@ export function createCallbacks(): ComputationCallbacks {
 		async fetchRecognitionData(): Promise<RecognitionData[]> {
 			return SharedUtils.fetchAllRecognitionData();
 		},
-		
+
 		/**
 		 * Fetch capacities with auto-update enabled
 		 */
 		async fetchAutoUpdateCapacities(): Promise<BaseCapacity[]> {
 			try {
 				ensureAuthenticated();
-				
+
 				// Fetch all capacities and filter for auto-update
-				const capacities = await holsterGetArray<BaseCapacity>(
+				const capacities = await meshGetArray<BaseCapacity>(
 					'capacities',
 					(capacity) => {
 						return Boolean(
@@ -43,14 +43,14 @@ export function createCallbacks(): ComputationCallbacks {
 						);
 					}
 				);
-				
+
 				return capacities;
 			} catch (error) {
 				console.error('[CALLBACKS] Failed to fetch auto-update capacities:', error);
 				return [];
 			}
 		},
-		
+
 		/**
 		 * Save updated capacity members
 		 */
@@ -63,15 +63,15 @@ export function createCallbacks(): ComputationCallbacks {
 		): Promise<void> {
 			try {
 				ensureAuthenticated();
-				
+
 				// Fetch current capacity to preserve other fields
-				const currentCapacity = await holsterGet<BaseCapacity>(['capacities', capacityId]);
-				
+				const currentCapacity = await meshGet<BaseCapacity>(['capacities', capacityId]);
+
 				if (!currentCapacity) {
 					console.warn(`[CALLBACKS] Capacity ${capacityId} not found, cannot update`);
 					return;
 				}
-				
+
 				// Update capacity with new members and timestamp
 				const updatedCapacity = {
 					...currentCapacity,
@@ -79,19 +79,19 @@ export function createCallbacks(): ComputationCallbacks {
 					last_membership_update: timestamp.toISOString(),
 					updated_at: timestamp.toISOString()
 				};
-				
-				await holsterNextPut('capacities', capacityId, updatedCapacity);
-				
+
+				await meshNextPut('capacities', capacityId, updatedCapacity);
+
 				// Store membership change history
 				const historyKey = `${capacityId}_${timestamp.getTime()}`;
-				await holsterNextPut('capacity_membership_history', historyKey, {
+				await meshNextPut('capacity_membership_history', historyKey, {
 					capacity_id: capacityId,
 					members,
 					added,
 					removed,
 					timestamp: timestamp.toISOString()
 				});
-				
+
 				console.log(
 					`[CALLBACKS] ✓ Updated capacity ${capacityId}:\n` +
 					`  → Members: ${members.length}\n` +
@@ -103,16 +103,16 @@ export function createCallbacks(): ComputationCallbacks {
 				throw error;
 			}
 		},
-		
+
 		/**
 		 * Fetch capacities for allocation computation
 		 */
 		async fetchCapacitiesForAllocation(): Promise<BaseCapacity[]> {
 			try {
 				ensureAuthenticated();
-				
+
 				// Fetch all capacities with capacity slots
-				const capacities = await holsterGetArray<BaseCapacity>(
+				const capacities = await meshGetArray<BaseCapacity>(
 					'capacities',
 					(capacity) => {
 						return Boolean(
@@ -125,23 +125,23 @@ export function createCallbacks(): ComputationCallbacks {
 						);
 					}
 				);
-				
+
 				return capacities;
 			} catch (error) {
 				console.error('[CALLBACKS] Failed to fetch capacities for allocation:', error);
 				return [];
 			}
 		},
-		
+
 		/**
 		 * Fetch all needs
 		 */
 		async fetchNeeds(): Promise<Map<string, BaseNeed>> {
 			try {
 				ensureAuthenticated();
-				
+
 				// Fetch all needs with need slots
-				const needs = await holsterGetArray<BaseNeed>(
+				const needs = await meshGetArray<BaseNeed>(
 					'needs',
 					(need) => {
 						return Boolean(
@@ -153,7 +153,7 @@ export function createCallbacks(): ComputationCallbacks {
 						);
 					}
 				);
-				
+
 				// Convert to Map keyed by declarer_id
 				const needsMap = new Map<string, BaseNeed>();
 				for (const need of needs) {
@@ -161,14 +161,14 @@ export function createCallbacks(): ComputationCallbacks {
 						needsMap.set(need.declarer_id, need);
 					}
 				}
-				
+
 				return needsMap;
 			} catch (error) {
 				console.error('[CALLBACKS] Failed to fetch needs:', error);
 				return new Map();
 			}
 		},
-		
+
 		/**
 		 * Fetch member recognition trees
 		 * Uses shared utility to reduce duplication
@@ -176,39 +176,39 @@ export function createCallbacks(): ComputationCallbacks {
 		async fetchMemberTrees(memberIds: string[]): Promise<Map<string, Node>> {
 			return SharedUtils.fetchTrees(memberIds);
 		},
-		
+
 		/**
 		 * Save computed allocations
 		 */
 		async saveAllocations(capacityId: string, allocations: any): Promise<void> {
 			try {
 				ensureAuthenticated();
-				
+
 				const timestamp = new Date();
-				
+
 				// Store the full computation result
 				const resultKey = `${capacityId}_${timestamp.getTime()}`;
-				await holsterNextPut('allocation_computations', resultKey, {
+				await meshNextPut('allocation_computations', resultKey, {
 					capacity_id: capacityId,
 					...allocations,
 					timestamp: timestamp.toISOString()
 				});
-				
+
 				// Update the "latest" pointer for quick access
-				await holsterNextPut('allocation_computations_latest', capacityId, {
+				await meshNextPut('allocation_computations_latest', capacityId, {
 					timestamp: timestamp.toISOString(),
 					result_key: resultKey,
 					total_allocated: allocations.total_allocated,
 					total_capacity: allocations.total_capacity,
 					member_count: allocations.member_set?.length || 0
 				});
-				
+
 				// Store individual allocations for easy querying
 				if (allocations.final_allocations) {
 					for (const [memberId, amount] of Object.entries(allocations.final_allocations)) {
 						if ((amount as number) > 0) {
 							const allocationKey = `${capacityId}_${memberId}_${timestamp.getTime()}`;
-							await holsterNextPut('allocations', allocationKey, {
+							await meshNextPut('allocations', allocationKey, {
 								capacity_id: capacityId,
 								member_id: memberId,
 								amount: amount,
@@ -218,7 +218,7 @@ export function createCallbacks(): ComputationCallbacks {
 						}
 					}
 				}
-				
+
 				console.log(
 					`[CALLBACKS] ✓ Saved allocations for ${capacityId}:\n` +
 					`  → Total: ${allocations.total_allocated}/${allocations.total_capacity}\n` +
@@ -230,7 +230,7 @@ export function createCallbacks(): ComputationCallbacks {
 				throw error;
 			}
 		},
-		
+
 		/**
 		 * Log computation events for monitoring
 		 * Uses shared utility for consistent logging
@@ -253,9 +253,9 @@ export async function validateCallbacks(): Promise<{
 	const callbacks = createCallbacks();
 	const results: Record<string, any> = {};
 	const errors: string[] = [];
-	
+
 	console.log('[CALLBACKS-VALIDATION] 🔍 Starting validation...');
-	
+
 	try {
 		// Test recognition data fetch
 		try {
@@ -269,7 +269,7 @@ export async function validateCallbacks(): Promise<{
 			errors.push(`Recognition data fetch failed: ${err}`);
 			console.error('[CALLBACKS-VALIDATION]   ✗ Recognition data fetch failed:', err);
 		}
-		
+
 		// Test auto-update capacities fetch
 		try {
 			const capacities = await callbacks.fetchAutoUpdateCapacities();
@@ -282,7 +282,7 @@ export async function validateCallbacks(): Promise<{
 			errors.push(`Auto-update capacities fetch failed: ${err}`);
 			console.error('[CALLBACKS-VALIDATION]   ✗ Auto-update capacities fetch failed:', err);
 		}
-		
+
 		// Test capacities for allocation fetch
 		try {
 			const capacities = await callbacks.fetchCapacitiesForAllocation();
@@ -295,7 +295,7 @@ export async function validateCallbacks(): Promise<{
 			errors.push(`Allocation capacities fetch failed: ${err}`);
 			console.error('[CALLBACKS-VALIDATION]   ✗ Allocation capacities fetch failed:', err);
 		}
-		
+
 		// Test needs fetch
 		try {
 			const needs = await callbacks.fetchNeeds();
@@ -308,17 +308,17 @@ export async function validateCallbacks(): Promise<{
 			errors.push(`Needs fetch failed: ${err}`);
 			console.error('[CALLBACKS-VALIDATION]   ✗ Needs fetch failed:', err);
 		}
-		
+
 		const success = errors.length === 0;
-		
+
 		if (success) {
 			console.log('[CALLBACKS-VALIDATION] ✅ All validations passed');
 		} else {
 			console.log(`[CALLBACKS-VALIDATION] ⚠️  Validation completed with ${errors.length} errors`);
 		}
-		
+
 		return { success, results, errors };
-		
+
 	} catch (error) {
 		console.error('[CALLBACKS-VALIDATION] ❌ Validation failed:', error);
 		return {

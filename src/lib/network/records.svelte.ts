@@ -1,7 +1,7 @@
 /**
  * Coalition Records System
  * 
- * Manages secretariat records using Holster distributed storage.
+ * Manages secretariat records using Mesh distributed storage.
  * Records are stored per-user and synchronized across the network.
  * 
  * Storage structure:
@@ -11,7 +11,7 @@
 
 import { writable, derived, get } from 'svelte/store';
 import type { Readable, Writable } from 'svelte/store';
-import { holster, holsterUser, isAuthenticated } from './holster';
+import { mesh, meshUser, isAuthenticated } from './mesh';
 import { createVersionedStore, type VersionedStore } from '../utils/primitives/v-store.svelte';
 import type {
 	Record as CoalitionRecord,
@@ -105,13 +105,13 @@ export function initializeMyRecords(): void {
 		return;
 	}
 
-	const authState = holsterUser.is;
+	const authState = meshUser.is;
 	if (!authState) return;
 
 	console.log('[RECORDS] Initializing my records...');
 
 	// Subscribe to my record index
-	const recordIndexRef = holster.user().get('coalition').get('record_index');
+	const recordIndexRef = mesh.user().get('coalition').get('record_index');
 
 	recordIndexRef.next().get((data: any, key: string) => {
 		if (!data || typeof data !== 'object') return;
@@ -132,7 +132,7 @@ export function initializeMyRecords(): void {
  * Load a specific record from my user space
  */
 function loadMyRecord(recordId: UUID): void {
-	const recordRef = holster.user().get('coalition').get('records').get(recordId);
+	const recordRef = mesh.user().get('coalition').get('records').get(recordId);
 
 	recordRef.next().get((data: any, key: string) => {
 		if (!data || typeof data !== 'object') return;
@@ -190,7 +190,7 @@ export function subscribeToParticipantRecords(pubKey: string): void {
 	});
 
 	// Subscribe to their record index
-	const recordIndexRef = holster.user(pubKey).get('coalition').get('record_index');
+	const recordIndexRef = mesh.user(pubKey).get('coalition').get('record_index');
 
 	const unsubIndex = recordIndexRef.next().get((data: any, key: string) => {
 		if (!data || typeof data !== 'object') return;
@@ -220,7 +220,7 @@ export function subscribeToParticipantRecords(pubKey: string): void {
  * Load a specific record from another participant
  */
 function loadNetworkRecord(pubKey: string, recordId: UUID): void {
-	const recordRef = holster.user(pubKey).get('coalition').get('records').get(recordId);
+	const recordRef = mesh.user(pubKey).get('coalition').get('records').get(recordId);
 
 	recordRef.next().get((data: any, key: string) => {
 		if (!data || typeof data !== 'object') return;
@@ -291,7 +291,7 @@ export async function issueRecord(record: CoalitionRecord): Promise<void> {
 		throw new Error('Cannot issue record - not authenticated');
 	}
 
-	const authState = holsterUser.is;
+	const authState = meshUser.is;
 	if (!authState) {
 		throw new Error('No authenticated user');
 	}
@@ -311,7 +311,7 @@ export async function issueRecord(record: CoalitionRecord): Promise<void> {
 	console.log(`[RECORDS] 📝 Issuing record ${record.id} (${record.type})...`);
 
 	// Store record
-	const recordRef = holster.user().get('coalition').get('records').get(record.id);
+	const recordRef = mesh.user().get('coalition').get('records').get(record.id);
 	await new Promise<void>((resolve, reject) => {
 		recordRef.put(record, (ack: any) => {
 			if (ack.err) {
@@ -327,7 +327,7 @@ export async function issueRecord(record: CoalitionRecord): Promise<void> {
 	const recordIds = Array.from(currentRecords.keys());
 	recordIds.push(record.id);
 
-	const indexRef = holster.user().get('coalition').get('record_index');
+	const indexRef = mesh.user().get('coalition').get('record_index');
 	await new Promise<void>((resolve, reject) => {
 		indexRef.put({ ids: recordIds, updated: Date.now() }, (ack: any) => {
 			if (ack.err) {
@@ -380,7 +380,7 @@ export async function updateRecordStatus(
 	validateRecord(updatedRecord);
 
 	// Store updated record
-	const recordRef = holster.user().get('coalition').get('records').get(recordId);
+	const recordRef = mesh.user().get('coalition').get('records').get(recordId);
 	await new Promise<void>((resolve, reject) => {
 		recordRef.put(updatedRecord, (ack: any) => {
 			if (ack.err) {
@@ -415,7 +415,7 @@ export function getRecordsForParticipant(pubKey: string): Readable<CoalitionReco
 	return derived(
 		[myRecords, networkRecords],
 		([$myRecords, $networkRecords]) => {
-			const authState = holsterUser.is;
+			const authState = meshUser.is;
 			if (authState?.pub === pubKey) {
 				// Return my records
 				return Array.from($myRecords.values());

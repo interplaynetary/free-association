@@ -9,7 +9,7 @@ import { listenToSWMessages } from './sw-messaging';
  */
 export async function unregisterServiceWorkers() {
 	if (!('serviceWorker' in navigator)) return;
-	
+
 	const registrations = await navigator.serviceWorker.getRegistrations();
 	for (const registration of registrations) {
 		await registration.unregister();
@@ -38,7 +38,7 @@ export function registerServiceWorker() {
 	}
 
 	console.log('[PWA] Service worker registration disabled');
-	
+
 	// PWA functionality disabled
 	// // Listen to messages from service worker
 	// listenToSWMessages((message) => {
@@ -57,10 +57,10 @@ export function registerServiceWorker() {
 	// 			console.log('[PWA] Background sync complete');
 	// 			toast.success('Data synced!', { id: 'sync-toast' });
 	// 			break;
-	// 		case 'HOLSTER_SYNC_REQUESTED':
-	// 			console.log('[PWA] Holster sync requested by service worker');
-	// 			// Trigger Holster sync in main app
-	// 			window.dispatchEvent(new CustomEvent('holster-sync-requested'));
+	// 		case 'MESH_SYNC_REQUESTED':
+	// 			console.log('[PWA] Mesh sync requested by service worker');
+	// 			// Trigger Mesh sync in main app
+	// 			window.dispatchEvent(new CustomEvent('mesh-sync-requested'));
 	// 			break;
 	// 	}
 	// });
@@ -99,7 +99,7 @@ export function registerServiceWorker() {
  */
 function showUpdatePrompt() {
 	let currentToastId: string;
-	
+
 	// Create a container for the custom toast UI
 	const createToastContent = () => {
 		const container = document.createElement('div');
@@ -122,7 +122,7 @@ function showUpdatePrompt() {
 				</button>
 			</div>
 		`;
-		
+
 		// Attach event listeners
 		setTimeout(() => {
 			container.querySelector('#pwa-update-btn')?.addEventListener('click', () => {
@@ -133,10 +133,10 @@ function showUpdatePrompt() {
 				if (currentToastId) toast.dismiss(currentToastId);
 			});
 		}, 0);
-		
+
 		return container;
 	};
-	
+
 	// Show toast with custom HTML element
 	currentToastId = toast.custom(
 		createToastContent() as any,

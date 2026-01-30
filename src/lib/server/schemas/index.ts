@@ -11,11 +11,13 @@ export {
   CompletionRequestSchema,
   TokenRequestSchema,
   TypedFlowFieldsSchema,
+  OpenRouterResponseSchema,
   type Message,
   type BaseCompletionRequest,
   type ExtendedCompletionRequest,
   type CompletionRequest,
-  type TokenRequest
+  type TokenRequest,
+  type OpenRouterResponse
 } from './completion';
 
 // Routing schemas

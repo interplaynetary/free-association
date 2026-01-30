@@ -13,26 +13,26 @@ import { describe, test, expect, beforeAll, mock } from 'bun:test';
 // MOCK DEPENDENCIES (MUST BE BEFORE ANY OTHER IMPORTS)
 // ═══════════════════════════════════════════════════════════════════
 
-// Mock Gun/Holster
-const mockHolsterStore: Record<string, any> = {};
+// Mock Gun/Mesh
+const mockMeshStore: Record<string, any> = {};
 const mockArrayStore: Record<string, Record<string, any>> = {};
 
-const mockHolsterUser = {
+const mockMeshUser = {
 	get: (path: string | [string, string]) => {
 		if (Array.isArray(path)) {
-			const [pubkey, holsterPath] = path;
-			const key = `${pubkey}/${holsterPath}`;
-			
+			const [pubkey, meshPath] = path;
+			const key = `${pubkey}/${meshPath}`;
+
 			return {
 				put: (data: any) => {
 					if (!mockArrayStore[pubkey]) {
 						mockArrayStore[pubkey] = {};
 					}
-					mockArrayStore[pubkey][holsterPath] = data;
+					mockArrayStore[pubkey][meshPath] = data;
 				},
 				once: (callback: (data: any) => void) => {
 					setTimeout(() => {
-						const data = mockArrayStore[pubkey]?.[holsterPath];
+						const data = mockArrayStore[pubkey]?.[meshPath];
 						callback(data);
 					}, 10);
 				},
@@ -42,7 +42,7 @@ const mockHolsterUser = {
 							const userData = mockArrayStore[pubkey];
 							if (userData) {
 								// Find all paths that start with the given path
-								const basePath = holsterPath;
+								const basePath = meshPath;
 								for (const [subPath, data] of Object.entries(userData)) {
 									if (subPath.startsWith(basePath + '/')) {
 										const key = subPath.substring(basePath.length + 1);
@@ -58,29 +58,29 @@ const mockHolsterUser = {
 						mockArrayStore[pubkey] = {};
 					}
 					// For set(), we append to an array-like structure
-					const existing = mockArrayStore[pubkey][holsterPath] || [];
+					const existing = mockArrayStore[pubkey][meshPath] || [];
 					if (Array.isArray(existing)) {
 						existing.push(value);
 					} else {
-						mockArrayStore[pubkey][holsterPath] = [value];
+						mockArrayStore[pubkey][meshPath] = [value];
 					}
 				}
 			};
 		} else {
 			return {
 				put: (data: any) => {
-					mockHolsterStore[path] = data;
+					mockMeshStore[path] = data;
 				},
 				once: (callback: (data: any) => void) => {
 					setTimeout(() => {
-						callback(mockHolsterStore[path]);
+						callback(mockMeshStore[path]);
 					}, 10);
 				},
 				map: () => ({
 					once: (callback: (data: any, key: string) => void) => {
 						setTimeout(() => {
 							// Find all paths that start with the given path
-							for (const [subPath, data] of Object.entries(mockHolsterStore)) {
+							for (const [subPath, data] of Object.entries(mockMeshStore)) {
 								if (subPath.startsWith(path + '/')) {
 									const key = subPath.substring(path.length + 1);
 									callback(data, key);
@@ -91,11 +91,11 @@ const mockHolsterUser = {
 				}),
 				set: (value: string) => {
 					// For set(), we append to an array-like structure
-					const existing = mockHolsterStore[path] || [];
+					const existing = mockMeshStore[path] || [];
 					if (Array.isArray(existing)) {
 						existing.push(value);
 					} else {
-						mockHolsterStore[path] = [value];
+						mockMeshStore[path] = [value];
 					}
 				}
 			};
@@ -104,18 +104,18 @@ const mockHolsterUser = {
 };
 
 // Mock modules BEFORE importing the modules that depend on them
-mock.module('$lib/network/holster.svelte', () => ({
-	holsterUser: mockHolsterUser
+mock.module('$lib/network/mesh.svelte', () => ({
+	meshUser: mockMeshUser
 }));
 
 mock.module('$lib/state/user.svelte', () => ({
-	myPubKey: { subscribe: (fn: any) => fn('alice'), set: () => {} },
-	default: { subscribe: (fn: any) => fn('alice'), set: () => {} }
+	myPubKey: { subscribe: (fn: any) => fn('alice'), set: () => { } },
+	default: { subscribe: (fn: any) => fn('alice'), set: () => { } }
 }));
 
 mock.module('$lib/commons/algorithm.svelte', () => ({
-	myVectorClock: { subscribe: (fn: any) => fn({ alice: 0 }), set: () => {} },
-	incrementMyVectorClock: async () => {}
+	myVectorClock: { subscribe: (fn: any) => fn({ alice: 0 }), set: () => { } },
+	incrementMyVectorClock: async () => { }
 }));
 
 mock.module('$app/environment', () => ({
@@ -127,15 +127,15 @@ mock.module('$app/environment', () => ({
 
 // Now import the modules
 import { ComputationGraphRuntime, registerComputationFunction } from '../compute.svelte';
-import { 
-	prefixHolsterPath, 
+import {
+	prefixMeshPath,
 	createProvenanceSignature,
-	hashContent 
+	hashContent
 } from '../program-hash.svelte';
-import type { 
-	ComputationProvenance, 
+import type {
+	ComputationProvenance,
 	VectorClock,
-	ReactiveComputationGraph 
+	ReactiveComputationGraph
 } from '../../v1/schemas';
 
 // ═══════════════════════════════════════════════════════════════════
@@ -166,10 +166,10 @@ function createMockProvenance(
 // ═══════════════════════════════════════════════════════════════════
 
 describe('Hybrid Storage - Storage Locations', () => {
-	
+
 	test('should write to canonical path', async () => {
 		registerComputationFunction('add', (inputs: any) => inputs.a + inputs.b);
-		
+
 		const program: ReactiveComputationGraph = {
 			id: 'test-canonical',
 			variables: {
@@ -184,21 +184,21 @@ describe('Hybrid Storage - Storage Locations', () => {
 				},
 				compute_fn: 'add',
 				outputs: {
-					result: { type: 'holster', holster_path: 'math/sum' }
+					result: { type: 'mesh', mesh_path: 'math/sum' }
 				}
 			}]
 		};
-		
+
 		const runtime = new ComputationGraphRuntime(program, { enableProvenance: true });
 		await runtime.initialize();
 		await runtime.execute();
-		
+
 		const programHash = runtime.getProgramHash();
-		const canonicalPath = prefixHolsterPath(programHash, 'math/sum');
-		
+		const canonicalPath = prefixMeshPath(programHash, 'math/sum');
+
 		// Wait for async writes
 		await new Promise(resolve => setTimeout(resolve, 100));
-		
+
 		// Check canonical path exists
 		const stored = mockArrayStore['alice']?.[canonicalPath];
 		expect(stored).toBeDefined();
@@ -206,10 +206,10 @@ describe('Hybrid Storage - Storage Locations', () => {
 		expect(stored._provenance).toBeDefined();
 		expect(stored._updatedAt).toBeDefined();
 	});
-	
+
 	test('should write to versioned path', async () => {
 		registerComputationFunction('multiply', (inputs: any) => inputs.a * inputs.b);
-		
+
 		const program: ReactiveComputationGraph = {
 			id: 'test-versioned',
 			variables: {
@@ -224,39 +224,39 @@ describe('Hybrid Storage - Storage Locations', () => {
 				},
 				compute_fn: 'multiply',
 				outputs: {
-					result: { type: 'holster', holster_path: 'math/product' }
+					result: { type: 'mesh', mesh_path: 'math/product' }
 				}
 			}]
 		};
-		
+
 		const runtime = new ComputationGraphRuntime(program, { enableProvenance: true });
 		await runtime.initialize();
 		await runtime.execute();
-		
+
 		const programHash = runtime.getProgramHash();
-		const canonicalPath = prefixHolsterPath(programHash, 'math/product');
-		
+		const canonicalPath = prefixMeshPath(programHash, 'math/product');
+
 		// Wait for async writes
 		await new Promise(resolve => setTimeout(resolve, 100));
-		
+
 		// Check for version path (should contain provenance signature)
 		const userData = mockArrayStore['alice'] || {};
 		const versionPaths = Object.keys(userData).filter(
 			path => path.includes('_versions/')
 		);
-		
+
 		expect(versionPaths.length).toBeGreaterThan(0);
-		
+
 		// Check version has _immutable flag
 		const firstVersionPath = versionPaths[0];
 		const versionData = userData[firstVersionPath];
 		expect(versionData._immutable).toBe(true);
 		expect(versionData.data).toBe(28);
 	});
-	
+
 	test('should update latest index', async () => {
 		registerComputationFunction('subtract', (inputs: any) => inputs.a - inputs.b);
-		
+
 		const program: ReactiveComputationGraph = {
 			id: 'test-latest-index',
 			variables: {
@@ -271,31 +271,31 @@ describe('Hybrid Storage - Storage Locations', () => {
 				},
 				compute_fn: 'subtract',
 				outputs: {
-					result: { type: 'holster', holster_path: 'math/difference' }
+					result: { type: 'mesh', mesh_path: 'math/difference' }
 				}
 			}]
 		};
-		
+
 		const runtime = new ComputationGraphRuntime(program, { enableProvenance: true });
 		await runtime.initialize();
 		await runtime.execute();
-		
+
 		const programHash = runtime.getProgramHash();
 		const latestIndexPath = `${programHash}/_index/latest/math/difference`;
-		
+
 		// Wait for async writes
 		await new Promise(resolve => setTimeout(resolve, 100));
-		
+
 		// Check latest index
 		const latestSig = mockArrayStore['alice']?.[latestIndexPath];
 		expect(latestSig).toBeDefined();
 		expect(typeof latestSig).toBe('string');
 		expect(latestSig).toMatch(/^p_/); // Provenance signature format
 	});
-	
+
 	test('should update computations index', async () => {
 		registerComputationFunction('divide', (inputs: any) => inputs.a / inputs.b);
-		
+
 		const program: ReactiveComputationGraph = {
 			id: 'test-comp-index',
 			variables: {
@@ -310,30 +310,30 @@ describe('Hybrid Storage - Storage Locations', () => {
 				},
 				compute_fn: 'divide',
 				outputs: {
-					result: { type: 'holster', holster_path: 'math/quotient' }
+					result: { type: 'mesh', mesh_path: 'math/quotient' }
 				}
 			}]
 		};
-		
+
 		const runtime = new ComputationGraphRuntime(program, { enableProvenance: true });
 		await runtime.initialize();
 		await runtime.execute();
-		
+
 		const programHash = runtime.getProgramHash();
 		const compIndexPath = `${programHash}/_index/computations/quotient`;
-		
+
 		// Wait for async writes
 		await new Promise(resolve => setTimeout(resolve, 100));
-		
+
 		// Check computations index
 		const outputs = mockArrayStore['alice']?.[compIndexPath];
 		expect(outputs).toBeDefined();
 		expect(Array.isArray(outputs)).toBe(true);
 	});
-	
+
 	test('should update lineage index', async () => {
 		registerComputationFunction('square', (inputs: any) => inputs.x * inputs.x);
-		
+
 		const program: ReactiveComputationGraph = {
 			id: 'test-lineage-index',
 			variables: {
@@ -346,28 +346,28 @@ describe('Hybrid Storage - Storage Locations', () => {
 				},
 				compute_fn: 'square',
 				outputs: {
-					result: { type: 'holster', holster_path: 'math/squared' }
+					result: { type: 'mesh', mesh_path: 'math/squared' }
 				}
 			}]
 		};
-		
+
 		const runtime = new ComputationGraphRuntime(program, { enableProvenance: true });
 		await runtime.initialize();
 		await runtime.execute();
-		
+
 		const programHash = runtime.getProgramHash();
-		
+
 		// Wait for async writes
 		await new Promise(resolve => setTimeout(resolve, 100));
-		
+
 		// Check lineage index (path format: <hash>/_index/lineage/<prov_id>)
 		const userData = mockArrayStore['alice'] || {};
 		const lineagePaths = Object.keys(userData).filter(
 			path => path.includes('/_index/lineage/')
 		);
-		
+
 		expect(lineagePaths.length).toBeGreaterThan(0);
-		
+
 		// Check lineage data structure
 		const lineageData = userData[lineagePaths[0]];
 		expect(lineageData.computationId).toBe('squared');
@@ -382,13 +382,13 @@ describe('Hybrid Storage - Storage Locations', () => {
 // ═══════════════════════════════════════════════════════════════════
 
 describe('Hybrid Storage - Query Methods', () => {
-	
+
 	test('getLatest() should return latest data', async () => {
 		// Clear mock store
 		Object.keys(mockArrayStore).forEach(key => delete mockArrayStore[key]);
-		
+
 		registerComputationFunction('double', (inputs: any) => inputs.x * 2);
-		
+
 		const program: ReactiveComputationGraph = {
 			id: 'test-get-latest',
 			variables: {
@@ -401,33 +401,33 @@ describe('Hybrid Storage - Query Methods', () => {
 				},
 				compute_fn: 'double',
 				outputs: {
-					result: { type: 'holster', holster_path: 'test/doubled' }
+					result: { type: 'mesh', mesh_path: 'test/doubled' }
 				}
 			}]
 		};
-		
+
 		const runtime = new ComputationGraphRuntime(program, { enableProvenance: true });
 		await runtime.initialize();
 		await runtime.execute();
-		
+
 		// Wait for async writes
 		await new Promise(resolve => setTimeout(resolve, 150));
-		
+
 		// Query latest
 		const latest = await runtime.getLatest('test/doubled');
-		
+
 		expect(latest).toBeDefined();
 		expect(latest.data).toBe(10);
 		expect(latest._provenance).toBeDefined();
 		expect(latest._updatedAt).toBeDefined();
 	});
-	
+
 	test('getAllVersions() should return version history', async () => {
 		// Clear mock store
 		Object.keys(mockArrayStore).forEach(key => delete mockArrayStore[key]);
-		
+
 		registerComputationFunction('increment', (inputs: any) => inputs.value + 1);
-		
+
 		const program: ReactiveComputationGraph = {
 			id: 'test-versions',
 			variables: {
@@ -440,27 +440,27 @@ describe('Hybrid Storage - Query Methods', () => {
 				},
 				compute_fn: 'increment',
 				outputs: {
-					result: { type: 'holster', holster_path: 'counter/value' }
+					result: { type: 'mesh', mesh_path: 'counter/value' }
 				}
 			}]
 		};
-		
+
 		const runtime = new ComputationGraphRuntime(program, { enableProvenance: true });
 		await runtime.initialize();
-		
+
 		// Execute 3 times
 		for (let i = 0; i < 3; i++) {
 			runtime['localState']['value'] = i;
 			await runtime.execute();
 			await new Promise(resolve => setTimeout(resolve, 50));
 		}
-		
+
 		// Wait for all async writes
 		await new Promise(resolve => setTimeout(resolve, 200));
-		
+
 		// Query all versions
 		const versions = await runtime.getAllVersions('counter/value');
-		
+
 		expect(versions.length).toBeGreaterThanOrEqual(1);
 		// Each version should have data and provenance
 		for (const v of versions) {
@@ -476,33 +476,33 @@ describe('Hybrid Storage - Query Methods', () => {
 // ═══════════════════════════════════════════════════════════════════
 
 describe('Hybrid Storage - Path Structure', () => {
-	
+
 	test('canonical path should be predictable', () => {
 		const programHash = 'abc123';
-		const holsterPath = 'analytics/count';
-		
-		const canonical = prefixHolsterPath(programHash, holsterPath);
-		
+		const meshPath = 'analytics/count';
+
+		const canonical = prefixMeshPath(programHash, meshPath);
+
 		expect(canonical).toBe('abc123/analytics/count');
 	});
-	
+
 	test('version path should include provenance signature', () => {
 		const provenance = createMockProvenance('prov-1', 'test', { alice: 5 });
 		const sig = createProvenanceSignature(provenance);
-		
+
 		expect(sig).toMatch(/^p_/);
 		expect(sig).toContain('alice:5');
 		expect(sig).toContain('comp:test');
 		expect(sig).toContain('det:');
 	});
-	
+
 	test('index paths should be namespaced', () => {
 		const programHash = 'abc123';
-		
+
 		const latestIndex = `${programHash}/_index/latest/some/path`;
 		const compIndex = `${programHash}/_index/computations/my-comp`;
 		const lineageIndex = `${programHash}/_index/lineage/prov-123`;
-		
+
 		expect(latestIndex).toContain('/_index/latest/');
 		expect(compIndex).toContain('/_index/computations/');
 		expect(lineageIndex).toContain('/_index/lineage/');
@@ -514,13 +514,13 @@ describe('Hybrid Storage - Path Structure', () => {
 // ═══════════════════════════════════════════════════════════════════
 
 describe('Hybrid Storage - Data Integrity', () => {
-	
+
 	test('canonical and versioned should have same data', async () => {
 		// Clear mock store
 		Object.keys(mockArrayStore).forEach(key => delete mockArrayStore[key]);
-		
+
 		registerComputationFunction('negate', (inputs: any) => -inputs.x);
-		
+
 		const program: ReactiveComputationGraph = {
 			id: 'test-integrity',
 			variables: {
@@ -533,44 +533,44 @@ describe('Hybrid Storage - Data Integrity', () => {
 				},
 				compute_fn: 'negate',
 				outputs: {
-					result: { type: 'holster', holster_path: 'test/negated' }
+					result: { type: 'mesh', mesh_path: 'test/negated' }
 				}
 			}]
 		};
-		
+
 		const runtime = new ComputationGraphRuntime(program, { enableProvenance: true });
 		await runtime.initialize();
 		await runtime.execute();
-		
+
 		// Wait for async writes
 		await new Promise(resolve => setTimeout(resolve, 150));
-		
+
 		// Get canonical
 		const canonical = await runtime.getLatest('test/negated');
-		
+
 		// Get version
 		const versions = await runtime.getAllVersions('test/negated');
-		
+
 		expect(canonical).toBeDefined();
 		expect(versions.length).toBeGreaterThan(0);
-		
+
 		// Data should match
 		const firstVersion = versions[0];
 		expect(canonical.data).toBe(firstVersion.data);
-		
+
 		// Provenance should match
 		expect(canonical._provenance.id).toBe(firstVersion._provenance.id);
 		expect(canonical._provenance.deterministicHash).toBe(
 			firstVersion._provenance.deterministicHash
 		);
 	});
-	
+
 	test('version should be immutable', async () => {
 		// Clear mock store
 		Object.keys(mockArrayStore).forEach(key => delete mockArrayStore[key]);
-		
+
 		registerComputationFunction('identity', (inputs: any) => inputs.x);
-		
+
 		const program: ReactiveComputationGraph = {
 			id: 'test-immutable',
 			variables: {
@@ -583,20 +583,20 @@ describe('Hybrid Storage - Data Integrity', () => {
 				},
 				compute_fn: 'identity',
 				outputs: {
-					result: { type: 'holster', holster_path: 'test/immutable' }
+					result: { type: 'mesh', mesh_path: 'test/immutable' }
 				}
 			}]
 		};
-		
+
 		const runtime = new ComputationGraphRuntime(program, { enableProvenance: true });
 		await runtime.initialize();
 		await runtime.execute();
-		
+
 		// Wait for async writes
 		await new Promise(resolve => setTimeout(resolve, 150));
-		
+
 		const versions = await runtime.getAllVersions('test/immutable');
-		
+
 		expect(versions.length).toBeGreaterThan(0);
 		expect(versions[0]._immutable).toBe(true);
 	});

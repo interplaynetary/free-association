@@ -13,7 +13,7 @@ import { config } from '$lib/server/config';
  * 3. Flow system handles: routing → prompt generation → execution → health reporting
  * 4. Post-processes: extracts and validates quest JSON
  * 
- * No auth required: Users authenticate via P2P (Holster/Gun).
+ * No auth required: Users authenticate via P2P (Mesh/Gun).
  * Server uses MASTER_API_KEY for AI service calls.
  */
 export const POST: RequestHandler = async ({ request, fetch }) => {

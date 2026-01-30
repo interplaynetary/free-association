@@ -21,7 +21,7 @@ import {
 	hashProgram,
 	getProgramHash,
 	verifyProgramHash,
-	prefixHolsterPath,
+	prefixMeshPath,
 	registerProgram,
 	getProgramByHash,
 	listRegisteredPrograms
@@ -52,27 +52,27 @@ registerComputationFunction('increment', ({ value }: { value: number }) => {
 
 export const counterProgram: ReactiveComputationGraph = {
 	id: 'simple-counter',
-	
+
 	variables: {
 		currentCount: {
 			type: 'subscription',
-			holster_path: 'counter',  // Will become: <hash>/counter
+			mesh_path: 'counter',  // Will become: <hash>/counter
 			schema_type: 'Number',
 			default_value: 0
 		}
 	},
-	
+
 	computations: [
 		{
 			id: 'increment',
 			inputs: {
-				value: { type: 'subscription', holster_path: 'counter', schema_type: 'Number', default_value: 0 }
+				value: { type: 'subscription', mesh_path: 'counter', schema_type: 'Number', default_value: 0 }
 			},
 			compute_fn: 'increment',
 			outputs: {
 				result: {
-					type: 'holster',
-					holster_path: 'counter',  // Will become: <hash>/counter
+					type: 'mesh',
+					mesh_path: 'counter',  // Will become: <hash>/counter
 					schema_type: 'Number'
 				}
 			}
@@ -85,20 +85,20 @@ export const counterProgram: ReactiveComputationGraph = {
  */
 export async function runAutoHashedCounter() {
 	console.log('=== Automatic Program Hashing Example ===\n');
-	
+
 	// Create runtime - program is automatically hashed
 	const runtime = new ComputationGraphRuntime(counterProgram);
 	const hash = runtime.getProgramHash();
-	
+
 	console.log(`Program ID: ${counterProgram.id}`);
 	console.log(`Program Hash: ${hash}`);
 	console.log(`Counter will be stored at: ~pubkey/${hash}/counter\n`);
-	
+
 	await runtime.initialize();
 	await runtime.execute();
-	
+
 	console.log(`✓ Counter incremented and stored at: ${hash}/counter`);
-	
+
 	await runtime.cleanup();
 	return hash;
 }
@@ -113,20 +113,20 @@ export async function runAutoHashedCounter() {
  */
 export async function runMultipleInstances() {
 	console.log('=== Multiple Program Instances Example ===\n');
-	
+
 	// Instance 1
 	const runtime1 = new ComputationGraphRuntime(counterProgram);
 	const hash1 = runtime1.getProgramHash();
 	console.log(`Instance 1 hash: ${hash1}`);
-	
+
 	// Instance 2 - same program structure = same hash
 	const runtime2 = new ComputationGraphRuntime(counterProgram);
 	const hash2 = runtime2.getProgramHash();
 	console.log(`Instance 2 hash: ${hash2}`);
-	
+
 	console.log(`\nSame hash? ${hash1 === hash2 ? 'YES ✓' : 'NO ✗'}`);
 	console.log('Both instances will read/write the same data!\n');
-	
+
 	await runtime1.cleanup();
 	await runtime2.cleanup();
 }
@@ -146,27 +146,27 @@ registerComputationFunction('incrementBy2', ({ value }: { value: number }) => {
 
 export const counterProgramV2: ReactiveComputationGraph = {
 	id: 'simple-counter',  // Same ID...
-	
+
 	variables: {
 		currentCount: {
 			type: 'subscription',
-			holster_path: 'counter',
+			mesh_path: 'counter',
 			schema_type: 'Number',
 			default_value: 0
 		}
 	},
-	
+
 	computations: [
 		{
 			id: 'increment',
 			inputs: {
-				value: { type: 'subscription', holster_path: 'counter', schema_type: 'Number', default_value: 0 }
+				value: { type: 'subscription', mesh_path: 'counter', schema_type: 'Number', default_value: 0 }
 			},
 			compute_fn: 'incrementBy2',  // ...but different function!
 			outputs: {
 				result: {
-					type: 'holster',
-					holster_path: 'counter',
+					type: 'mesh',
+					mesh_path: 'counter',
 					schema_type: 'Number'
 				}
 			}
@@ -179,10 +179,10 @@ export const counterProgramV2: ReactiveComputationGraph = {
  */
 export async function demonstrateVersioning() {
 	console.log('=== Program Versioning Example ===\n');
-	
+
 	const hash1 = hashProgram(counterProgram);
 	const hash2 = hashProgram(counterProgramV2);
-	
+
 	console.log(`Counter V1 hash: ${hash1}`);
 	console.log(`Counter V2 hash: ${hash2}`);
 	console.log(`\nDifferent hash? ${hash1 !== hash2 ? 'YES ✓' : 'NO ✗'}`);
@@ -205,30 +205,30 @@ export async function demonstrateVersioning() {
 
 export const counterProgramWithManualHash: ReactiveComputationGraph = {
 	id: 'simple-counter',
-	
+
 	// Manual hash override
 	program_hash: 'counter-v1.0.0',
-	
+
 	variables: {
 		currentCount: {
 			type: 'subscription',
-			holster_path: 'counter',  // Will become: counter-v1.0.0/counter
+			mesh_path: 'counter',  // Will become: counter-v1.0.0/counter
 			schema_type: 'Number',
 			default_value: 0
 		}
 	},
-	
+
 	computations: [
 		{
 			id: 'increment',
 			inputs: {
-				value: { type: 'subscription', holster_path: 'counter', schema_type: 'Number', default_value: 0 }
+				value: { type: 'subscription', mesh_path: 'counter', schema_type: 'Number', default_value: 0 }
 			},
 			compute_fn: 'increment',
 			outputs: {
 				result: {
-					type: 'holster',
-					holster_path: 'counter',  // Will become: counter-v1.0.0/counter
+					type: 'mesh',
+					mesh_path: 'counter',  // Will become: counter-v1.0.0/counter
 					schema_type: 'Number'
 				}
 			}
@@ -241,15 +241,15 @@ export const counterProgramWithManualHash: ReactiveComputationGraph = {
  */
 export async function runWithManualHash() {
 	console.log('=== Manual Hash Override Example ===\n');
-	
+
 	const runtime = new ComputationGraphRuntime(counterProgramWithManualHash);
 	const hash = runtime.getProgramHash();
-	
+
 	console.log(`Program ID: ${counterProgramWithManualHash.id}`);
 	console.log(`Manual Hash: ${hash}`);
 	console.log(`Counter will be stored at: ~pubkey/${hash}/counter`);
 	console.log('\nThis allows semantic versioning in the data path!\n');
-	
+
 	await runtime.cleanup();
 }
 
@@ -262,24 +262,24 @@ export async function runWithManualHash() {
  */
 export function demonstrateRegistry() {
 	console.log('=== Program Registry Example ===\n');
-	
+
 	// Programs are auto-registered when runtime is created
 	// But you can also register manually
 	const hash1 = registerProgram(counterProgram);
 	const hash2 = registerProgram(counterProgramV2);
-	
+
 	console.log('Registered programs:');
 	console.log(`- ${counterProgram.id}: ${hash1}`);
 	console.log(`- ${counterProgramV2.id}: ${hash2}\n`);
-	
+
 	// List all registered programs
 	const allHashes = listRegisteredPrograms();
 	console.log(`Total registered: ${allHashes.length} programs`);
-	
+
 	// Retrieve a program by hash
 	const retrieved = getProgramByHash(hash1);
 	console.log(`\nRetrieved program: ${retrieved?.id}`);
-	
+
 	// Verify hash matches structure
 	const isValid = verifyProgramHash(counterProgram);
 	console.log(`Hash verification: ${isValid ? 'VALID ✓' : 'INVALID ✗'}\n`);
@@ -294,19 +294,19 @@ export function demonstrateRegistry() {
  */
 export function demonstratePathPrefixing() {
 	console.log('=== Path Prefixing Example ===\n');
-	
+
 	const programHash = 'abc123def456';
-	
+
 	// Prefix paths
 	console.log('Original path: "tree"');
-	console.log(`Prefixed path: "${prefixHolsterPath(programHash, 'tree')}"`);
+	console.log(`Prefixed path: "${prefixMeshPath(programHash, 'tree')}"`);
 	console.log();
-	
+
 	console.log('Original path: "nodes/node1/data"');
-	console.log(`Prefixed path: "${prefixHolsterPath(programHash, 'nodes/node1/data')}"`);
+	console.log(`Prefixed path: "${prefixMeshPath(programHash, 'nodes/node1/data')}"`);
 	console.log();
-	
-	console.log('This prefixing happens automatically for all holster paths!');
+
+	console.log('This prefixing happens automatically for all mesh paths!');
 	console.log('You define paths as: "tree"');
 	console.log(`Runtime uses: "${programHash}/tree"\n`);
 }
@@ -334,29 +334,29 @@ registerComputationFunction('merge', ({ mine, theirs }: any) => {
 export function createCrossUserProgram(theirPubkey: string): ReactiveComputationGraph {
 	return {
 		id: 'cross-user-counter',
-		
+
 		variables: {
 			myCount: {
 				type: 'subscription',
-				holster_path: 'counter',  // My data: ~me/<hash>/counter
+				mesh_path: 'counter',  // My data: ~me/<hash>/counter
 				schema_type: 'Number',
 				default_value: 0
 			},
 			theirCount: {
 				type: 'subscription',
-				holster_path: 'counter',  // Their data: ~them/<hash>/counter
+				mesh_path: 'counter',  // Their data: ~them/<hash>/counter
 				schema_type: 'Number',
 				subscribe_to_user: theirPubkey,  // Cross-user access
 				default_value: 0
 			}
 		},
-		
+
 		computations: [
 			{
 				id: 'merge',
 				inputs: {
-					mine: { type: 'subscription', holster_path: 'counter', schema_type: 'Number', default_value: 0 },
-					theirs: { type: 'subscription', holster_path: 'counter', schema_type: 'Number', subscribe_to_user: theirPubkey, default_value: 0 }
+					mine: { type: 'subscription', mesh_path: 'counter', schema_type: 'Number', default_value: 0 },
+					theirs: { type: 'subscription', mesh_path: 'counter', schema_type: 'Number', subscribe_to_user: theirPubkey, default_value: 0 }
 				},
 				compute_fn: 'merge',
 				outputs: {
@@ -375,20 +375,20 @@ export function createCrossUserProgram(theirPubkey: string): ReactiveComputation
  */
 export async function runCrossUserExample() {
 	console.log('=== Cross-User Program Data Example ===\n');
-	
+
 	const theirPubkey = 'peer-pubkey-here';
 	const program = createCrossUserProgram(theirPubkey);
-	
+
 	const runtime = new ComputationGraphRuntime(program);
 	const hash = runtime.getProgramHash();
-	
+
 	console.log(`Program hash: ${hash}\n`);
 	console.log('Data paths:');
 	console.log(`  My counter: ~me/${hash}/counter`);
 	console.log(`  Their counter: ~${theirPubkey}/${hash}/counter\n`);
 	console.log('Both users run the SAME program (same hash)');
 	console.log('But each has their own data namespace!\n');
-	
+
 	await runtime.cleanup();
 }
 
@@ -401,20 +401,20 @@ export async function runCrossUserExample() {
  */
 export function demonstrateBenefits() {
 	console.log('=== Data Organization Benefits ===\n');
-	
+
 	console.log('WITHOUT program hashing:');
 	console.log('  ~pubkey/tree         ← Which program owns this?');
 	console.log('  ~pubkey/counter      ← Is this from app A or B?');
 	console.log('  ~pubkey/nodes/node1  ← Name collision risk!');
 	console.log();
-	
+
 	console.log('WITH program hashing:');
 	console.log('  ~pubkey/abc123/tree      ← Program abc123');
 	console.log('  ~pubkey/abc123/counter   ← Program abc123');
 	console.log('  ~pubkey/def456/tree      ← Program def456 (different tree!)');
 	console.log('  ~pubkey/def456/counter   ← Program def456 (different counter!)');
 	console.log();
-	
+
 	console.log('Benefits:');
 	console.log('  ✓ No naming collisions');
 	console.log('  ✓ Clear program ownership');
@@ -434,25 +434,25 @@ export function demonstrateBenefits() {
 export async function runAllProgramHashExamples() {
 	await runAutoHashedCounter();
 	console.log('\n' + '='.repeat(70) + '\n');
-	
+
 	await runMultipleInstances();
 	console.log('\n' + '='.repeat(70) + '\n');
-	
+
 	await demonstrateVersioning();
 	console.log('='.repeat(70) + '\n');
-	
+
 	await runWithManualHash();
 	console.log('='.repeat(70) + '\n');
-	
+
 	demonstrateRegistry();
 	console.log('='.repeat(70) + '\n');
-	
+
 	demonstratePathPrefixing();
 	console.log('='.repeat(70) + '\n');
-	
+
 	await runCrossUserExample();
 	console.log('='.repeat(70) + '\n');
-	
+
 	demonstrateBenefits();
 }
 

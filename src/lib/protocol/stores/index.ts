@@ -2,7 +2,7 @@
  * Free Association Protocol - Svelte Stores
  * 
  * Reactive Svelte wrappers around the pure protocol core.
- * These stores provide real-time synchronization via Holster P2P.
+ * These stores provide real-time synchronization via Mesh P2P.
  * 
  * Dependencies:
  * - svelte (reactive stores)

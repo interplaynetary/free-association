@@ -32,7 +32,7 @@ sudo chown -R $USER:$USER /var/www/free-association
 
 # Create data directories
 echo "📁 Creating data directories..."
-mkdir -p /var/www/free-association/holster-data
+mkdir -p /var/www/free-association/mesh-data
 mkdir -p /var/backups/free-association-data
 
 # Create log directory
@@ -56,12 +56,12 @@ MASTER_API_KEY=CHANGE_ME_$(openssl rand -hex 32)
 OPENROUTER_KEYS=your-keys-here
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
 
-# Holster Relay
-HOLSTER_RELAY_HOST=0.0.0.0
-HOLSTER_RELAY_PORT=8766
-HOLSTER_RELAY_STORAGE=true
-HOLSTER_RELAY_STORAGE_PATH=./holster-data
-HOLSTER_MAX_CONNECTIONS=500
+# Mesh Relay
+MESH_RELAY_HOST=0.0.0.0
+MESH_RELAY_PORT=8766
+MESH_RELAY_STORAGE=true
+MESH_RELAY_STORAGE_PATH=./mesh-data
+MESH_MAX_CONNECTIONS=500
 
 # CORS (your frontend domain)
 ALLOWED_ORIGINS=https://free.playnet.lol
@@ -114,8 +114,8 @@ server {
         }
     }
 
-    # Holster relay WebSocket
-    location /holster {
+    # Mesh relay WebSocket
+    location /mesh {
         proxy_pass http://localhost:8766;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
@@ -144,7 +144,7 @@ sudo ufw allow 22/tcp
 sudo ufw allow 80/tcp
 sudo ufw allow 443/tcp
 sudo ufw allow 3000/tcp  # SvelteKit server
-sudo ufw allow 8766/tcp  # Holster relay
+sudo ufw allow 8766/tcp  # Mesh relay
 sudo ufw --force enable
 
 # Setup automatic backups
@@ -157,9 +157,9 @@ BACKUP_DIR="/var/backups/free-association-data"
 DATE=$(date +%Y%m%d_%H%M%S)
 RETENTION_DAYS=7
 
-# Backup Holster data
-if [ -d "/var/www/free-association/holster-data" ]; then
-    tar -czf "$BACKUP_DIR/holster-data-$DATE.tar.gz" -C /var/www/free-association holster-data
+# Backup Mesh data
+if [ -d "/var/www/free-association/mesh-data" ]; then
+    tar -czf "$BACKUP_DIR/mesh-data-$DATE.tar.gz" -C /var/www/free-association mesh-data
 fi
 
 # Remove old backups

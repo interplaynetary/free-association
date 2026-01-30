@@ -9,7 +9,7 @@
 		type LocationData
 	} from './slots';
 	import { t } from '$lib/translations';
-	import { holsterUserPub } from '$lib/network/holster.svelte';
+	import { meshUserPub } from '$lib/network/mesh.svelte';
 
 	interface Props {
 		slot: AvailabilitySlot;
@@ -302,11 +302,11 @@
 	</div>
 
 	<!-- Allocation Details (integrated into slot) -->
-	{#if $holsterUserPub}
+	{#if $meshUserPub}
 		<SlotAllocationDetails 
 			{slot} 
 			{isCapacity} 
-			myPubKey={$holsterUserPub} 
+			myPubKey={$meshUserPub} 
 		/>
 	{/if}
 

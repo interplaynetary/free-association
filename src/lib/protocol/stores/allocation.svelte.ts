@@ -9,7 +9,7 @@
  */
 
 import { derived, get, type Readable } from 'svelte/store';
-import { holsterUserPub } from '$lib/network/holster.svelte';
+import { meshUserPub } from '$lib/network/mesh.svelte';
 
 // ✅ IMPORT DISTRIBUTED IPF ALGORITHM
 import {
@@ -46,7 +46,7 @@ import {
 // IDENTITY & RECOGNITION DERIVED STORES
 // ═══════════════════════════════════════════════════════════════════
 
-export const myPublicKey = holsterUserPub;
+export const myPublicKey = meshUserPub;
 
 // ═══════════════════════════════════════════════════════════════════
 // DISTRIBUTED PROTOCOL LIFECYCLE

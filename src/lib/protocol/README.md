@@ -62,5 +62,5 @@ graph TD
     SOLVER --> IPF
     SOLVER -- Updates --> S_ALL
     COMMIT --> PUB
-    PUB -- Syncs --> P2P(Holster / IPFS)
+    PUB -- Syncs --> P2P(Mesh / IPFS)
 Key Benefit: You can now create a new experimental solver in docs/experimental/ that listens to myResourcesStore but calculates allocations completely differently (e.g., using an auction mechanism), without breaking the network protocol or the existing UI.

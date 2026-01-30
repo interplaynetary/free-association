@@ -67,13 +67,13 @@ export const ProgramStatusSchema = z.object({
 export const GenericProgramDefinitionSchema = z.object({
 	/** Language/runtime type: "RDL", "SQL", "WASM", etc. */
 	program_type: z.string(),
-	
+
 	/** Language version: "1.0.0", etc. */
 	language_version: z.string(),
-	
+
 	/** Language-specific program data (validated by language runtime) */
 	program_data: z.any(),
-	
+
 	/** Optional program hash (computed from program_data) */
 	program_hash: z.string().optional()
 });
@@ -127,7 +127,7 @@ export const ProgramsNamespaceSchema = z.object({
  */
 export const GenericInputProvenanceSchema = z.object({
 	source: z.string(), // "value", "subscription", "fetch", "local", "derived", etc.
-	path: z.string().optional(), // Holster path if applicable
+	path: z.string().optional(), // Mesh path if applicable
 	contentHash: z.string(), // Hash of input data
 	provenance: z.string().optional() // Parent provenance ID if derived
 });
@@ -152,19 +152,19 @@ export const GenericExecutionProvenanceSchema = z.object({
 	itcStamp: ITCStampSchema,
 	executedBy: z.string(),
 	timestamp: z.number().int().positive(),
-	
+
 	// Program info
 	programHash: z.string(),
 	programType: z.string(), // "RDL", "SQL", "WASM"
-	
+
 	// Execution unit info (language-specific names)
 	executionUnitId: z.string(), // "computation-1", "query-5", "function-main"
 	executionUnitHash: z.string(),
-	
+
 	// I/O tracking
 	inputs: z.record(z.string(), GenericInputProvenanceSchema),
 	outputs: z.record(z.string(), GenericOutputProvenanceSchema),
-	
+
 	// Verification
 	deterministicHash: z.string(),
 	parents: z.array(z.string()).optional()
@@ -176,7 +176,7 @@ export const GenericExecutionProvenanceSchema = z.object({
 
 /**
  * Local Subscription
- * Path: ~{pubKey}/subscriptions/outbound/local/{holsterPath}/
+ * Path: ~{pubKey}/subscriptions/outbound/local/{meshPath}/
  */
 export const LocalSubscriptionSchema = z.object({
 	schema_type: z.string(),
@@ -186,7 +186,7 @@ export const LocalSubscriptionSchema = z.object({
 
 /**
  * Peer Subscription
- * Path: ~{pubKey}/subscriptions/outbound/peers/{peerPubKey}/{holsterPath}/
+ * Path: ~{pubKey}/subscriptions/outbound/peers/{peerPubKey}/{meshPath}/
  */
 export const PeerSubscriptionSchema = z.object({
 	schema_type: z.string(),
@@ -208,7 +208,7 @@ export const OutboundSubscriptionsSchema = z.object({
  * Inbound Subscription (what paths a peer is watching)
  * Path: ~{pubKey}/subscriptions/inbound/{peerPubKey}/
  */
-export const InboundSubscriptionSchema = z.array(z.string()); // Array of holster paths
+export const InboundSubscriptionSchema = z.array(z.string()); // Array of mesh paths
 
 /**
  * Subscriptions Namespace
@@ -379,41 +379,41 @@ export function parseCausalityNamespace(data: unknown): CausalityNamespace | nul
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * Build Holster paths for language-agnostic kernel structure
+ * Build Mesh paths for language-agnostic kernel structure
  */
 export const CorePaths = {
 	// Program paths
-	programRegistry: (pubKey: string, programHash: string) => 
+	programRegistry: (pubKey: string, programHash: string) =>
 		`~${pubKey}/programs/registry/${programHash}`,
-	programActive: (pubKey: string, programHash: string) => 
+	programActive: (pubKey: string, programHash: string) =>
 		`~${pubKey}/programs/active/${programHash}`,
-	programInactive: (pubKey: string, programHash: string) => 
+	programInactive: (pubKey: string, programHash: string) =>
 		`~${pubKey}/programs/inactive/${programHash}`,
-	programSubscribed: (pubKey: string, peerPubKey: string, programHash: string) => 
+	programSubscribed: (pubKey: string, peerPubKey: string, programHash: string) =>
 		`~${pubKey}/programs/subscribed/${peerPubKey}/${programHash}`,
-	
+
 	// Subscription paths
-	subscriptionLocal: (pubKey: string, holsterPath: string) => 
-		`~${pubKey}/subscriptions/outbound/local/${holsterPath}`,
-	subscriptionPeer: (pubKey: string, peerPubKey: string, holsterPath: string) => 
-		`~${pubKey}/subscriptions/outbound/peers/${peerPubKey}/${holsterPath}`,
-	subscriptionInbound: (pubKey: string, peerPubKey: string) => 
+	subscriptionLocal: (pubKey: string, meshPath: string) =>
+		`~${pubKey}/subscriptions/outbound/local/${meshPath}`,
+	subscriptionPeer: (pubKey: string, peerPubKey: string, meshPath: string) =>
+		`~${pubKey}/subscriptions/outbound/peers/${peerPubKey}/${meshPath}`,
+	subscriptionInbound: (pubKey: string, peerPubKey: string) =>
 		`~${pubKey}/subscriptions/inbound/${peerPubKey}`,
-	
+
 	// Node paths
-	node: (pubKey: string, nodeId: string) => 
+	node: (pubKey: string, nodeId: string) =>
 		`~${pubKey}/nodes/${nodeId}`,
-	nodeStorage: (pubKey: string, nodeId: string) => 
+	nodeStorage: (pubKey: string, nodeId: string) =>
 		`~${pubKey}/nodes/${nodeId}/storage`,
-	
+
 	// Causality paths
-	myITCStamp: (pubKey: string) => 
+	myITCStamp: (pubKey: string) =>
 		`~${pubKey}/causality/itc_stamp`,
-	peerITCStamp: (pubKey: string, peerPubKey: string) => 
+	peerITCStamp: (pubKey: string, peerPubKey: string) =>
 		`~${pubKey}/causality/peer_stamps/${peerPubKey}`,
-	
+
 	// Replication paths
-	replication: (pubKey: string, peerPubKey: string) => 
+	replication: (pubKey: string, peerPubKey: string) =>
 		`~${pubKey}/replication/${peerPubKey}`
 };
 

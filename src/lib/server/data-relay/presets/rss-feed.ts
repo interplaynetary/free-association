@@ -1,11 +1,11 @@
-import {z} from "zod"
-import type {DataRelayConfig} from "../config"
-import {buildFlatPath, DEFAULT_RETENTION, DEFAULT_THROTTLING} from "../config"
-import {buildSimpleSubscriptionConfig} from "../subscription-helpers"
-import {holsterVerify} from "$lib/server/holster/db"
-import {config} from "$lib/server/config"
+import { z } from "zod"
+import type { DataRelayConfig } from "../config"
+import { buildFlatPath, DEFAULT_RETENTION, DEFAULT_THROTTLING } from "../config"
+import { buildSimpleSubscriptionConfig } from "../subscription-helpers"
+import { meshVerify } from "$lib/server/mesh/db"
+import { config } from "$lib/server/config"
 
-// Type for Gun/Holster user instance
+// Type for Gun/Mesh user instance
 type User = any
 
 // ============================================================================
@@ -184,7 +184,7 @@ export const rssFeedConfig: DataRelayConfig<RSSFeedItemInput, RSSFeedItemStored>
     limitField: "feeds",
     verifyResourceId: async (resourceId: string, account: any) => {
       // Verify signed URL
-      return await holsterVerify(resourceId, account)
+      return await meshVerify(resourceId, account)
     },
     fetchMetadata: async (feedUrl: string) => {
       // Fetch feed metadata from external RSS service
@@ -258,7 +258,7 @@ export const rssFeedConfig: DataRelayConfig<RSSFeedItemInput, RSSFeedItemStored>
             }
           }
 
-          return {success: true}
+          return { success: true }
         } catch (error) {
           return {
             success: false,
@@ -294,7 +294,7 @@ export const rssFeedConfig: DataRelayConfig<RSSFeedItemInput, RSSFeedItemStored>
             }
           }
 
-          return {success: true}
+          return { success: true }
         } catch (error) {
           return {
             success: false,

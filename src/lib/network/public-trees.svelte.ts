@@ -1,14 +1,14 @@
 import { writable, derived } from 'svelte/store';
 import type { Writable, Readable } from 'svelte/store';
-import { holster } from '$lib/network/holster.svelte';
+import { mesh } from '$lib/network/mesh.svelte';
 
 // ================================
-// PUBLIC TREES LIST (Holster)
+// PUBLIC TREES LIST (Mesh)
 // ================================
 
 /**
  * Public tree entry structure
- * Stored in Holster at 'freely-associating-public-trees'
+ * Stored in Mesh at 'freely-associating-public-trees'
  */
 export interface PublicTreeEntry {
     alias: string;
@@ -59,7 +59,7 @@ let publicTreesCallback: ((data: any) => void) | null = null;
 let isPublicTreesInitialized = false;
 
 /**
- * Subscribe to freely-associating-public-trees list from Holster
+ * Subscribe to freely-associating-public-trees list from Mesh
  */
 function subscribeToPublicTreesList() {
     if (isPublicTreesInitialized) {
@@ -105,14 +105,14 @@ function subscribeToPublicTreesList() {
         });
     };
 
-    holster.get('freely-associating-public-trees').on(publicTreesCallback, true);
+    mesh.get('freely-associating-public-trees').on(publicTreesCallback, true);
     isPublicTreesInitialized = true;
     console.log('[PUBLIC-TREES] Subscribed to public trees list');
 }
 
 /**
  * Initialize public trees subscription
- * Call this after holster authentication
+ * Call this after mesh authentication
  */
 export function initializePublicTrees() {
     console.log('[PUBLIC-TREES] Initializing...');
@@ -125,7 +125,7 @@ export function initializePublicTrees() {
  */
 export function cleanupPublicTrees() {
     if (publicTreesCallback) {
-        holster.get('freely-associating-public-trees').off(publicTreesCallback);
+        mesh.get('freely-associating-public-trees').off(publicTreesCallback);
         publicTreesCallback = null;
     }
     publicTrees.set({});
@@ -144,7 +144,7 @@ export function cleanupPublicTrees() {
  */
 export async function publishMyTree(alias: string, pubkey: string): Promise<void> {
     return new Promise((resolve, reject) => {
-        holster.get('freely-associating-public-trees').next(pubkey).put(
+        mesh.get('freely-associating-public-trees').next(pubkey).put(
             {
                 alias,
                 lastSeen: Date.now(),
@@ -169,7 +169,7 @@ export async function publishMyTree(alias: string, pubkey: string): Promise<void
  */
 export async function unpublishMyTree(pubkey: string): Promise<void> {
     return new Promise((resolve, reject) => {
-        holster.get('freely-associating-public-trees').next(pubkey).put(
+        mesh.get('freely-associating-public-trees').next(pubkey).put(
             null,
             (err: any) => {
                 if (err) {

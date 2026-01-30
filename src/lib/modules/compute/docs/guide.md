@@ -4,7 +4,7 @@ This guide outlines a **general-purpose architecture pattern** for building dece
 
 Applicable to: resource allocation, collaborative editing, distributed computation, decentralized marketplaces, federated social networks, and any system requiring coordinated state across autonomous peers.
 
-**Reference Stack**: P2P sync layer (Holster, IPFS, libp2p), Reactive framework (Svelte 5, Solid, Vue), Schema validation (Zod, Yup, io-ts), Type-safe language (TypeScript, ReScript).
+**Reference Stack**: P2P sync layer (Mesh, IPFS, libp2p), Reactive framework (Svelte 5, Solid, Vue), Schema validation (Zod, Yup, io-ts), Type-safe language (TypeScript, ReScript).
 
 ---
 

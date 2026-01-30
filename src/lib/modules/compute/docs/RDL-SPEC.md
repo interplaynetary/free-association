@@ -63,7 +63,7 @@ ValueBinding ::= {
 
 SubscriptionBinding ::= {
   "type": "subscription",
-  "holster_path": Path,
+  "mesh_path": Path,
   "schema_type": SchemaTypeName,
   "subscribe_to_user"?: PubKey,
   "default_value"?: JSON
@@ -71,7 +71,7 @@ SubscriptionBinding ::= {
 
 FetchBinding ::= {
   "type": "fetch",
-  "holster_path": Path,
+  "mesh_path": Path,
   "schema_type": SchemaTypeName,
   "fetch_from_user"?: PubKey,
   "default_value"?: JSON,
@@ -110,13 +110,13 @@ LocalBindings ::= { Identifier: VariableBinding, ... }
 OutputBindings ::= { Identifier: OutputBinding, ... }
 
 (* Output binding (discriminated union) *)
-OutputBinding ::= HolsterOutput 
+OutputBinding ::= MeshOutput 
                 | LocalOutput 
                 | MemoryOutput
 
-HolsterOutput ::= {
-  "type": "holster",
-  "holster_path": Path,
+MeshOutput ::= {
+  "type": "mesh",
+  "mesh_path": Path,
   "schema_type"?: SchemaTypeName,
   "persist_debounce_ms"?: NonNegativeInteger
 }
@@ -174,16 +174,16 @@ Evaluates to the literal value `v`.
 #### Subscription Binding
 ```
 Γ ⊢ subscription(path, schema, user?) ⇒ 
-  subscribe(holster, path, schema, user) → Store<T>
+  subscribe(mesh, path, schema, user) → Store<T>
 ```
-Creates a reactive store subscribed to `path` in Holster using `.on()`, optionally from another user's namespace. Updates propagate automatically on data changes.
+Creates a reactive store subscribed to `path` in Mesh using `.on()`, optionally from another user's namespace. Updates propagate automatically on data changes.
 
 #### Fetch Binding
 ```
 Γ ⊢ fetch(path, schema, user?, wait?) ⇒ 
-  get(holster, path, schema, user, wait) → Promise<T>
+  get(mesh, path, schema, user, wait) → Promise<T>
 ```
-One-time fetch from Holster using `.get()`. Does not create persistent subscription. Useful for:
+One-time fetch from Mesh using `.get()`. Does not create persistent subscription. Useful for:
 - Static/infrequently changing data
 - One-off lookups during computation
 - Reducing subscription overhead
@@ -453,7 +453,7 @@ registerComputationFunction('customComputation', (inputs) => {
       "my_data": "{{my_path}}",
       "their_data": {
         "type": "subscription",
-        "holster_path": "{{their_path}}",
+        "mesh_path": "{{their_path}}",
         "subscribe_to_user": "{{pubkey}}"
       }
     },
@@ -534,13 +534,13 @@ Strategy: Graceful Degradation
   "variables": {
     "staticConfig": {
       "type": "fetch",
-      "holster_path": "config/settings",
+      "mesh_path": "config/settings",
       "schema_type": "Object",
       "wait_ms": 500
     },
     "liveData": {
       "type": "subscription",
-      "holster_path": "data/realtime",
+      "mesh_path": "data/realtime",
       "schema_type": "Number"
     }
   },
@@ -550,13 +550,13 @@ Strategy: Graceful Degradation
       "inputs": {
         "config": {
           "type": "fetch",
-          "holster_path": "config/settings",
+          "mesh_path": "config/settings",
           "schema_type": "Object",
           "default_value": { "threshold": 10 }
         },
         "data": {
           "type": "subscription",
-          "holster_path": "data/realtime",
+          "mesh_path": "data/realtime",
           "schema_type": "Number"
         }
       },
@@ -578,12 +578,12 @@ Strategy: Graceful Degradation
   "variables": {
     "my_tree": {
       "type": "subscription",
-      "holster_path": "tree",
+      "mesh_path": "tree",
       "schema_type": "RootNode"
     },
     "their_tree": {
       "type": "subscription",
-      "holster_path": "tree",
+      "mesh_path": "tree",
       "schema_type": "RootNode",
       "subscribe_to_user": "abc123...xyz"
     }
@@ -594,12 +594,12 @@ Strategy: Graceful Degradation
       "inputs": {
         "myTree": {
           "type": "subscription",
-          "holster_path": "tree",
+          "mesh_path": "tree",
           "schema_type": "RootNode"
         },
         "theirTree": {
           "type": "subscription",
-          "holster_path": "tree",
+          "mesh_path": "tree",
           "schema_type": "RootNode",
           "subscribe_to_user": "abc123...xyz"
         }
@@ -607,8 +607,8 @@ Strategy: Graceful Degradation
       "compute_fn": "mutualRecognition",
       "outputs": {
         "mr_value": {
-          "type": "holster",
-          "holster_path": "recognition/abc123.../mutual",
+          "type": "mesh",
+          "mesh_path": "recognition/abc123.../mutual",
           "schema_type": "Number"
         }
       }
@@ -675,7 +675,7 @@ A conforming RDL implementation MUST:
 6. Handle subscription lifecycle correctly
 7. Provide function and schema registries
 8. Detect and report circular dependencies
-9. Support cross-user Holster subscriptions
+9. Support cross-user Mesh subscriptions
 10. Handle errors according to specification
 
 ### 9.2 Optional Features
@@ -703,7 +703,7 @@ A conforming implementation MAY:
   "variables": {
     "my_state": {
       "type": "subscription",
-      "holster_path": "{{protocol}}/state",
+      "mesh_path": "{{protocol}}/state",
       "schema_type": "{{StateType}}"
     },
     "peer_states": {
@@ -736,8 +736,8 @@ A conforming implementation MAY:
       "compute_fn": "{{local_computation_fn}}",
       "outputs": {
         "result": {
-          "type": "holster",
-          "holster_path": "{{protocol}}/result",
+          "type": "mesh",
+          "mesh_path": "{{protocol}}/result",
           "schema_type": "{{ResultType}}"
         }
       },
@@ -787,9 +787,9 @@ Propose → Subscribe to votes → Aggregate → Decide → Publish
 
 ### 11.3 Composability
 
-**Theorem**: Computation graphs compose. If G1 outputs to Holster paths that G2 subscribes to, then G2 observes G1's outputs.
+**Theorem**: Computation graphs compose. If G1 outputs to Mesh paths that G2 subscribes to, then G2 observes G1's outputs.
 
-**Proof sketch**: Holster provides eventual consistency. G1's outputs create subscription events. G2's subscription bindings react to these events. Therefore, composition is sound.
+**Proof sketch**: Mesh provides eventual consistency. G1's outputs create subscription events. G2's subscription bindings react to these events. Therefore, composition is sound.
 
 ---
 

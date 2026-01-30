@@ -18,7 +18,7 @@ export type Contributor = z.infer<typeof ContributorSchema>;
 
 export const NodeDataStorageSchema = z.object({
     data: z.optional(z.any()),
-    holster_path: z.optional(z.string()),
+    mesh_path: z.optional(z.string()),
     data_schema_type: z.optional(z.string()),
     data_updated_at: z.optional(z.number().int().positive()),
     is_loading: z.optional(z.boolean()),

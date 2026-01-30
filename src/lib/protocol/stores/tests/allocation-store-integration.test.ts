@@ -63,7 +63,7 @@ mock.module(storesPath, () => {
         myRecognitionWeights: writable({}),
         myMutualRecognition: writable({}),
         totalReceivedBySlot: writable({}),
-        holsterUserPub: writable("my-pub-key")
+        meshUserPub: writable("my-pub-key")
     };
 });
 
@@ -75,8 +75,8 @@ mock.module("$lib/protocol/match", () => ({
     getLocationBucketKey: () => "loc"
 }));
 
-mock.module("$lib/network/holster.svelte", () => ({
-    holsterUserPub: writable("my-pub-key")
+mock.module("$lib/network/mesh.svelte", () => ({
+    meshUserPub: writable("my-pub-key")
 }));
 
 

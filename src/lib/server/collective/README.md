@@ -45,14 +45,14 @@ Create a file `src/lib/server/collective/callbacks.ts` based on the example:
 
 ```typescript
 import type { ComputationCallbacks } from './scheduler';
-import { getHolsterInstance } from '$lib/server/holster/core';
+import { getMeshInstance } from '$lib/server/mesh/core';
 import { getDatabase } from '$lib/server/db';
 
 export function createCallbacks(): ComputationCallbacks {
   return {
     async fetchRecognitionData() {
-      // Query your database/Holster for recognition relationships
-      const holster = getHolsterInstance();
+      // Query your database/Mesh for recognition relationships
+      const mesh = getMeshInstance();
       // ... implementation
       return recognitionData;
     },
@@ -81,7 +81,7 @@ export function createCallbacks(): ComputationCallbacks {
     },
     
     async fetchMemberTrees(memberIds) {
-      // Query Holster for member recognition trees
+      // Query Mesh for member recognition trees
       // ... implementation
     },
     
@@ -206,7 +206,7 @@ console.log(status);
 
 ### Membership Computation Flow
 
-1. **Fetch Recognition Data**: Loads all recognition relationships from database/Holster
+1. **Fetch Recognition Data**: Loads all recognition relationships from database/Mesh
 2. **Find Auto-Update Capacities**: Queries capacities where `auto_update_members_by_mrd = true`
 3. **Compute MRD**: For each capacity, calculates Mutual Recognition Density for all participants
 4. **Update Members**: Adds participants above threshold, removes those below

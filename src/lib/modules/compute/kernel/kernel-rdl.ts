@@ -105,7 +105,7 @@ export const ComputationStateSchema = z.object({
  */
 export const OutputValueSchema = z.object({
 	value: z.any(),
-	holster_path: z.string(),
+	mesh_path: z.string(),
 	updated_at: z.number().int().positive()
 });
 
@@ -236,19 +236,19 @@ export function parseProvenanceEntry(data: unknown): ProvenanceEntry | null {
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * Build Holster paths for RDL compute namespace
+ * Build Mesh paths for RDL compute namespace
  */
 export const RDLPaths = {
 	// Compute paths
-	computeState: (pubKey: string, programHash: string) => 
+	computeState: (pubKey: string, programHash: string) =>
 		`~${pubKey}/compute/${programHash}/state`,
-	computeVariable: (pubKey: string, programHash: string, variableName: string) => 
+	computeVariable: (pubKey: string, programHash: string, variableName: string) =>
 		`~${pubKey}/compute/${programHash}/state/variables/${variableName}`,
-	computeResult: (pubKey: string, programHash: string, computationId: string) => 
+	computeResult: (pubKey: string, programHash: string, computationId: string) =>
 		`~${pubKey}/compute/${programHash}/state/computations/${computationId}`,
-	computeOutput: (pubKey: string, programHash: string, outputKey: string) => 
+	computeOutput: (pubKey: string, programHash: string, outputKey: string) =>
 		`~${pubKey}/compute/${programHash}/outputs/${outputKey}`,
-	computeProvenance: (pubKey: string, programHash: string, provenanceId: string) => 
+	computeProvenance: (pubKey: string, programHash: string, provenanceId: string) =>
 		`~${pubKey}/compute/${programHash}/provenance/${provenanceId}`
 };
 

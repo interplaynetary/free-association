@@ -1,6 +1,6 @@
 import { writable, get, type Writable, derived } from 'svelte/store';
 import type { ChatReadStates, ChatReadState } from '@playnet/free-association/schemas';
-import * as HolsterChat from './chat-holster.svelte';
+import * as MeshChat from './chat-mesh.svelte';
 
 // Conditionally import browser - gracefully handle test environment
 let browser = false;
@@ -138,18 +138,18 @@ export function unsubscribeFromChat(chatId: string) {
 
 /**
  * Get messages store for a specific chat (subscribes if not already subscribed)
- * V5: Uses Holster-only backend
+ * V5: Uses Mesh-only backend
  */
 export function getChatMessages(chatId: string): Writable<Message[]> {
-	return HolsterChat.getHolsterChatMessages(chatId) as Writable<Message[]>;
+	return MeshChat.getMeshChatMessages(chatId) as Writable<Message[]>;
 }
 
 /**
  * Send a message to a chat
- * V5: Uses Holster-only backend
+ * V5: Uses Mesh-only backend
  */
 export async function sendMessage(chatId: string, messageText: string): Promise<void> {
-	return HolsterChat.sendHolsterMessage(chatId, messageText);
+	return MeshChat.sendMeshMessage(chatId, messageText);
 }
 
 /**
@@ -172,12 +172,12 @@ export function clearAllChatSubscriptions() {
 
 /**
  * Clear all chat subscriptions and read states (useful for logout)
- * V5: Holster-only
+ * V5: Mesh-only
  */
 export function clearAllChatData() {
 	clearAllChatSubscriptions();
 	clearChatReadStates();
-	HolsterChat.clearAllHolsterChatSubscriptions();
+	MeshChat.clearAllMeshChatSubscriptions();
 
 	//console.log('[Chat State] Cleared all chat data');
 }
@@ -204,7 +204,7 @@ export function markChatAsRead(chatId: string, timestamp?: number): void {
 				lastRead: readTimestamp,  // Required field
 				lastReadTimestamp: readTimestamp,  // Alias for compatibility
 				updatedAt: Date.now(),
-				_updatedAt: Date.now()  // Holster timestamp
+				_updatedAt: Date.now()  // Mesh timestamp
 			}
 		};
 

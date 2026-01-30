@@ -1,5 +1,5 @@
 /**
- * Holster Integration for Mutual-Priority Allocation Algorithm v5 - RPC Edition
+ * Mesh Integration for Mutual-Priority Allocation Algorithm v5 - RPC Edition
  * 
  * Uses symmetric Cap'n Web RPC protocol for bidirectional communication.
  * 
@@ -41,11 +41,11 @@ import {
 	type SlotAllocationRecord
 } from './schemas';
 
-import { holsterUserPub, holsterUser } from '$lib/network/holster.svelte';
+import { meshUserPub, meshUser } from '$lib/network/mesh.svelte';
 import { getTimeBucketKey, getLocationBucketKey } from '$lib/protocol/match';
 import { sharesOfGeneralFulfillmentMap, getAllContributorsFromTree } from '$lib/protocol/tree';
 import { myAttributeRecognitions, myAttributeSubscriptions } from '$lib/protocol/attributes/attribute-recognition.svelte';
-import { slotSubscriptions, slotFilters, capacityCache, needCache } from '$lib/network/capacity-subscriptions.svelte';
+import { slotSubscriptions, slotFilters, capacityCache, needCache } from '$lib/network/slot-subscriptions.svelte';
 import { applyFiltersUnion, mergeSlots } from '$lib/protocol/utils/capacity-filters';
 import { resolveContributorWithOrgs, resolveToPublicKey } from '$lib/network/users.svelte';
 import { seed as itcSeed, event as itcEvent, join as itcJoin, type Stamp as ITCStamp } from '$lib/utils/primitives/itc';
@@ -321,7 +321,7 @@ export class RecognitionTreeRpcTarget extends RevocableRpcTarget implements IRec
 
 /** My Recognition Tree Store (same as before) */
 export const myRecognitionTreeStore = createStore({
-	holsterPath: 'trees/recognition_tree',
+	meshPath: 'trees/recognition_tree',
 	schema: RootNodeSchema,
 	persistDebounce: 200
 });
@@ -342,7 +342,7 @@ export const myRecognitionWeights: Readable<GlobalRecognitionWeights> = derived(
 
 /** My Commitment Store (source of truth) */
 export const myCommitmentStore = createStore({
-	holsterPath: 'allocation/commitment',
+	meshPath: 'allocation/commitment',
 	schema: CommitmentSchema,
 	persistDebounce: 100
 });
@@ -546,7 +546,7 @@ export const networkAllocations = networkCommitments.deriveField<SlotAllocationR
 
 /** My Mutual Recognition (local-first, same as before) */
 export const myMutualRecognition: Readable<GlobalRecognitionWeights> = derived(
-	[holsterUserPub, myCommitmentStore],
+	[meshUserPub, myCommitmentStore],
 	([$myPub, $myCommitment]) => {
 		if (!$myPub || !$myCommitment) return {};
 
@@ -578,28 +578,28 @@ export const myMutualRecognition: Readable<GlobalRecognitionWeights> = derived(
 // ═══════════════════════════════════════════════════════════════════
 
 export function initializeAllocationStores() {
-	console.log('[ALLOCATION-HOLSTER-RPC] Initializing stores...');
+	console.log('[ALLOCATION-MESH-RPC] Initializing stores...');
 
 	myRecognitionTreeStore.initialize();
 	myCommitmentStore.initialize();
 
 	// Initialize RPC targets
-	const myPub = get(holsterUserPub);
+	const myPub = get(meshUserPub);
 	if (myPub) {
 		rpcManager.initializeMyTargets(myPub);
 	}
 
-	console.log('[ALLOCATION-HOLSTER-RPC] Stores initialized with RPC support');
+	console.log('[ALLOCATION-MESH-RPC] Stores initialized with RPC support');
 }
 
 export async function cleanupAllocationStores() {
-	console.log('[ALLOCATION-HOLSTER-RPC] Cleaning up stores...');
+	console.log('[ALLOCATION-MESH-RPC] Cleaning up stores...');
 
 	rpcManager.disconnectAll();
 	await myRecognitionTreeStore.cleanup();
 	await myCommitmentStore.cleanup();
 
-	console.log('[ALLOCATION-HOLSTER-RPC] Stores cleaned up');
+	console.log('[ALLOCATION-MESH-RPC] Stores cleaned up');
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -756,7 +756,7 @@ export class ProtocolAuth extends RpcTarget {
 
 		// Return a NEW revocable capability (auto-expires in 24h)
 		return new CommitmentRpcTarget(
-			get(holsterUserPub) || '',
+			get(meshUserPub) || '',
 			myCommitmentStore,
 			{
 				recipientId: pubKey,
@@ -775,7 +775,7 @@ export class ProtocolAuth extends RpcTarget {
 
 		// Return capability with shorter expiration
 		return new CommitmentRpcTarget(
-			get(holsterUserPub) || '',
+			get(meshUserPub) || '',
 			myCommitmentStore,
 			{
 				recipientId: pubKey,
@@ -800,7 +800,7 @@ export class ProtocolAuth extends RpcTarget {
 
 		return {
 			commitment: new CommitmentRpcTarget(
-				get(holsterUserPub) || '',
+				get(meshUserPub) || '',
 				myCommitmentStore,
 				{
 					recipientId: pubKey,

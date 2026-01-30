@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example workflow demonstrating Holster + Git CLI
+# Example workflow demonstrating Mesh + Git CLI
 
 set -e
 
 echo "════════════════════════════════════════════════════════════════"
-echo "  Holster + Git CLI Demo"
+echo "  Mesh + Git CLI Demo"
 echo "════════════════════════════════════════════════════════════════"
 echo ""
 
@@ -13,7 +13,7 @@ USERNAME="demo-user-$(date +%s)"
 PASSWORD="secure-password-123"
 REPO="demo-project"
 
-echo "📝 Step 1: Creating Holster user..."
+echo "📝 Step 1: Creating Mesh user..."
 bun cli/cli.ts create "$USERNAME" "$PASSWORD"
 echo ""
 
@@ -28,11 +28,11 @@ echo ""
 echo "✍️  Step 4: Creating files..."
 bun cli/cli.ts git-write "$REPO" README.md "# Demo Project
 
-This is a demonstration of Holster + Git integration.
+This is a demonstration of Mesh + Git integration.
 
 ## Features
 
-- Distributed storage via Holster
+- Distributed storage via Mesh
 - Cryptographic identity
 - P2P synchronization"
 
@@ -42,7 +42,7 @@ bun cli/cli.ts git-write "$REPO" package.json '{
   "type": "module"
 }'
 
-bun cli/cli.ts git-write "$REPO" src/index.ts 'console.log("Hello from Holster + Git!")'
+bun cli/cli.ts git-write "$REPO" src/index.ts 'console.log("Hello from Mesh + Git!")'
 echo ""
 
 echo "➕ Step 5: Staging files..."
@@ -63,14 +63,14 @@ echo "📜 Step 8: Viewing commit history..."
 bun cli/cli.ts git-log "$REPO"
 echo ""
 
-echo "☁️  Step 9: Pushing to Holster network..."
+echo "☁️  Step 9: Pushing to Mesh network..."
 bun cli/cli.ts git-push "$REPO"
 echo ""
 
 echo "════════════════════════════════════════════════════════════════"
 echo "✅ Demo complete!"
 echo ""
-echo "Your repository '$REPO' is now stored on the Holster network."
+echo "Your repository '$REPO' is now stored on the Mesh network."
 echo "Other users can pull it using your public key."
 echo ""
 echo "To pull this repo from another machine:"

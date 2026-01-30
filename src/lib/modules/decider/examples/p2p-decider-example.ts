@@ -1,38 +1,38 @@
 /**
- * Example: P2P Decider with Holster
+ * Example: P2P Decider with Mesh
  * 
  * This example demonstrates how multiple players use the P2P Decider
  * to reach consensus in a distributed manner.
  */
 
 import { P2PDecider } from '../src/lib/p2p-decider.svelte';
-// import Holster from './path/to/holster';
+// import Mesh from './path/to/mesh';
 
 // ============================================================================
 // SETUP
 // ============================================================================
 
 /**
- * This example assumes you have Holster set up and running.
- * In a real application, you would import Holster and create user instances.
+ * This example assumes you have Mesh set up and running.
+ * In a real application, you would import Mesh and create user instances.
  */
 
 async function setupPlayers() {
-	// const holster = Holster();
-	
+	// const mesh = Mesh();
+
 	// // Create and authenticate users
-	// const user1 = holster.user();
+	// const user1 = mesh.user();
 	// await user1.create('alice', 'password123');
 	// await user1.auth('alice', 'password123');
-	
-	// const user2 = holster.user();
+
+	// const user2 = mesh.user();
 	// await user2.create('bob', 'password456');
 	// await user2.auth('bob', 'password456');
-	
-	// const user3 = holster.user();
+
+	// const user3 = mesh.user();
 	// await user3.create('charlie', 'password789');
 	// await user3.auth('charlie', 'password789');
-	
+
 	// return { user1, user2, user3 };
 }
 
@@ -93,12 +93,12 @@ class CustomP2PDecider extends P2PDecider {
 	// Override to provide custom proposal logic
 	async expressProposals(prompt: string): Promise<void> {
 		console.log(`${this.playerName} is thinking about: "${prompt}"`);
-		
+
 		// Custom logic here - could be:
 		// - UI prompt for user input
 		// - AI-generated proposal
 		// - Predefined strategy
-		
+
 		const myProposal = await this.getProposalFromUI(prompt);
 		await this.writeMyProposal(myProposal);
 	}
@@ -106,7 +106,7 @@ class CustomP2PDecider extends P2PDecider {
 	// Override to provide custom challenge logic
 	async expressChallenges(proposal: any): Promise<void> {
 		console.log(`${this.playerName} is evaluating proposal by ${proposal.authorPub}`);
-		
+
 		// Don't challenge my own proposal
 		if (proposal.authorPub === this.myPublicKey) {
 			return;
@@ -122,7 +122,7 @@ class CustomP2PDecider extends P2PDecider {
 	// Override to provide custom comment/modification logic
 	async expressCommentsAndModifications(proposal: any): Promise<void> {
 		console.log(`${this.playerName} is commenting on proposal by ${proposal.authorPub}`);
-		
+
 		const comment = await this.getCommentFromUI(proposal);
 		await this.writeMyCommentOnProposal(proposal.authorPub, comment);
 
@@ -136,7 +136,7 @@ class CustomP2PDecider extends P2PDecider {
 	// Override to provide custom support logic
 	async expressSupportOfContentCandidates(proposal: any): Promise<void> {
 		console.log(`${this.playerName} is allocating support points`);
-		
+
 		const candidates = [
 			proposal.content,
 			...proposal.modificationProposals.map((m: any) => m.content)
@@ -182,7 +182,7 @@ class CustomP2PDecider extends P2PDecider {
 		const support: Record<string, number> = {};
 		const totalPoints = 10;
 		const remainingPoints = totalPoints;
-		
+
 		candidates.forEach((candidate, i) => {
 			if (i === candidates.length - 1) {
 				support[candidate] = remainingPoints;
@@ -191,7 +191,7 @@ class CustomP2PDecider extends P2PDecider {
 				support[candidate] = points;
 			}
 		});
-		
+
 		return support;
 	}
 }
@@ -356,7 +356,7 @@ async function main() {
 	console.log('P2P Decider Examples');
 	console.log('====================\n');
 	console.log('These examples demonstrate the P2P architecture.');
-	console.log('To run with real Holster instances, uncomment the code.\n');
+	console.log('To run with real Mesh instances, uncomment the code.\n');
 
 	// Run examples
 	await example1_SimpleTwoPlayerGame();

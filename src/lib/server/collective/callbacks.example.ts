@@ -2,13 +2,13 @@
  * EXAMPLE: Computation Callbacks Implementation
  * 
  * This is an example showing how to implement the callbacks for the scheduler.
- * You should adapt this to your actual database/Holster integration.
+ * You should adapt this to your actual database/Mesh integration.
  * 
  * Copy this file and customize it for your needs:
  * 1. Replace mock data fetching with real database queries
  * 2. Implement actual save operations
  * 3. Add error handling and logging
- * 4. Handle Holster P2P synchronization
+ * 4. Handle Mesh P2P synchronization
  */
 
 import type { ComputationCallbacks } from './scheduler';
@@ -17,10 +17,10 @@ import type { BaseCapacity, BaseNeed } from '$lib/protocol/collective/schemas';
 import type { Node } from '$lib/protocol/schemas';
 
 /**
- * Example implementation using Holster
+ * Example implementation using Mesh
  * 
  * In practice, you would:
- * - Query your Holster instance for stored data
+ * - Query your Mesh instance for stored data
  * - Use your database for persistent storage
  * - Handle P2P synchronization
  */
@@ -31,19 +31,19 @@ export function createCallbacks(): ComputationCallbacks {
 		 * 
 		 * This should return recognition relationships between all participants.
 		 * In your implementation, you might:
-		 * - Query Holster for recognition trees from all users
+		 * - Query Mesh for recognition trees from all users
 		 * - Extract recognition relationships from trees
 		 * - Convert to RecognitionData format
 		 */
 		async fetchRecognitionData(): Promise<RecognitionData[]> {
-			// TODO: Replace with actual Holster query
+			// TODO: Replace with actual Mesh query
 			// Example:
-			// const holster = getHolsterInstance();
-			// const users = await holster.query('users/*');
+			// const mesh = getMeshInstance();
+			// const users = await mesh.query('users/*');
 			// const recognitionData: RecognitionData[] = [];
 			// 
 			// for (const user of users) {
-			//   const tree = await holster.get(`trees/${user.id}/recognition_tree`);
+			//   const tree = await mesh.get(`trees/${user.id}/recognition_tree`);
 			//   if (tree) {
 			//     // Extract recognition from tree
 			//     const shares = sharesOfGeneralFulfillmentMap(tree);
@@ -59,11 +59,11 @@ export function createCallbacks(): ComputationCallbacks {
 			// }
 			// 
 			// return recognitionData;
-			
+
 			console.warn('[COLLECTIVE-CALLBACKS] ⚠️  Using mock recognition data');
 			return [];
 		},
-		
+
 		/**
 		 * Fetch capacities with auto-update enabled
 		 * 
@@ -78,11 +78,11 @@ export function createCallbacks(): ComputationCallbacks {
 			//   WHERE auto_update_members_by_mrd = true
 			//   AND capacity_slots IS NOT NULL
 			// `);
-			
+
 			console.warn('[COLLECTIVE-CALLBACKS] ⚠️  Using mock capacity data');
 			return [];
 		},
-		
+
 		/**
 		 * Save updated capacity members
 		 * 
@@ -112,7 +112,7 @@ export function createCallbacks(): ComputationCallbacks {
 			//   (capacity_id, members, added, removed, timestamp)
 			//   VALUES ($1, $2, $3, $4, $5)
 			// `, [capacityId, JSON.stringify(members), JSON.stringify(added), JSON.stringify(removed), timestamp]);
-			
+
 			console.log(
 				`[COLLECTIVE-CALLBACKS] Would save capacity ${capacityId} members:\n` +
 				`  → Added: ${added.join(', ') || 'none'}\n` +
@@ -120,7 +120,7 @@ export function createCallbacks(): ComputationCallbacks {
 				`  → New member count: ${members.length}`
 			);
 		},
-		
+
 		/**
 		 * Fetch capacities for allocation computation
 		 * 
@@ -135,11 +135,11 @@ export function createCallbacks(): ComputationCallbacks {
 			//   WHERE capacity_slots IS NOT NULL
 			//   AND array_length(capacity_slots, 1) > 0
 			// `);
-			
+
 			console.warn('[COLLECTIVE-CALLBACKS] ⚠️  Using mock capacity data');
 			return [];
 		},
-		
+
 		/**
 		 * Fetch all needs
 		 * 
@@ -160,35 +160,35 @@ export function createCallbacks(): ComputationCallbacks {
 			//   needsMap.set(need.declarer_id, need);
 			// }
 			// return needsMap;
-			
+
 			console.warn('[COLLECTIVE-CALLBACKS] ⚠️  Using mock need data');
 			return new Map();
 		},
-		
+
 		/**
 		 * Fetch member recognition trees
 		 * 
 		 * Get recognition trees for specific members (for allocation computation)
 		 */
 		async fetchMemberTrees(memberIds: string[]): Promise<Map<string, Node>> {
-			// TODO: Replace with actual Holster query
+			// TODO: Replace with actual Mesh query
 			// Example:
-			// const holster = getHolsterInstance();
+			// const mesh = getMeshInstance();
 			// const trees = new Map();
 			// 
 			// for (const memberId of memberIds) {
-			//   const tree = await holster.get(`trees/${memberId}/recognition_tree`);
+			//   const tree = await mesh.get(`trees/${memberId}/recognition_tree`);
 			//   if (tree) {
 			//     trees.set(memberId, tree);
 			//   }
 			// }
 			// 
 			// return trees;
-			
+
 			console.warn('[COLLECTIVE-CALLBACKS] ⚠️  Using mock tree data');
 			return new Map();
 		},
-		
+
 		/**
 		 * Save computed allocations
 		 * 
@@ -214,14 +214,14 @@ export function createCallbacks(): ComputationCallbacks {
 			//     `, [capacityId, memberId, amount, new Date()]);
 			//   }
 			// }
-			
+
 			console.log(
 				`[COLLECTIVE-CALLBACKS] Would save allocations for capacity ${capacityId}:\n` +
 				`  → Total allocated: ${allocations.total_allocated}\n` +
 				`  → Members: ${allocations.member_set?.length || 0}`
 			);
 		},
-		
+
 		/**
 		 * Optional: Log computation events
 		 * 
@@ -236,7 +236,7 @@ export function createCallbacks(): ComputationCallbacks {
 			//   (event_type, event_data, timestamp)
 			//   VALUES ($1, $2, $3)
 			// `, [event, JSON.stringify(data), new Date()]);
-			
+
 			console.log(`[COLLECTIVE-CALLBACKS] ${event}:`, data);
 		}
 	};
@@ -250,22 +250,22 @@ export function createCallbacks(): ComputationCallbacks {
 export async function validateCallbacks(callbacks: ComputationCallbacks): Promise<boolean> {
 	try {
 		console.log('[COLLECTIVE-CALLBACKS] 🔍 Validating callbacks...');
-		
+
 		// Test recognition data fetch
 		const recognitionData = await callbacks.fetchRecognitionData();
 		console.log(`[COLLECTIVE-CALLBACKS]   ✓ Recognition data: ${recognitionData.length} records`);
-		
+
 		// Test capacity fetch
 		const capacities = await callbacks.fetchAutoUpdateCapacities();
 		console.log(`[COLLECTIVE-CALLBACKS]   ✓ Auto-update capacities: ${capacities.length} records`);
-		
+
 		// Test needs fetch
 		const needs = await callbacks.fetchNeeds();
 		console.log(`[COLLECTIVE-CALLBACKS]   ✓ Needs: ${needs.size} records`);
-		
+
 		console.log('[COLLECTIVE-CALLBACKS] ✅ Callbacks validation passed');
 		return true;
-		
+
 	} catch (error) {
 		console.error('[COLLECTIVE-CALLBACKS] ❌ Callbacks validation failed:', error);
 		return false;

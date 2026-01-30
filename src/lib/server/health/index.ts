@@ -57,11 +57,11 @@ export function getSystemHealth(): ServiceHealth {
   try {
     const uptime = process.uptime();
     const memUsage = process.memoryUsage();
-    
+
     // Consider degraded if memory usage > 90%
     const heapUsagePercent = (memUsage.heapUsed / memUsage.heapTotal) * 100;
     const status = heapUsagePercent > 90 ? 'degraded' : 'ok';
-    
+
     return {
       status,
       details: {
@@ -89,25 +89,25 @@ export function getSystemHealth(): ServiceHealth {
 }
 
 /**
- * Holster database health
+ * Mesh database health
  */
-export function getHolsterHealth(): ServiceHealth {
+export function getMeshHealth(): ServiceHealth {
   try {
     // Import stats dynamically to avoid circular dependencies
-    const { requestStats, dbStats } = require('../holster/core');
-    
+    const { requestStats, dbStats } = require('../mesh/core');
+
     const slowRequestPercentage = requestStats.totalRequests > 0
       ? Math.round((requestStats.slowRequests / requestStats.totalRequests) * 100)
       : 0;
-    
+
     const slowDbPercentage = dbStats.totalOps > 0
       ? Math.round((dbStats.slowOps / dbStats.totalOps) * 100)
       : 0;
-    
+
     const errorPercentage = dbStats.totalOps > 0
       ? Math.round((dbStats.errorCount / dbStats.totalOps) * 100)
       : 0;
-    
+
     // Consider degraded if slow requests > 10% or errors > 5%
     let status: 'ok' | 'degraded' | 'down' = 'ok';
     if (slowRequestPercentage > 10 || errorPercentage > 5) {
@@ -116,7 +116,7 @@ export function getHolsterHealth(): ServiceHealth {
     if (errorPercentage > 20) {
       status = 'down';
     }
-    
+
     return {
       status,
       details: {
@@ -139,7 +139,7 @@ export function getHolsterHealth(): ServiceHealth {
   } catch (err) {
     return {
       status: 'down',
-      message: 'Holster service unavailable'
+      message: 'Mesh service unavailable'
     };
   }
 }
@@ -151,14 +151,14 @@ export function getKeyPoolHealth(): ServiceHealth {
   try {
     const { getPoolStatus } = require('../key-pool/manager');
     const poolStatus = getPoolStatus();
-    
+
     const healthyKeys = poolStatus.health.healthy;
     const totalKeys = poolStatus.totalKeys;
-    
+
     const healthPercentage = totalKeys > 0
       ? (healthyKeys / totalKeys) * 100
       : 0;
-    
+
     // Consider degraded if < 50% healthy, down if no healthy keys
     let status: 'ok' | 'degraded' | 'down' = 'ok';
     if (healthPercentage < 50) {
@@ -167,7 +167,7 @@ export function getKeyPoolHealth(): ServiceHealth {
     if (healthyKeys === 0) {
       status = 'down';
     }
-    
+
     return {
       status,
       details: {
@@ -193,7 +193,7 @@ export function getLLMRouterHealth(): ServiceHealth {
   try {
     const { getAvailableFlows } = require('../llm/router');
     const flows = getAvailableFlows();
-    
+
     return {
       status: flows.length > 0 ? 'ok' : 'degraded',
       details: {
@@ -234,13 +234,13 @@ export function getAIProxyHealth(): ServiceHealth {
  */
 export function getDataRelayHealth(): ServiceHealth {
   try {
-    const { user } = require('../holster/core');
+    const { user } = require('../mesh/core');
     const { getRegistry } = require('../data-relay');
-    
+
     const registry = getRegistry(user);
     const types = registry.getTypes();
     const stats = registry.getStats();
-    
+
     return {
       status: 'ok',
       details: {
@@ -261,7 +261,7 @@ export function getDataRelayHealth(): ServiceHealth {
 // ============================================================================
 
 registerHealthCheck('system', getSystemHealth);
-registerHealthCheck('holster', getHolsterHealth);
+registerHealthCheck('mesh', getMeshHealth);
 registerHealthCheck('key-pool', getKeyPoolHealth);
 registerHealthCheck('llm-router', getLLMRouterHealth);
 registerHealthCheck('ai-proxy', getAIProxyHealth);
@@ -289,12 +289,12 @@ export interface AggregateHealth {
 export async function checkHealth(services?: string[]): Promise<AggregateHealth> {
   const timestamp = Date.now();
   const servicesToCheck = services || Array.from(healthChecks.keys());
-  
+
   const results: Record<string, ServiceHealth> = {};
   let okCount = 0;
   let degradedCount = 0;
   let downCount = 0;
-  
+
   // Run all health checks in parallel
   await Promise.all(
     servicesToCheck.map(async (serviceName) => {
@@ -307,11 +307,11 @@ export async function checkHealth(services?: string[]): Promise<AggregateHealth>
         downCount++;
         return;
       }
-      
+
       try {
         const result = await checkFn();
         results[serviceName] = result;
-        
+
         if (result.status === 'ok') okCount++;
         else if (result.status === 'degraded') degradedCount++;
         else downCount++;
@@ -324,7 +324,7 @@ export async function checkHealth(services?: string[]): Promise<AggregateHealth>
       }
     })
   );
-  
+
   // Determine overall status
   let overallStatus: 'ok' | 'degraded' | 'down' = 'ok';
   if (downCount > 0) {
@@ -332,7 +332,7 @@ export async function checkHealth(services?: string[]): Promise<AggregateHealth>
   } else if (degradedCount > 0) {
     overallStatus = 'degraded';
   }
-  
+
   return {
     status: overallStatus,
     timestamp,

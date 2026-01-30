@@ -618,7 +618,7 @@ The local-first client achieves similar results through different means:
 | Feature | `stores.svelte.ts` | Local-First Client |
 |---------|-------------------|-------------------|
 | **Local Computation** | ✅ Svelte stores | ✅ Memoization |
-| **Offline Support** | ✅ Gun/Holster cache | ✅ IndexedDB |
+| **Offline Support** | ✅ Gun/Mesh cache | ✅ IndexedDB |
 | **Reactivity** | ✅ Svelte reactive | ✅ Event handlers |
 | **P2P Sync** | ✅ Gun | ✅ Background sync |
 

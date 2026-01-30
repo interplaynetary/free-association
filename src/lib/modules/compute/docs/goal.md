@@ -26,15 +26,15 @@ await persistResult(result);
   inputs: {
     theirCommitment: {
       type: 'subscription',
-      holster_path: '~{pubkey}/allocation/commitment',
+      mesh_path: '~{pubkey}/allocation/commitment',
       schema_type: 'Commitment'
     }
   },
   compute_fn: 'computeAllocation', // From registry
   outputs: {
     myAllocation: {
-      type: 'holster',
-      holster_path: 'allocation/result'
+      type: 'mesh',
+      mesh_path: 'allocation/result'
     }
   }
 }
@@ -56,7 +56,7 @@ The system handles **all the plumbing automatically**.
 - Automatic persistence, subscription, validation
 - Path helpers prevent typos
 - **Like an OS kernel** - manages all I/O
-- **Implication**: Programs don't handle Holster directly
+- **Implication**: Programs don't handle Mesh directly
 
 ### Layer 3: Reactive Computation (Runtime)
 - `compute.svelte.ts` executes ReactiveComputationGraphs
@@ -97,7 +97,7 @@ The system handles **all the plumbing automatically**.
 // Programs can reference each other's outputs
 {
   type: 'subscription',
-  holster_path: '~{peer}/compute/{otherProgram}/outputs/result'
+  mesh_path: '~{peer}/compute/{otherProgram}/outputs/result'
 }
 ```
 One program's output becomes another's input.
@@ -123,11 +123,11 @@ Chain computations together.
   variables: {
     allocationResult: { 
       type: 'subscription',
-      holster_path: 'compute/{allocationProgram}/outputs/allocations'
+      mesh_path: 'compute/{allocationProgram}/outputs/allocations'
     },
     recognitionResult: {
       type: 'subscription', 
-      holster_path: 'compute/{recognitionProgram}/outputs/weights'
+      mesh_path: 'compute/{recognitionProgram}/outputs/weights'
     }
   },
   computations: [
@@ -189,7 +189,7 @@ Traditional smart contracts (Ethereum, etc.):
 - ❌ On-chain only (privacy issues)
 
 Your system:
-- ✅ Free (P2P on Holster)
+- ✅ Free (P2P on Mesh)
 - ✅ Declarative schemas (non-programmers can configure)
 - ✅ Upgradeable (deploy new program version)
 - ✅ Off-chain with verification (privacy + accountability)
@@ -332,7 +332,7 @@ export {
 **Your "P2P Coordination OS"**:
 - Manages data (user space structure)
 - Manages computations (reactive runtime)
-- Manages I/O (space-stores + Holster)
+- Manages I/O (space-stores + Mesh)
 - Manages causality (ITC stamps)
 - Coordination programs run on top
 

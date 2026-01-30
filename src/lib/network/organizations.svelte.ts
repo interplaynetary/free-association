@@ -2,23 +2,21 @@
  * Organizations Module
  * 
  * Provides organization management with multi-language names and recursive membership.
- * Uses createStore() from store.svelte.ts for Holster persistence and sync.
+ * Uses createStore() from store.svelte.ts for Mesh persistence and sync.
  * 
  * Features:
  * - Multi-language names: { en: "Name", es: "Nombre" }
  * - Global organizations list (freely-associating-organizations)
- * - User's organization collection (Holster-backed via createStore)
+ * - User's organization collection (Mesh-backed via createStore)
  * - CRUD operations with validation
  * - Auto-cleanup on logout
  */
 
 import { writable, derived, get } from 'svelte/store';
-import type { Writable } from 'svelte/store';
 import { createStore } from '$lib/utils/primitives/store.svelte';
-import { holster } from '$lib/network/holster';
+import { mesh } from '$lib/network/mesh';
 import type {
 	Organization,
-	OrganizationsCollection
 } from '@playnet/free-association/schemas';
 import { OrganizationSchema, OrganizationsCollectionSchema } from '@playnet/free-association/schemas';
 import { DEMO_ORGANIZATIONS } from '$lib/demo/orgs';
@@ -26,15 +24,15 @@ import { DEMO_ORGANIZATIONS } from '$lib/demo/orgs';
 console.log('[TRACE] src/lib/network/organizations.svelte.ts: <module scope>');
 
 // ═══════════════════════════════════════════════════════════════════
-// USER'S ORGANIZATIONS STORE (Holster-backed via createStore)
+// USER'S ORGANIZATIONS STORE (Mesh-backed via createStore)
 // ═══════════════════════════════════════════════════════════════════
 
 /**
  * User's organizations collection
  * Uses createStore() - handles persistence, validation, conflict resolution automatically!
  */
-export const holsterOrganizations = createStore({
-	holsterPath: 'organizations',
+export const meshOrganizations = createStore({
+	meshPath: 'organizations',
 	schema: OrganizationsCollectionSchema,
 	persistDebounce: 200
 });
@@ -56,10 +54,10 @@ let orgListCallback: ((data: any) => void) | null = null;
 let isOrgListInitialized = false;
 
 /**
- * Subscribe to freely-associating-organizations list from Holster
+ * Subscribe to freely-associating-organizations list from Mesh
  */
 /**
- * Subscribe to freely-associating-organizations list from Holster
+ * Subscribe to freely-associating-organizations list from Mesh
  */
 function subscribeToOrganizationsList() {
 	console.log('[TRACE] [ENTER] src/lib/network/organizations.svelte.ts: subscribeToOrganizationsList');
@@ -96,7 +94,7 @@ function subscribeToOrganizationsList() {
 		});
 	};
 
-	holster.get('freely-associating-organizations').on(orgListCallback, true);
+	mesh.get('freely-associating-organizations').on(orgListCallback, true);
 	isOrgListInitialized = true;
 	console.log('[TRACE] [EXIT] src/lib/network/organizations.svelte.ts: subscribeToOrganizationsList');
 }
@@ -117,7 +115,7 @@ export function initializeOrganizationsList() {
 function cleanupOrganizationsList() {
 	console.log('[TRACE] [ENTER] src/lib/network/organizations.svelte.ts: cleanupOrganizationsList');
 	if (orgListCallback) {
-		holster.get('freely-associating-organizations').off(orgListCallback);
+		mesh.get('freely-associating-organizations').off(orgListCallback);
 		orgListCallback = null;
 	}
 	globalOrganizations.set({});
@@ -133,7 +131,7 @@ function cleanupOrganizationsList() {
 /**
  * User's organizations as array (for UI rendering)
  */
-export const organizationsArray = derived(holsterOrganizations, ($orgs) => {
+export const organizationsArray = derived(meshOrganizations, ($orgs) => {
 	if (!$orgs) return [];
 	return Object.values($orgs);
 });
@@ -172,7 +170,7 @@ export const filteredOrganizations = derived(
  */
 export function initializeOrganizations() {
 	console.log('[TRACE] [ENTER] src/lib/network/organizations.svelte.ts: initializeOrganizations');
-	holsterOrganizations.initialize();
+	meshOrganizations.initialize();
 	console.log('[ORGS] Initialized user organizations store');
 	console.log('[TRACE] [EXIT] src/lib/network/organizations.svelte.ts: initializeOrganizations');
 }
@@ -183,7 +181,7 @@ export function initializeOrganizations() {
  */
 export async function cleanupOrganizations() {
 	console.log('[TRACE] [ENTER] src/lib/network/organizations.svelte.ts: cleanupOrganizations');
-	await holsterOrganizations.cleanup();
+	await meshOrganizations.cleanup();
 	cleanupOrganizationsList();
 	console.log('[ORGS] Cleaned up');
 	console.log('[TRACE] [EXIT] src/lib/network/organizations.svelte.ts: cleanupOrganizations');
@@ -216,14 +214,14 @@ export function createOrganization(
 	const validatedOrg = OrganizationSchema.parse(newOrg);
 
 	// Add to organizations collection
-	const currentOrgs = get(holsterOrganizations) || {};
+	const currentOrgs = get(meshOrganizations) || {};
 	const updatedOrgs = {
 		...currentOrgs,
 		[org_id]: validatedOrg
 	};
 
 	// Update store - createStore handles persistence automatically!
-	holsterOrganizations.set(updatedOrgs);
+	meshOrganizations.set(updatedOrgs);
 
 	console.log(`[ORGS] Created organization: ${org_id}`);
 	console.log('[TRACE] [EXIT] src/lib/network/organizations.svelte.ts: createOrganization', { org_id });
@@ -235,7 +233,7 @@ export function createOrganization(
  */
 export function updateOrganization(org_id: string, updates: Partial<Organization>): void {
 	console.log('[TRACE] [ENTER] src/lib/network/organizations.svelte.ts: updateOrganization', { org_id });
-	const currentOrgs = get(holsterOrganizations);
+	const currentOrgs = get(meshOrganizations);
 	if (!currentOrgs) {
 		console.warn(`[ORGS] No organizations loaded`);
 		console.log('[TRACE] [EXIT] src/lib/network/organizations.svelte.ts: updateOrganization (not loaded)');
@@ -266,7 +264,7 @@ export function updateOrganization(org_id: string, updates: Partial<Organization
 	};
 
 	// Update store - createStore handles persistence automatically!
-	holsterOrganizations.set(updatedOrgs);
+	meshOrganizations.set(updatedOrgs);
 
 	console.log(`[ORGS] Updated organization: ${org_id}`);
 	console.log('[TRACE] [EXIT] src/lib/network/organizations.svelte.ts: updateOrganization');
@@ -277,7 +275,7 @@ export function updateOrganization(org_id: string, updates: Partial<Organization
  */
 export function deleteOrganization(org_id: string): void {
 	console.log('[TRACE] [ENTER] src/lib/network/organizations.svelte.ts: deleteOrganization', { org_id });
-	const currentOrgs = get(holsterOrganizations);
+	const currentOrgs = get(meshOrganizations);
 	if (!currentOrgs) {
 		console.warn(`[ORGS] No organizations loaded`);
 		console.log('[TRACE] [EXIT] src/lib/network/organizations.svelte.ts: deleteOrganization (not loaded)');
@@ -288,7 +286,7 @@ export function deleteOrganization(org_id: string): void {
 	const { [org_id]: deleted, ...remaining } = currentOrgs;
 
 	// Update store - createStore handles persistence automatically!
-	holsterOrganizations.set(remaining);
+	meshOrganizations.set(remaining);
 
 	console.log(`[ORGS] Deleted organization: ${org_id}`);
 	console.log('[TRACE] [EXIT] src/lib/network/organizations.svelte.ts: deleteOrganization');
@@ -298,7 +296,7 @@ export function deleteOrganization(org_id: string): void {
  * Get organization by ID
  */
 export function getOrganizationById(org_id: string): Organization | undefined {
-	const orgs = get(holsterOrganizations);
+	const orgs = get(meshOrganizations);
 	return orgs?.[org_id];
 }
 
@@ -344,7 +342,7 @@ export function registerOrganizationGlobally(org_id: string): void {
 	}
 
 	// Publish to global list
-	holster.get('freely-associating-organizations').next(org_id).put({
+	mesh.get('freely-associating-organizations').next(org_id).put({
 		org_id: org.org_id,
 		names: org.names,
 		emoji: org.emoji,
@@ -363,7 +361,7 @@ export function registerOrganizationGlobally(org_id: string): void {
 export function unregisterOrganizationGlobally(org_id: string): void {
 	console.log('[TRACE] [ENTER] src/lib/network/organizations.svelte.ts: unregisterOrganizationGlobally', { org_id });
 	// Remove from global list by setting to null
-	holster.get('freely-associating-organizations').next(org_id).put(null);
+	mesh.get('freely-associating-organizations').next(org_id).put(null);
 	console.log(`[ORGS] Unregistered organization globally: ${org_id}`);
 	console.log('[TRACE] [EXIT] src/lib/network/organizations.svelte.ts: unregisterOrganizationGlobally');
 }

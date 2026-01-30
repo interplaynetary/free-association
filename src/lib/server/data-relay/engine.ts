@@ -1,12 +1,12 @@
-import type {DataRelayConfig} from "./config"
-import {computeTimeKey, createContentHash, DEFAULT_THROTTLING} from "./config"
-import {SubscriptionManager} from "./subscription-manager"
+import type { DataRelayConfig } from "./config"
+import { computeTimeKey, createContentHash, DEFAULT_THROTTLING } from "./config"
+import { SubscriptionManager } from "./subscription-manager"
 
-// Type for Gun/Holster user instance
+// Type for Gun/Mesh user instance
 type User = any
 
 /**
- * Generic data relay engine for processing and storing data to Holster
+ * Generic data relay engine for processing and storing data to Mesh
  */
 export class DataRelayEngine<TInput = any, TStored = any> {
   private config: DataRelayConfig<TInput, TStored>
@@ -14,8 +14,8 @@ export class DataRelayEngine<TInput = any, TStored = any> {
   private subscriptionManager: SubscriptionManager | null = null
 
   // In-memory caches (per instance)
-  private pendingRequests = new Map<string, {startTime: number}>()
-  private contentHashCache = new Map<string, {hash: string; timestamp: number}>()
+  private pendingRequests = new Map<string, { startTime: number }>()
+  private contentHashCache = new Map<string, { hash: string; timestamp: number }>()
   private cleanupQueue = new Set<string>()
   private processingCleanup = new Set<string>()
   private cleanupTimer: ReturnType<typeof setTimeout> | null = null
@@ -59,8 +59,8 @@ export class DataRelayEngine<TInput = any, TStored = any> {
     rawData: unknown,
     accountCode?: string,
   ): Promise<
-    | {success: true; status: "stored" | "unchanged"}
-    | {success: false; error: string; status: "duplicate" | "invalid" | "age_filtered" | "error" | "no_subscription"}
+    | { success: true; status: "stored" | "unchanged" }
+    | { success: false; error: string; status: "duplicate" | "invalid" | "age_filtered" | "error" | "no_subscription" }
   > {
     const startTime = Date.now()
 
@@ -102,11 +102,11 @@ export class DataRelayEngine<TInput = any, TStored = any> {
     // Check for duplicate request
     if (this.pendingRequests.has(dedupKey)) {
       this.stats.requests.duplicates++
-      return {success: false, error: "Already processing", status: "duplicate"}
+      return { success: false, error: "Already processing", status: "duplicate" }
     }
 
     // Mark as processing
-    this.pendingRequests.set(dedupKey, {startTime: Date.now()})
+    this.pendingRequests.set(dedupKey, { startTime: Date.now() })
 
     try {
       // Age filtering
@@ -127,7 +127,7 @@ export class DataRelayEngine<TInput = any, TStored = any> {
 
       // Custom validation
       if (this.config.transform.validate && !this.config.transform.validate(storedData)) {
-        return {success: false, error: "Validation failed after transformation", status: "invalid"}
+        return { success: false, error: "Validation failed after transformation", status: "invalid" }
       }
 
       // Content hash check
@@ -145,7 +145,7 @@ export class DataRelayEngine<TInput = any, TStored = any> {
         now - cachedHash.timestamp < this.config.deduplication.cacheTTL
       ) {
         this.stats.requests.unchanged++
-        return {success: true, status: "unchanged"}
+        return { success: true, status: "unchanged" }
       }
 
       // Apply throttling
@@ -192,7 +192,7 @@ export class DataRelayEngine<TInput = any, TStored = any> {
         `[${this.config.type}] Stored: ${resourceId}/${itemId} (${processingTime}ms)`,
       )
 
-      return {success: true, status: "stored"}
+      return { success: true, status: "stored" }
     } catch (error) {
       console.error(`[${this.config.type}] Error processing item:`, error)
       return {
@@ -206,7 +206,7 @@ export class DataRelayEngine<TInput = any, TStored = any> {
   }
 
   /**
-   * Store item to Holster
+   * Store item to Mesh
    */
   private async storeItem(
     resourceId: string,
@@ -226,12 +226,12 @@ export class DataRelayEngine<TInput = any, TStored = any> {
     const cleanupPromise =
       this.config.retention.enableCleanup && timeKey !== null
         ? new Promise<void>((resolve, reject) => {
-            const remove = {itemId, resourceId}
-            this.user.get("remove").next(this.config.type).next(timeKey).put(remove, true, (err: any) => {
-              if (err) reject(err)
-              else resolve()
-            })
+          const remove = { itemId, resourceId }
+          this.user.get("remove").next(this.config.type).next(timeKey).put(remove, true, (err: any) => {
+            if (err) reject(err)
+            else resolve()
           })
+        })
         : Promise.resolve()
 
     await Promise.all([itemPromise, cleanupPromise])

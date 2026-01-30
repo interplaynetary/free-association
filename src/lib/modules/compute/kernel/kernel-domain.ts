@@ -114,21 +114,21 @@ export function parseTreesNamespace(data: unknown): TreesNamespace | null {
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * Build Holster paths for allocation & trees namespaces
+ * Build Mesh paths for allocation & trees namespaces
  */
 export const DomainPaths = {
 	// Allocation paths
-	myCommitment: (pubKey: string) => 
+	myCommitment: (pubKey: string) =>
 		`~${pubKey}/allocation/commitment`,
-	myAllocationState: (pubKey: string) => 
+	myAllocationState: (pubKey: string) =>
 		`~${pubKey}/allocation/allocation_state`,
-	peerAllocation: (pubKey: string, peerPubKey: string) => 
+	peerAllocation: (pubKey: string, peerPubKey: string) =>
 		`~${pubKey}/allocation/network/${peerPubKey}`,
-	
+
 	// Tree paths
-	myTree: (pubKey: string) => 
+	myTree: (pubKey: string) =>
 		`~${pubKey}/trees/my_tree`,
-	peerTree: (pubKey: string, peerPubKey: string) => 
+	peerTree: (pubKey: string, peerPubKey: string) =>
 		`~${pubKey}/trees/network_trees/${peerPubKey}`
 };
 

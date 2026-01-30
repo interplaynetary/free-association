@@ -39,7 +39,7 @@ export const IdentifierSchema = z.string()
 	.regex(/^[a-zA-Z_][a-zA-Z0-9_-]*$/, 'Must start with letter or underscore, followed by alphanumeric, underscore, or hyphen');
 
 /**
- * Holster Path - Valid paths for Holster storage
+ * Mesh Path - Valid paths for Mesh storage
  * 
  * Rules:
  * - Can contain alphanumeric, underscore, slash, dot, tilde, hyphen
@@ -47,7 +47,7 @@ export const IdentifierSchema = z.string()
  * 
  * Examples: "allocation/commitment", "data/tree", "config.json"
  */
-export const HolsterPathSchema = z.string()
+export const MeshPathSchema = z.string()
 	.min(1)
 	.regex(/^[a-zA-Z0-9_/.~-]+$/, 'Must contain only alphanumeric, underscore, slash, dot, tilde, or hyphen');
 
@@ -84,8 +84,8 @@ export const FunctionNameSchema = z.string().min(1);
  * RDL supports 5 binding types for maximum flexibility:
  * 
  * 1. **value** - Static literal (any JSON-serializable value)
- * 2. **subscription** - Reactive Holster subscription (updates automatically)
- * 3. **fetch** - One-time Holster fetch (non-reactive)
+ * 2. **subscription** - Reactive Mesh subscription (updates automatically)
+ * 3. **fetch** - One-time Mesh fetch (non-reactive)
  * 4. **local** - Reference to local computation state
  * 5. **derived** - Output from a previous computation
  * 
@@ -112,18 +112,18 @@ export const VariableBindingSchema = z.discriminatedUnion('type', [
 		type: z.literal('value'),
 		value: z.any().describe('Any JSON-serializable value (number, string, object, array, etc.)')
 	}),
-	
+
 	/**
-	 * SUBSCRIPTION BINDING - Reactive Holster subscription
+	 * SUBSCRIPTION BINDING - Reactive Mesh subscription
 	 * 
 	 * Use for: Live data that changes over time
-	 * Uses: Holster .on() for reactive updates
+	 * Uses: Mesh .on() for reactive updates
 	 * 
 	 * Example:
 	 * ```typescript
 	 * {
 	 *   type: 'subscription',
-	 *   holster_path: 'allocation/commitment',
+	 *   mesh_path: 'allocation/commitment',
 	 *   schema_type: 'Commitment',
 	 *   subscribe_to_user: 'abc123...' // Optional: subscribe to peer
 	 * }
@@ -131,23 +131,23 @@ export const VariableBindingSchema = z.discriminatedUnion('type', [
 	 */
 	z.object({
 		type: z.literal('subscription'),
-		holster_path: HolsterPathSchema.describe('Path in Holster to subscribe to'),
+		mesh_path: MeshPathSchema.describe('Path in Mesh to subscribe to'),
 		schema_type: SchemaTypeNameSchema.describe('Name of registered Zod schema for validation'),
 		subscribe_to_user: PubKeySchema.optional().describe('Optional: Subscribe to another user\'s data'),
 		default_value: z.any().optional().describe('Fallback value if subscription is empty')
 	}),
-	
+
 	/**
-	 * FETCH BINDING - One-time Holster fetch
+	 * FETCH BINDING - One-time Mesh fetch
 	 * 
 	 * Use for: Initial state, configuration, static data
-	 * Uses: Holster .get() for one-time retrieval
+	 * Uses: Mesh .get() for one-time retrieval
 	 * 
 	 * Example:
 	 * ```typescript
 	 * {
 	 *   type: 'fetch',
-	 *   holster_path: 'config/settings',
+	 *   mesh_path: 'config/settings',
 	 *   schema_type: 'Config',
 	 *   wait_ms: 500
 	 * }
@@ -155,13 +155,13 @@ export const VariableBindingSchema = z.discriminatedUnion('type', [
 	 */
 	z.object({
 		type: z.literal('fetch'),
-		holster_path: HolsterPathSchema.describe('Path in Holster to fetch from'),
+		mesh_path: MeshPathSchema.describe('Path in Mesh to fetch from'),
 		schema_type: SchemaTypeNameSchema.describe('Name of registered Zod schema for validation'),
 		fetch_from_user: PubKeySchema.optional().describe('Optional: Fetch from another user\'s data'),
 		default_value: z.any().optional().describe('Fallback value if fetch returns null'),
 		wait_ms: z.number().int().gte(0).default(100).describe('Milliseconds to wait for response before using default')
 	}),
-	
+
 	/**
 	 * LOCAL BINDING - Reference to local state
 	 * 
@@ -174,10 +174,10 @@ export const VariableBindingSchema = z.discriminatedUnion('type', [
 	 */
 	z.object({
 		type: z.literal('local'),
-		state_path: HolsterPathSchema.describe('Dot-separated path in local state (e.g., "results.allocation")'),
+		state_path: MeshPathSchema.describe('Dot-separated path in local state (e.g., "results.allocation")'),
 		default_value: z.any().optional().describe('Fallback value if path doesn\'t exist')
 	}),
-	
+
 	/**
 	 * DERIVED BINDING - Output from previous computation
 	 * 
@@ -206,18 +206,18 @@ export const VariableBindingSchema = z.discriminatedUnion('type', [
  * 
  * RDL supports 3 output types for different persistence needs:
  * 
- * 1. **holster** - Persist to Holster (network-replicated, permanent)
+ * 1. **mesh** - Persist to Mesh (network-replicated, permanent)
  * 2. **local** - Store in local state (transient, session-only)
  * 3. **memory** - Keep in memory only (for chaining computations)
  * 
  * Choose based on your persistence and visibility needs:
- * - Use 'holster' for results that need to be shared or persisted
+ * - Use 'mesh' for results that need to be shared or persisted
  * - Use 'local' for intermediate state within a session
  * - Use 'memory' for ephemeral data used by downstream computations
  */
 export const OutputBindingSchema = z.discriminatedUnion('type', [
 	/**
-	 * HOLSTER OUTPUT - Persist to network-replicated storage
+	 * MESH OUTPUT - Persist to network-replicated storage
 	 * 
 	 * Use for: Results that need to be:
 	 * - Shared with other users
@@ -227,20 +227,20 @@ export const OutputBindingSchema = z.discriminatedUnion('type', [
 	 * Example:
 	 * ```typescript
 	 * {
-	 *   type: 'holster',
-	 *   holster_path: 'allocation/result',
+	 *   type: 'mesh',
+	 *   mesh_path: 'allocation/result',
 	 *   schema_type: 'AllocationState',
 	 *   persist_debounce_ms: 200
 	 * }
 	 * ```
 	 */
 	z.object({
-		type: z.literal('holster'),
-		holster_path: HolsterPathSchema.describe('Path in Holster where result will be stored'),
+		type: z.literal('mesh'),
+		mesh_path: MeshPathSchema.describe('Path in Mesh where result will be stored'),
 		schema_type: SchemaTypeNameSchema.optional().describe('Optional: Zod schema for validation'),
 		persist_debounce_ms: z.number().int().gte(0).optional().describe('Optional: Delay before persisting (for batching)')
 	}),
-	
+
 	/**
 	 * LOCAL OUTPUT - Store in session-local state
 	 * 
@@ -254,9 +254,9 @@ export const OutputBindingSchema = z.discriminatedUnion('type', [
 	 */
 	z.object({
 		type: z.literal('local'),
-		state_path: HolsterPathSchema.describe('Dot-separated path in local state')
+		state_path: MeshPathSchema.describe('Dot-separated path in local state')
 	}),
-	
+
 	/**
 	 * MEMORY OUTPUT - Keep in memory for chaining
 	 * 
@@ -298,11 +298,11 @@ export const OutputBindingSchema = z.discriminatedUnion('type', [
  *   id: 'compute_allocation',
  *   inputs: {
  *     capacity: { type: 'value', value: 100 },
- *     need: { type: 'subscription', holster_path: 'need', schema_type: 'Need' }
+ *     need: { type: 'subscription', mesh_path: 'need', schema_type: 'Need' }
  *   },
  *   compute_fn: 'allocate',
  *   outputs: {
- *     result: { type: 'holster', holster_path: 'allocation/result' }
+ *     result: { type: 'mesh', mesh_path: 'allocation/result' }
  *   }
  * }
  * ```
@@ -317,7 +317,7 @@ export const OutputBindingSchema = z.discriminatedUnion('type', [
  *   },
  *   compute_fn: 'processResult',
  *   outputs: {
- *     final: { type: 'holster', holster_path: 'results/final' }
+ *     final: { type: 'mesh', mesh_path: 'results/final' }
  *   },
  *   debounce_ms: 200
  * }
@@ -326,7 +326,7 @@ export const OutputBindingSchema = z.discriminatedUnion('type', [
 export const ComputationSchema = z.object({
 	/** Unique identifier for this computation within the program */
 	id: IdentifierSchema.describe('Unique computation ID (used for references and dependencies)'),
-	
+
 	/** 
 	 * Input declarations - where this computation gets its data
 	 * 
@@ -337,7 +337,7 @@ export const ComputationSchema = z.object({
 		IdentifierSchema,
 		VariableBindingSchema
 	).describe('Map of input variable names to their bindings'),
-	
+
 	/** 
 	 * Computation function - the actual logic to execute
 	 * 
@@ -345,7 +345,7 @@ export const ComputationSchema = z.object({
 	 * Function receives inputs as object, returns outputs as object
 	 */
 	compute_fn: FunctionNameSchema.describe('Name of registered computation function'),
-	
+
 	/** 
 	 * Local bindings - variables scoped to this computation's closure
 	 * 
@@ -357,7 +357,7 @@ export const ComputationSchema = z.object({
 		IdentifierSchema,
 		VariableBindingSchema
 	).optional().describe('Optional local variables within computation scope'),
-	
+
 	/** 
 	 * Output declarations - where results are stored
 	 * 
@@ -368,11 +368,11 @@ export const ComputationSchema = z.object({
 		IdentifierSchema,
 		OutputBindingSchema
 	).describe('Map of output keys to their persistence bindings'),
-	
+
 	// ───────────────────────────────────────────────────────────────────
 	// EXECUTION CONTROL
 	// ───────────────────────────────────────────────────────────────────
-	
+
 	/** 
 	 * Debounce delay for re-execution
 	 * 
@@ -381,7 +381,7 @@ export const ComputationSchema = z.object({
 	 */
 	debounce_ms: z.number().int().gte(0).default(0)
 		.describe('Milliseconds to debounce re-execution (default: 0 = immediate)'),
-	
+
 	/** 
 	 * Whether this computation is enabled
 	 * 
@@ -390,7 +390,7 @@ export const ComputationSchema = z.object({
 	 */
 	enabled: z.boolean().default(true)
 		.describe('Whether computation is enabled (default: true)'),
-	
+
 	/** 
 	 * Explicit dependencies on other computations
 	 * 
@@ -399,15 +399,15 @@ export const ComputationSchema = z.object({
 	 */
 	depends_on: z.array(IdentifierSchema).optional()
 		.describe('Optional list of computation IDs that must run before this one'),
-	
+
 	// ───────────────────────────────────────────────────────────────────
 	// METADATA
 	// ───────────────────────────────────────────────────────────────────
-	
+
 	/** Human-readable description of what this computation does */
 	description: z.string().optional()
 		.describe('Optional description for documentation'),
-	
+
 	/** Version identifier for this computation */
 	version: z.string().optional()
 		.describe('Optional version string (e.g., "1.0.0")')
@@ -459,12 +459,12 @@ export const ComputationSchema = z.object({
  *   variables: {
  *     myCommitment: {
  *       type: 'subscription',
- *       holster_path: 'allocation/commitment',
+ *       mesh_path: 'allocation/commitment',
  *       schema_type: 'Commitment'
  *     },
  *     networkCommitments: {
  *       type: 'subscription',
- *       holster_path: 'allocation/network',
+ *       mesh_path: 'allocation/network',
  *       schema_type: 'Object'
  *     }
  *   },
@@ -480,8 +480,8 @@ export const ComputationSchema = z.object({
  *       compute_fn: 'twoTierAllocation',
  *       outputs: {
  *         state: {
- *           type: 'holster',
- *           holster_path: 'allocation/state',
+ *           type: 'mesh',
+ *           mesh_path: 'allocation/state',
  *           persist_debounce_ms: 200
  *         }
  *       },
@@ -513,7 +513,7 @@ export const ReactiveComputationGraphSchema = z.object({
 	// ───────────────────────────────────────────────────────────────────
 	// IDENTITY
 	// ───────────────────────────────────────────────────────────────────
-	
+
 	/** 
 	 * Unique identifier for this program
 	 * 
@@ -523,11 +523,11 @@ export const ReactiveComputationGraphSchema = z.object({
 	 * - Logging and diagnostics
 	 */
 	id: IdentifierSchema.describe('Unique program identifier'),
-	
+
 	// ───────────────────────────────────────────────────────────────────
 	// DATAFLOW SPECIFICATION
 	// ───────────────────────────────────────────────────────────────────
-	
+
 	/** 
 	 * Global variable declarations
 	 * 
@@ -543,7 +543,7 @@ export const ReactiveComputationGraphSchema = z.object({
 		IdentifierSchema,
 		VariableBindingSchema
 	).describe('Global variable declarations (data sources)'),
-	
+
 	/** 
 	 * Computation pipeline
 	 * 
@@ -558,11 +558,11 @@ export const ReactiveComputationGraphSchema = z.object({
 	computations: z.array(ComputationSchema)
 		.min(1)
 		.describe('List of computations in this program (must have at least one)'),
-	
+
 	// ───────────────────────────────────────────────────────────────────
 	// METADATA & CONFIGURATION
 	// ───────────────────────────────────────────────────────────────────
-	
+
 	/** 
 	 * Program version
 	 * 
@@ -574,7 +574,7 @@ export const ReactiveComputationGraphSchema = z.object({
 	 */
 	version: z.string().optional()
 		.describe('Program version (e.g., "1.0.0")'),
-	
+
 	/** 
 	 * Human-readable description
 	 * 
@@ -583,14 +583,14 @@ export const ReactiveComputationGraphSchema = z.object({
 	 */
 	description: z.string().optional()
 		.describe('Description of program purpose and behavior'),
-	
+
 	/** 
 	 * Program hash for namespacing
 	 * 
-	 * If provided, all Holster paths in this program are automatically
+	 * If provided, all Mesh paths in this program are automatically
 	 * prefixed with this hash, ensuring namespace isolation.
 	 * 
-	 * Format: ~{pubkey}/{program_hash}/{holster_path}
+	 * Format: ~{pubkey}/{program_hash}/{mesh_path}
 	 * 
 	 * If not provided, computed automatically from program structure.
 	 * 
@@ -600,7 +600,7 @@ export const ReactiveComputationGraphSchema = z.object({
 	 * - Clean program isolation
 	 */
 	program_hash: z.string().optional()
-		.describe('Optional hash for namespacing Holster paths (auto-computed if not provided)')
+		.describe('Optional hash for namespacing Mesh paths (auto-computed if not provided)')
 });
 
 // ═══════════════════════════════════════════════════════════════════
@@ -641,43 +641,43 @@ export const OutputProvenanceSchema = z.object({
 export const ComputationProvenanceSchema = z.object({
 	// Unique identifier for this provenance record
 	id: z.string(),
-	
+
 	// Peer causality (when/who) - V2: ITC instead of vector clock
 	itcStamp: ITCStampSchema,
 	executedBy: z.string(), // pubkey of executor
 	timestamp: z.number().int().positive(),
-	
+
 	// Computation identity (what)
 	programHash: z.string(),      // Which program
 	computationId: z.string(),    // Which computation within program
 	computationHash: z.string(),  // Hash of the computation definition (for version tracking)
-	
+
 	// Input provenance (what data was used)
 	inputs: z.record(z.string(), InputProvenanceSchema),
-	
+
 	// Output provenance (what was produced)
 	outputs: z.record(z.string(), OutputProvenanceSchema),
-	
+
 	// Deterministic verification hash
 	// Hash of (computationHash + sorted input hashes)
 	// Allows others to verify: "If I had these inputs, would I get this output?"
 	deterministicHash: z.string(),
-	
+
 	// Optional: parent provenance IDs (for lineage tracking)
 	parents: z.array(z.string()).optional()
 });
 
 /**
  * Versioned Program Data with Provenance
- * Stored at: ~pubkey/<program_hash>/<holster_path>/<provenance_signature>
+ * Stored at: ~pubkey/<program_hash>/<mesh_path>/<provenance_signature>
  */
 export const VersionedProgramDataSchema = z.object({
 	// The actual data
 	data: z.any(),
-	
+
 	// Full provenance record
 	provenance: ComputationProvenanceSchema,
-	
+
 	// Storage metadata
 	_updatedAt: z.number().int().positive()
 });
@@ -688,7 +688,7 @@ export const VersionedProgramDataSchema = z.object({
 
 // Primitive types
 export type Identifier = z.infer<typeof IdentifierSchema>;
-export type HolsterPath = z.infer<typeof HolsterPathSchema>;
+export type MeshPath = z.infer<typeof MeshPathSchema>;
 export type PubKey = z.infer<typeof PubKeySchema>;
 export type SchemaTypeName = z.infer<typeof SchemaTypeNameSchema>;
 export type FunctionName = z.infer<typeof FunctionNameSchema>;

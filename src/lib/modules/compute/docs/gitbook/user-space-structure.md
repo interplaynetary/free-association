@@ -1,8 +1,8 @@
-# Holster User Space Structure
+# Mesh User Space Structure
 
 ## Overview
 
-The Holster user space is organized as a tree structure rooted at each user's public key. This document describes the canonical organization for declarative reactive computation programs.
+The Mesh user space is organized as a tree structure rooted at each user's public key. This document describes the canonical organization for declarative reactive computation programs.
 
 ```
 ~{myPubKey}/
@@ -43,7 +43,7 @@ The Holster user space is organized as a tree structure rooted at each user's pu
 │       ├── outputs/
 │       │   └── {outputKey}/
 │       │       ├── value                     # Final output value
-│       │       ├── holster_path              # Where it's persisted
+│       │       ├── mesh_path              # Where it's persisted
 │       │       └── updated_at                # Timestamp
 │       │
 │       └── provenance/
@@ -65,14 +65,14 @@ The Holster user space is organized as a tree structure rooted at each user's pu
 ├── subscriptions/
 │   ├── outbound/                             # What I'm watching
 │   │   ├── local/
-│   │   │   └── {holsterPath}/
+│   │   │   └── {meshPath}/
 │   │   │       ├── schema_type
 │   │   │       ├── subscribers               # Array of callback IDs
 │   │   │       └── last_value
 │   │   │
 │   │   └── peers/
 │   │       └── {peerPubKey}/
-│   │           └── {holsterPath}/
+│   │           └── {meshPath}/
 │   │               ├── schema_type
 │   │               ├── subscribers
 │   │               ├── last_value
@@ -80,7 +80,7 @@ The Holster user space is organized as a tree structure rooted at each user's pu
 │   │
 │   └── inbound/                              # Who's watching me
 │       └── {peerPubKey}/
-│           └── {holsterPath}                 # List of paths they subscribe to
+│           └── {meshPath}                 # List of paths they subscribe to
 │
 ├── nodes/                                     # Tree nodes with storage
 │   └── {nodeId}/
@@ -93,7 +93,7 @@ The Holster user space is organized as a tree structure rooted at each user's pu
 │       │
 │       └── storage/                          # NodeDataStorage (if present)
 │           ├── data                          # Arbitrary data
-│           ├── holster_path
+│           ├── mesh_path
 │           ├── data_schema_type
 │           ├── data_updated_at
 │           ├── is_loading
@@ -168,7 +168,7 @@ The `/subscriptions/` namespace tracks both outbound (what I watch) and inbound 
 - Network topology visibility
 
 ### 4. Nodes with Optional Storage
-The `/nodes/` namespace stores tree structures where each node can optionally have a `storage` configuration that turns it into a reactive store with Holster subscriptions.
+The `/nodes/` namespace stores tree structures where each node can optionally have a `storage` configuration that turns it into a reactive store with Mesh subscriptions.
 
 ### 5. Causality Tracking
 The `/causality/` namespace maintains ITC stamps for both the local user and all peers, enabling:
@@ -209,7 +209,7 @@ Tracked in my space at:
 ```
 ~{myPubKey}/nodes/{nodeId}/storage
 ```
-With `holster_path: "capacity/slot-123"` and `subscribe_to_user: "{peerPubKey}"`
+With `mesh_path: "capacity/slot-123"` and `subscribe_to_user: "{peerPubKey}"`
 
 ### My current ITC stamp:
 ```
@@ -229,7 +229,7 @@ With `holster_path: "capacity/slot-123"` and `subscribe_to_user: "{peerPubKey}"`
 
 3. **Variable Binding**: For each variable with `type: 'subscription'`:
    - Store subscription config at `/subscriptions/outbound/.../`
-   - Call `holster.get(holster_path).on(callback)`
+   - Call `mesh.get(mesh_path).on(callback)`
    - Store current value at `/compute/{programHash}/state/variables/{variableName}`
 
 4. **Computation Execution**: When subscribed data changes:
@@ -239,13 +239,13 @@ With `holster_path: "capacity/slot-123"` and `subscribe_to_user: "{peerPubKey}"`
    - Generate provenance at `/compute/{programHash}/provenance/{provenanceId}/record`
 
 5. **Output Persistence**: Based on output binding:
-   - `type: 'holster'` → `holster.get(holster_path).put(value)`
+   - `type: 'mesh'` → `mesh.get(mesh_path).put(value)`
    - `type: 'local'` → Store at `/compute/{programHash}/outputs/{outputKey}/value`
    - `type: 'memory'` → Store only in runtime (not persisted)
 
 6. **Cross-Peer Subscription**: When subscribing to peer data:
-   - Store subscription at `/subscriptions/outbound/peers/{peerPubKey}/{holsterPath}`
-   - Call `holster.get("~{peerPubKey}/{holsterPath}").on(callback)`
+   - Store subscription at `/subscriptions/outbound/peers/{peerPubKey}/{meshPath}`
+   - Call `mesh.get("~{peerPubKey}/{meshPath}").on(callback)`
    - Merge peer's ITC stamp at `/causality/peer_stamps/{peerPubKey}/itc_stamp`
 
 ## Storage Efficiency

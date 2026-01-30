@@ -4,7 +4,7 @@
 	import { handleAddressClick } from '$lib/location/mapUtils';
 	import { globalState } from '$lib/global.svelte';
 	// V5: Import user pubkey to look up recognition shares
-	import { holsterUserPub } from '$lib/network/holster.svelte';
+	import { meshUserPub } from '$lib/network/mesh.svelte';
 	import { myAllocationsAsProvider } from '$lib/protocol/stores/allocation.svelte';
 	import { networkAllocations } from '$lib/protocol/stores/stores.svelte';
 	import { get } from 'svelte/store';
@@ -74,7 +74,7 @@
 	// Allocation data integration (matching ResourceSlots pattern)
 	const myAllocations = $derived($myAllocationsAsProvider.allocations || []);
 	const allNetworkAllocations = $derived($networkAllocations);
-	const myPubKey = $derived($holsterUserPub);
+	const myPubKey = $derived($meshUserPub);
 
 	// PERFORMANCE FIX: On-demand allocation lookup instead of building expensive map
 	// Only search when needed for visible slots (much faster than rebuilding 1,484-item map)
@@ -244,7 +244,7 @@
 		if (!slot) return 0;
 
 		// Get user's pubkey to look up their share in this slot's priority_distribution
-		const userPubkey = get(holsterUserPub);
+		const userPubkey = get(meshUserPub);
 		if (!userPubkey) return 0;
 
 		// Get the user's recognition share from the slot's priority_distribution

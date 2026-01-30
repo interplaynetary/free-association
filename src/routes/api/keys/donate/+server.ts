@@ -11,7 +11,7 @@ const DonationSchema = z.object({
 	apiKey: z.string().min(20).max(200), // OpenRouter keys are typically long
 	donorName: z.string().min(1).max(100).optional(),
 	isAnonymous: z.boolean().default(false),
-	// Optional: user's Holster pub key for tracking
+	// Optional: user's Mesh pub key for tracking
 	donorPub: z.string().optional()
 });
 

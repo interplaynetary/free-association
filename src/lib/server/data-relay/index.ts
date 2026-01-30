@@ -1,7 +1,7 @@
 /**
- * Generic Data Relay System for Holster
+ * Generic Data Relay System for Mesh
  *
- * A flexible system for relaying data from external APIs to Holster storage.
+ * A flexible system for relaying data from external APIs to Mesh storage.
  * Supports multiple data types with configurable:
  * - Storage paths and hierarchies
  * - Deduplication and content hashing
@@ -11,9 +11,9 @@
  * - Optional subscription management
  */
 
-export {DataRelayEngine} from "./engine"
-export {DataRelayRegistry, getRegistry, resetRegistry} from "./registry"
-export {SubscriptionManager} from "./subscription-manager"
+export { DataRelayEngine } from "./engine"
+export { DataRelayRegistry, getRegistry, resetRegistry } from "./registry"
+export { SubscriptionManager } from "./subscription-manager"
 
 export type {
   DataRelayConfig,

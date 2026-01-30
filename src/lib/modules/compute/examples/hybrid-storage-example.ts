@@ -7,9 +7,9 @@
  * - Indices for fast discovery and lineage
  */
 
-import { 
-	ComputationGraphRuntime, 
-	registerComputationFunction 
+import {
+	ComputationGraphRuntime,
+	registerComputationFunction
 } from '../compute.svelte';
 import type { ReactiveComputationGraph } from '../v1/schemas';
 
@@ -21,10 +21,10 @@ export async function example1_simpleLatestQuery() {
 	console.log('\n========================================');
 	console.log('EXAMPLE 1: Simple Latest Query');
 	console.log('========================================\n');
-	
+
 	// Register computation
 	registerComputationFunction('add', (inputs: any) => inputs.a + inputs.b);
-	
+
 	const program: ReactiveComputationGraph = {
 		id: 'simple-math',
 		variables: {
@@ -39,16 +39,16 @@ export async function example1_simpleLatestQuery() {
 			},
 			compute_fn: 'add',
 			outputs: {
-				result: { type: 'holster', holster_path: 'math/sum' }
+				result: { type: 'mesh', mesh_path: 'math/sum' }
 			}
 		}]
 	};
-	
+
 	// Execute computation
 	const runtime = new ComputationGraphRuntime(program);
 	await runtime.initialize();
 	await runtime.execute();
-	
+
 	console.log('\n📍 Storage locations:');
 	console.log('  1. Canonical: <program_hash>/math/sum');
 	console.log('     → { data: 8, _provenance: {...}, _updatedAt: ... }');
@@ -60,7 +60,7 @@ export async function example1_simpleLatestQuery() {
 	console.log('     → ["math/sum"]');
 	console.log('  5. Lineage index: <program_hash>/_index/lineage/<prov_id>');
 	console.log('     → { computationId: "sum", inputs: [...], outputs: [...] }');
-	
+
 	// Query latest (EASY!)
 	console.log('\n🔍 Querying latest:');
 	const latest = await runtime.getLatest('math/sum');
@@ -69,7 +69,7 @@ export async function example1_simpleLatestQuery() {
 		console.log(`  ✅ Vector clock: ${JSON.stringify(latest._provenance.vectorClock)}`);
 		console.log(`  ✅ Updated at: ${new Date(latest._updatedAt).toISOString()}`);
 	}
-	
+
 	return runtime;
 }
 
@@ -81,9 +81,9 @@ export async function example2_versionHistory() {
 	console.log('\n========================================');
 	console.log('EXAMPLE 2: Version History');
 	console.log('========================================\n');
-	
+
 	registerComputationFunction('increment', (inputs: any) => inputs.value + 1);
-	
+
 	const program: ReactiveComputationGraph = {
 		id: 'counter',
 		variables: {
@@ -96,14 +96,14 @@ export async function example2_versionHistory() {
 			},
 			compute_fn: 'increment',
 			outputs: {
-				result: { type: 'holster', holster_path: 'counter/value' }
+				result: { type: 'mesh', mesh_path: 'counter/value' }
 			}
 		}]
 	};
-	
+
 	const runtime = new ComputationGraphRuntime(program);
 	await runtime.initialize();
-	
+
 	// Execute multiple times to create version history
 	console.log('📝 Executing 5 times to create version history...\n');
 	for (let i = 0; i < 5; i++) {
@@ -112,14 +112,14 @@ export async function example2_versionHistory() {
 		await runtime.execute();
 		console.log(`  Execution ${i + 1}: counter = ${i + 1}`);
 	}
-	
+
 	// Query latest
 	console.log('\n🔍 Latest value:');
 	const latest = await runtime.getLatest('counter/value');
 	if (latest) {
 		console.log(`  Value: ${latest.data}`);
 	}
-	
+
 	// Query all versions
 	console.log('\n📚 All versions:');
 	const allVersions = await runtime.getAllVersions('counter/value');
@@ -127,7 +127,7 @@ export async function example2_versionHistory() {
 	for (const version of allVersions) {
 		console.log(`    - ${version.data} (VC: ${JSON.stringify(version._provenance.vectorClock)})`);
 	}
-	
+
 	return runtime;
 }
 
@@ -139,10 +139,10 @@ export async function example3_programComposition() {
 	console.log('\n========================================');
 	console.log('EXAMPLE 3: RDL Program Composition');
 	console.log('========================================\n');
-	
+
 	registerComputationFunction('square', (inputs: any) => inputs.x * inputs.x);
 	registerComputationFunction('double', (inputs: any) => inputs.x * 2);
-	
+
 	// Program A: Computes a value
 	const programA: ReactiveComputationGraph = {
 		id: 'compute-square',
@@ -156,22 +156,22 @@ export async function example3_programComposition() {
 			},
 			compute_fn: 'square',
 			outputs: {
-				result: { type: 'holster', holster_path: 'math/squared' }
+				result: { type: 'mesh', mesh_path: 'math/squared' }
 			}
 		}]
 	};
-	
+
 	// Execute Program A
 	console.log('📊 Program A: Computing square of 5...');
 	const runtimeA = new ComputationGraphRuntime(programA);
 	await runtimeA.initialize();
 	await runtimeA.execute();
-	
+
 	const programAHash = runtimeA.getProgramHash();
 	console.log(`  Program A hash: ${programAHash}`);
 	console.log(`  Stored at: ${programAHash}/math/squared`);
 	console.log(`  Result: 25`);
-	
+
 	// Program B: Uses Program A's output
 	// THIS IS WHERE HYBRID STORAGE SHINES!
 	const programB: ReactiveComputationGraph = {
@@ -180,7 +180,7 @@ export async function example3_programComposition() {
 			// Simple subscription to canonical path!
 			squared: {
 				type: 'subscription',
-				holster_path: 'math/squared',
+				mesh_path: 'math/squared',
 				schema_type: 'number'
 			}
 		},
@@ -191,36 +191,36 @@ export async function example3_programComposition() {
 			},
 			compute_fn: 'double',
 			outputs: {
-				result: { type: 'holster', holster_path: 'math/doubled' }
+				result: { type: 'mesh', mesh_path: 'math/doubled' }
 			}
 		}]
 	};
-	
+
 	console.log('\n📊 Program B: Doubling Program A\'s result...');
 	console.log('  Subscribing to: math/squared');
 	console.log('  ✅ No need to know provenance signature!');
 	console.log('  ✅ No need to parse vector clocks!');
 	console.log('  ✅ Just subscribe to canonical path!');
-	
-	// NOTE: In actual implementation, would need to set up Holster subscription
+
+	// NOTE: In actual implementation, would need to set up Mesh subscription
 	// For this example, we simulate by manually querying
 	const squaredValue = await runtimeA.getLatest('math/squared');
-	
+
 	// Create runtime B with the fetched value
 	const runtimeB = new ComputationGraphRuntime(programB);
 	await runtimeB.initialize();
-	
+
 	// Simulate subscription update
 	runtimeB['localState']['squared'] = squaredValue?.data || 25;
 	await runtimeB.execute();
-	
+
 	console.log('  Result: 50');
 	console.log('\n✨ This is the power of canonical paths!');
 	console.log('  - Program B doesn\'t care about version signatures');
 	console.log('  - Program B always gets latest automatically');
 	console.log('  - Provenance is still tracked (in metadata)');
 	console.log('  - Immutable history is still preserved (in _versions)');
-	
+
 	return { runtimeA, runtimeB };
 }
 
@@ -232,13 +232,13 @@ export async function example4_queryComputationOutputs() {
 	console.log('\n========================================');
 	console.log('EXAMPLE 4: Query Computation Outputs');
 	console.log('========================================\n');
-	
+
 	registerComputationFunction('analyze', (inputs: any) => ({
 		count: inputs.data.length,
 		sum: inputs.data.reduce((a: number, b: number) => a + b, 0),
 		avg: inputs.data.reduce((a: number, b: number) => a + b, 0) / inputs.data.length
 	}));
-	
+
 	const program: ReactiveComputationGraph = {
 		id: 'analytics',
 		variables: {
@@ -251,20 +251,20 @@ export async function example4_queryComputationOutputs() {
 			},
 			compute_fn: 'analyze',
 			outputs: {
-				stats: { type: 'holster', holster_path: 'analytics/stats' }
+				stats: { type: 'mesh', mesh_path: 'analytics/stats' }
 			}
 		}]
 	};
-	
+
 	const runtime = new ComputationGraphRuntime(program);
 	await runtime.initialize();
 	await runtime.execute();
-	
+
 	// Query: "What did the 'analyze' computation produce?"
 	console.log('🔍 Query: What did the "analyze" computation produce?');
 	const outputs = await runtime.getComputationOutputs('analyze');
 	console.log(`  Outputs: ${outputs.join(', ')}`);
-	
+
 	// Fetch each output
 	for (const path of outputs) {
 		const data = await runtime.getLatest(path);
@@ -272,7 +272,7 @@ export async function example4_queryComputationOutputs() {
 			console.log(`  ${path}:`, data.data);
 		}
 	}
-	
+
 	return runtime;
 }
 
@@ -284,11 +284,11 @@ export async function example5_lineageTracing() {
 	console.log('\n========================================');
 	console.log('EXAMPLE 5: Lineage Tracing');
 	console.log('========================================\n');
-	
+
 	registerComputationFunction('fetch_data', () => [1, 2, 3, 4, 5]);
 	registerComputationFunction('count', (inputs: any) => inputs.data.length);
 	registerComputationFunction('double', (inputs: any) => inputs.value * 2);
-	
+
 	// Multi-step computation: fetch → count → double
 	const program: ReactiveComputationGraph = {
 		id: 'pipeline',
@@ -299,7 +299,7 @@ export async function example5_lineageTracing() {
 				inputs: {},
 				compute_fn: 'fetch_data',
 				outputs: {
-					data: { type: 'holster', holster_path: 'pipeline/data' }
+					data: { type: 'mesh', mesh_path: 'pipeline/data' }
 				}
 			},
 			{
@@ -309,7 +309,7 @@ export async function example5_lineageTracing() {
 				},
 				compute_fn: 'count',
 				outputs: {
-					count: { type: 'holster', holster_path: 'pipeline/count' }
+					count: { type: 'mesh', mesh_path: 'pipeline/count' }
 				}
 			},
 			{
@@ -319,31 +319,31 @@ export async function example5_lineageTracing() {
 				},
 				compute_fn: 'double',
 				outputs: {
-					result: { type: 'holster', holster_path: 'pipeline/final' }
+					result: { type: 'mesh', mesh_path: 'pipeline/final' }
 				}
 			}
 		]
 	};
-	
+
 	const runtime = new ComputationGraphRuntime(program);
 	await runtime.initialize();
 	await runtime.execute();
-	
+
 	console.log('📊 Computation pipeline executed:');
 	console.log('  fetch → [1,2,3,4,5]');
 	console.log('  count → 5');
 	console.log('  double → 10');
-	
+
 	// Query lineage
 	console.log('\n🔍 Tracing lineage:');
 	const allProvenance = runtime.getAllProvenance();
-	
+
 	for (const [compId, prov] of allProvenance) {
 		console.log(`\n  Computation: ${compId}`);
 		console.log(`    Provenance ID: ${prov.id}`);
 		console.log(`    Inputs: ${Object.keys(prov.inputs).length}`);
 		console.log(`    Outputs: ${Object.keys(prov.outputs).length}`);
-		
+
 		// Query lineage index
 		const lineage = await runtime.getLineage(prov.id);
 		if (lineage) {
@@ -353,7 +353,7 @@ export async function example5_lineageTracing() {
 			console.log(`      Output paths: ${lineage.outputs.join(', ')}`);
 		}
 	}
-	
+
 	return runtime;
 }
 
@@ -365,7 +365,7 @@ export async function example6_comparison() {
 	console.log('\n========================================');
 	console.log('EXAMPLE 6: Path-based vs Hybrid Storage');
 	console.log('========================================\n');
-	
+
 	console.log('❌ Path-based approach (OLD):');
 	console.log('  Storage: ~alice/hash/counter/value/p_alice:5_comp:inc_det:xyz');
 	console.log('  Problem: How do you query "latest"?');
@@ -378,11 +378,11 @@ export async function example6_comparison() {
 	console.log('');
 	console.log('  {');
 	console.log('    type: "subscription",');
-	console.log('    holster_path: "counter/value",');
+	console.log('    mesh_path: "counter/value",');
 	console.log('    // Wait, which version? Need to scan...');
 	console.log('    // This doesn\'t work!');
 	console.log('  }');
-	
+
 	console.log('\n✅ Hybrid approach (NEW):');
 	console.log('  Storage:');
 	console.log('    Canonical: ~alice/hash/counter/value');
@@ -394,12 +394,12 @@ export async function example6_comparison() {
 	console.log('');
 	console.log('  {');
 	console.log('    type: "subscription",');
-	console.log('    holster_path: "counter/value"');
+	console.log('    mesh_path: "counter/value"');
 	console.log('    // ✅ Always gets latest!');
 	console.log('    // ✅ Provenance in metadata!');
 	console.log('    // ✅ History preserved!');
 	console.log('  }');
-	
+
 	console.log('\n🎯 Key Benefits:');
 	console.log('  ✅ Latest queries are O(1)');
 	console.log('  ✅ RDL templates are simple');
@@ -417,18 +417,18 @@ export async function runAllHybridStorageExamples() {
 	console.log('\n╔═══════════════════════════════════════════════════════╗');
 	console.log('║   HYBRID STORAGE EXAMPLES                             ║');
 	console.log('╚═══════════════════════════════════════════════════════╝');
-	
+
 	await example1_simpleLatestQuery();
 	await example2_versionHistory();
 	await example3_programComposition();
 	await example4_queryComputationOutputs();
 	await example5_lineageTracing();
 	await example6_comparison();
-	
+
 	console.log('\n========================================');
 	console.log('All examples completed! ✅');
 	console.log('========================================\n');
-	
+
 	console.log('📝 Summary:');
 	console.log('  The hybrid storage approach solves the fundamental');
 	console.log('  querying problem while preserving all benefits of');

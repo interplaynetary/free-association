@@ -17,9 +17,9 @@
  * - Byzantine fault tolerance
  */
 
-import { 
-	ComputationGraphRuntime, 
-	registerComputationFunction 
+import {
+	ComputationGraphRuntime,
+	registerComputationFunction
 } from '../compute.svelte';
 import type { ReactiveComputationGraph, ComputationProvenance } from '../v1/schemas';
 import { hashContent, parseProvenanceSignature } from '../program-hash.svelte';
@@ -32,12 +32,12 @@ export async function example1_basicProvenance() {
 	console.log('\n========================================');
 	console.log('EXAMPLE 1: Basic Provenance Tracking');
 	console.log('========================================\n');
-	
+
 	// Register computation functions
 	registerComputationFunction('add', (inputs: any) => {
 		return inputs.a + inputs.b;
 	});
-	
+
 	// Define a simple computation
 	const program: ReactiveComputationGraph = {
 		id: 'simple-add',
@@ -54,24 +54,24 @@ export async function example1_basicProvenance() {
 				},
 				compute_fn: 'add',
 				outputs: {
-					result: { type: 'holster', holster_path: 'math/sum' }
+					result: { type: 'mesh', mesh_path: 'math/sum' }
 				}
 			}
 		]
 	};
-	
+
 	// Create runtime (provenance enabled by default)
 	const runtime = new ComputationGraphRuntime(program);
 	await runtime.initialize();
 	await runtime.execute();
-	
+
 	// Get provenance
 	const provenance = runtime.getProvenance('sum');
 	if (!provenance) {
 		console.log('❌ No provenance found');
 		return;
 	}
-	
+
 	console.log('📋 Provenance Record:');
 	console.log(`  Computation ID: ${provenance.computationId}`);
 	console.log(`  Executed by: ${provenance.executedBy}`);
@@ -88,7 +88,7 @@ export async function example1_basicProvenance() {
 	for (const [name, output] of Object.entries(provenance.outputs)) {
 		console.log(`    ${name}: ${output.contentHash} → ${output.path}`);
 	}
-	
+
 	return runtime;
 }
 
@@ -100,11 +100,11 @@ export async function example2_verification() {
 	console.log('\n========================================');
 	console.log('EXAMPLE 2: Verifying Computation Results');
 	console.log('========================================\n');
-	
+
 	registerComputationFunction('multiply', (inputs: any) => {
 		return inputs.x * inputs.y;
 	});
-	
+
 	const program: ReactiveComputationGraph = {
 		id: 'multiply-program',
 		variables: {
@@ -125,29 +125,29 @@ export async function example2_verification() {
 			}
 		]
 	};
-	
+
 	const runtime = new ComputationGraphRuntime(program);
 	await runtime.initialize();
 	await runtime.execute();
-	
+
 	const provenance = runtime.getProvenance('product');
 	if (!provenance) {
 		console.log('❌ No provenance found');
 		return;
 	}
-	
+
 	// Test 1: Verify correct result
 	console.log('✅ Test 1: Verify correct result (42)');
 	const validResult = 42;
 	const isValid = await runtime.verifyComputationResult('product', validResult, provenance);
 	console.log(`   Result: ${isValid ? '✅ VALID' : '❌ INVALID'}\n`);
-	
+
 	// Test 2: Verify incorrect result
 	console.log('❌ Test 2: Verify incorrect result (100)');
 	const invalidResult = 100;
 	const isInvalid = await runtime.verifyComputationResult('product', invalidResult, provenance);
 	console.log(`   Result: ${isInvalid ? '✅ VALID' : '❌ INVALID (as expected)'}\n`);
-	
+
 	return runtime;
 }
 
@@ -159,32 +159,32 @@ export async function example3_contentHashing() {
 	console.log('\n========================================');
 	console.log('EXAMPLE 3: Content Hash Verification');
 	console.log('========================================\n');
-	
+
 	// Demonstrate deterministic content hashing
 	const data1 = { count: 100, name: 'Alice' };
 	const data2 = { count: 100, name: 'Alice' };
 	const data3 = { count: 100, name: 'Bob' };
-	
+
 	const hash1 = hashContent(data1);
 	const hash2 = hashContent(data2);
 	const hash3 = hashContent(data3);
-	
+
 	console.log('Same data → Same hash:');
 	console.log(`  data1: ${hash1}`);
 	console.log(`  data2: ${hash2}`);
 	console.log(`  Match: ${hash1 === hash2 ? '✅ YES' : '❌ NO'}\n`);
-	
+
 	console.log('Different data → Different hash:');
 	console.log(`  data1: ${hash1}`);
 	console.log(`  data3: ${hash3}`);
 	console.log(`  Different: ${hash1 !== hash3 ? '✅ YES' : '❌ NO'}\n`);
-	
+
 	// Demonstrate that key order doesn't matter
 	const unordered = { name: 'Alice', count: 100 };
 	const ordered = { count: 100, name: 'Alice' };
 	const hashUnordered = hashContent(unordered);
 	const hashOrdered = hashContent(ordered);
-	
+
 	console.log('Key order doesn\'t affect hash (deterministic):');
 	console.log(`  {name, count}: ${hashUnordered}`);
 	console.log(`  {count, name}: ${hashOrdered}`);
@@ -199,11 +199,11 @@ export async function example4_lineageTracking() {
 	console.log('\n========================================');
 	console.log('EXAMPLE 4: Multi-Step Computation Lineage');
 	console.log('========================================\n');
-	
+
 	registerComputationFunction('square', (inputs: any) => inputs.x * inputs.x);
 	registerComputationFunction('double', (inputs: any) => inputs.x * 2);
 	registerComputationFunction('add', (inputs: any) => inputs.a + inputs.b);
-	
+
 	// Create a multi-step computation: (5² + 3) * 2
 	const program: ReactiveComputationGraph = {
 		id: 'multi-step',
@@ -240,31 +240,31 @@ export async function example4_lineageTracking() {
 				},
 				compute_fn: 'double',
 				outputs: {
-					result: { type: 'holster', holster_path: 'result/final' }
+					result: { type: 'mesh', mesh_path: 'result/final' }
 				}
 			}
 		]
 	};
-	
+
 	const runtime = new ComputationGraphRuntime(program);
 	await runtime.initialize();
 	await runtime.execute();
-	
+
 	// Show provenance for each step
 	const allProvenance = runtime.getAllProvenance();
-	
+
 	console.log('Computation Chain:');
 	console.log('  5² → 25');
 	console.log('  25 + 3 → 28');
 	console.log('  28 * 2 → 56\n');
-	
+
 	console.log('Provenance Records:\n');
 	for (const [compId, prov] of allProvenance) {
 		console.log(`📋 ${compId}:`);
 		console.log(`   Deterministic Hash: ${prov.deterministicHash}`);
 		console.log(`   Inputs: ${Object.keys(prov.inputs).length}`);
 		console.log(`   Outputs: ${Object.keys(prov.outputs).length}`);
-		
+
 		// Show input sources
 		for (const [name, input] of Object.entries(prov.inputs)) {
 			const source = input.source === 'derived' ? `derived from ${input.provenance || 'parent'}` : input.source;
@@ -272,7 +272,7 @@ export async function example4_lineageTracking() {
 		}
 		console.log('');
 	}
-	
+
 	return runtime;
 }
 
@@ -284,9 +284,9 @@ export async function example5_signatureParsing() {
 	console.log('\n========================================');
 	console.log('EXAMPLE 5: Provenance Signature Parsing');
 	console.log('========================================\n');
-	
+
 	registerComputationFunction('identity', (inputs: any) => inputs.value);
-	
+
 	const program: ReactiveComputationGraph = {
 		id: 'signature-demo',
 		variables: {
@@ -300,22 +300,22 @@ export async function example5_signatureParsing() {
 				},
 				compute_fn: 'identity',
 				outputs: {
-					result: { type: 'holster', holster_path: 'signatures/demo' }
+					result: { type: 'mesh', mesh_path: 'signatures/demo' }
 				}
 			}
 		]
 	};
-	
+
 	const runtime = new ComputationGraphRuntime(program);
 	await runtime.initialize();
 	await runtime.execute();
-	
+
 	const provenance = runtime.getProvenance('identity-comp');
 	if (!provenance) {
 		console.log('❌ No provenance found');
 		return;
 	}
-	
+
 	// Show provenance signature structure
 	console.log('Provenance Structure:');
 	console.log(`  ID: ${provenance.id}`);
@@ -323,12 +323,12 @@ export async function example5_signatureParsing() {
 	console.log(`  Computation ID: ${provenance.computationId}`);
 	console.log(`  Deterministic Hash: ${provenance.deterministicHash}`);
 	console.log('');
-	
+
 	// This would create a signature like: p_alice:5_comp:identity_det:7a3f2b1c
-	console.log('When stored in Holster, data path includes provenance:');
+	console.log('When stored in Mesh, data path includes provenance:');
 	console.log(`  ~<pubkey>/<program_hash>/signatures/demo/p_<vc>_comp:<id>_det:<hash>`);
 	console.log('');
-	
+
 	// Example: Parse a provenance signature
 	const exampleSig = 'p_alice123:5_bob45678:3_comp:identity_det:7a3f2b1c';
 	console.log(`Parsing example signature: ${exampleSig}`);
@@ -340,7 +340,7 @@ export async function example5_signatureParsing() {
 		console.log(`    Deterministic Hash: ${parsed.deterministicHash}`);
 	}
 	console.log('');
-	
+
 	return runtime;
 }
 
@@ -352,7 +352,7 @@ export async function example6_provenanceToggle() {
 	console.log('\n========================================');
 	console.log('EXAMPLE 6: Provenance Toggle (Performance)');
 	console.log('========================================\n');
-	
+
 	registerComputationFunction('heavyCompute', (inputs: any) => {
 		// Simulate some computation
 		let result = 0;
@@ -361,7 +361,7 @@ export async function example6_provenanceToggle() {
 		}
 		return result + inputs.value;
 	});
-	
+
 	const program: ReactiveComputationGraph = {
 		id: 'perf-test',
 		variables: {
@@ -380,7 +380,7 @@ export async function example6_provenanceToggle() {
 			}
 		]
 	};
-	
+
 	// With provenance
 	console.log('⚡ With Provenance Tracking:');
 	const startWith = Date.now();
@@ -391,7 +391,7 @@ export async function example6_provenanceToggle() {
 	const hasProvenance = runtimeWith.getProvenance('compute') !== undefined;
 	console.log(`  Time: ${timeWith}ms`);
 	console.log(`  Provenance Created: ${hasProvenance ? '✅ YES' : '❌ NO'}\n`);
-	
+
 	// Without provenance
 	console.log('⚡ Without Provenance Tracking:');
 	const startWithout = Date.now();
@@ -402,7 +402,7 @@ export async function example6_provenanceToggle() {
 	const noProvenance = runtimeWithout.getProvenance('compute') === undefined;
 	console.log(`  Time: ${timeWithout}ms`);
 	console.log(`  Provenance Created: ${noProvenance ? '❌ NO' : '✅ YES'}\n`);
-	
+
 	console.log(`Overhead: ~${timeWith - timeWithout}ms (${((timeWith - timeWithout) / timeWithout * 100).toFixed(1)}%)`);
 }
 
@@ -414,14 +414,14 @@ export async function runAllProvenanceExamples() {
 	console.log('\n╔═══════════════════════════════════════════════════════╗');
 	console.log('║   COMPUTATION PROVENANCE EXAMPLES                     ║');
 	console.log('╚═══════════════════════════════════════════════════════╝');
-	
+
 	await example1_basicProvenance();
 	await example2_verification();
 	await example3_contentHashing();
 	await example4_lineageTracking();
 	await example5_signatureParsing();
 	await example6_provenanceToggle();
-	
+
 	console.log('\n========================================');
 	console.log('All examples completed! ✅');
 	console.log('========================================\n');

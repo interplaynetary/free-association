@@ -14,18 +14,18 @@
 
 import { derived, get, writable } from 'svelte/store';
 import type { Readable } from 'svelte/store';
-import { holsterUserPub } from '$lib/network/holster.svelte';
+import { meshUserPub } from '$lib/network/mesh.svelte';
 
 /**
  * Current View Context - Which user are we viewing?
  * 
- * Defaults to null, then auto-syncs with holsterUserPub (authenticated user).
+ * Defaults to null, then auto-syncs with meshUserPub (authenticated user).
  * Can be changed to any user's pubkey to view their data.
  */
 export const currentViewPubkey = writable<string | null>(null);
 
 // Auto-sync with authenticated user's pubkey
-holsterUserPub.subscribe($pub => {
+meshUserPub.subscribe($pub => {
     const current = get(currentViewPubkey);
     // Only set if not already set (don't override manual changes)
     if (!current && $pub) {
@@ -51,7 +51,7 @@ export function setViewContext(pubkey: string) {
  * Call this when returning to main app or leaving user view
  */
 export function resetViewContext() {
-    const myPub = get(holsterUserPub);
+    const myPub = get(meshUserPub);
     if (myPub) {
         currentViewPubkey.set(myPub);
         console.log('[VIEW-CONTEXT] Reset to authenticated user');
@@ -63,7 +63,7 @@ export function resetViewContext() {
  */
 export function isViewingSelf(): boolean {
     const viewPub = get(currentViewPubkey);
-    const myPub = get(holsterUserPub);
+    const myPub = get(meshUserPub);
     return viewPub === myPub;
 }
 import { myCommitmentStore, networkCommitments, myRecognitionTreeStore } from './stores.svelte';
@@ -86,7 +86,7 @@ import type {
 export const currentUserCommitment: Readable<Commitment | null> = derived(
     [currentViewPubkey, myCommitmentStore, networkCommitments],
     ([$viewPub, $myCommit, $network]) => {
-        const myPub = get(holsterUserPub);
+        const myPub = get(meshUserPub);
 
         // Case 1: Guest Mode (no view pub defined) -> Default to My Store (Local)
         if (!$viewPub) {
@@ -116,7 +116,7 @@ export const currentUserCommitment: Readable<Commitment | null> = derived(
 export const currentUserTree: Readable<RootNode | null> = derived(
     [currentViewPubkey, myRecognitionTreeStore, demoTreeStore.toStore()],
     ([$viewPub, $myTree, $demoTree]) => {
-        const myPub = get(holsterUserPub);
+        const myPub = get(meshUserPub);
 
         // Case 1: Guest Mode or Viewing Self -> Use My Tree (Hybrid)
         if (!$viewPub || $viewPub === myPub) {
@@ -136,7 +136,7 @@ export const currentUserTree: Readable<RootNode | null> = derived(
 export const currentUserTreeLoading: Readable<boolean> = derived(
     [currentViewPubkey, myRecognitionTreeStore.loading],
     ([$viewPub, $myTreeLoading]) => {
-        const myPub = get(holsterUserPub);
+        const myPub = get(meshUserPub);
 
         // Case 1: Guest Mode or Viewing Self -> Use My Tree Loading State
         if (!$viewPub || $viewPub === myPub) {

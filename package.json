@@ -36,7 +36,8 @@
 		"cli:git-init": "bun cli/cli.ts git-init",
 		"cli:git-status": "bun cli/cli.ts git-status",
 		"cli:git-push": "bun cli/cli.ts git-push",
-		"cli:git-pull": "bun cli/cli.ts git-pull"
+		"cli:git-pull": "bun cli/cli.ts git-pull",
+		"mesh:ws": "bun mesh-server.ts"
 	},
 	"devDependencies": {
 		"@capacitor/cli": "^8.0.1",
@@ -105,9 +106,9 @@
 		"@internationalized/date": "^3.10.0",
 		"@jsonquerylang/jsonquery": "^5.0.4",
 		"@lucide/svelte": "^0.562.0",
-		"@mblaney/holster": "1.0.35",
 		"@paralleldrive/cuid2": "^3.0.6",
 		"@playnet/free-association": "^1.0.8",
+		"@playnet/mesh": "^0.1.2",
 		"@svar-ui/svelte-filter": "^2.4.0",
 		"@svelte-maplibre-gl/deckgl": "^1.0.3",
 		"@types/bcryptjs": "^3.0.0",

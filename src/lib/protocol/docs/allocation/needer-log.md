@@ -1,5 +1,5 @@
 stores.svelte.ts:2126 [ITC-MERGE] ✅ Merged 4 network ITC stamps into local commitment
-store.svelte.ts:481 [HOLSTER-STORE:allocation/commitment] 🔄 SET called
+store.svelte.ts:481 [MESH-STORE:allocation/commitment] 🔄 SET called
 allocation-ipf-distributed.ts:262 [Y_R-CALC] Need need_17669... needCap=100.00, totalProposed=0.00, y_r=1.0000
 allocation-ipf-distributed.ts:262 [Y_R-CALC] Need need_17669... needCap=100.00, totalProposed=0.00, y_r=1.0000
 stores.svelte.ts:698 [🤝 MUTUAL-REC] Computing mutual recognition (local-first)...
@@ -151,9 +151,9 @@ stores.svelte.ts:908 [SET-NEED-SLOTS] Updated: 1 slots
 ResourceSlots.svelte:131 [UI-NEEDS] Mapped 0 network allocations to needs. found 0 from myself.
 ResourceSlots.svelte:132 [UI-NEEDS] myAllocations (local) has: []
 allocation.svelte.ts:269 [AUTO-PUBLISH-ALLOC] ⏭️  Skipped: already published this exact allocation set
-store.svelte.ts:317 [HOLSTER-STORE:allocation/commitment] 💾 SAVING - Data: {need_slots: Array(1), capacity_slots: Array(0), global_recognition_weights: {…}, others_recognition_of_me: {…}, itcStamp: {…}, …}
-store.svelte.ts:318 [HOLSTER-STORE:allocation/commitment] 💾 SAVING - Timestamp: 1766968420622
-store.svelte.ts:319 [HOLSTER-STORE:allocation/commitment] 💾 SAVING - JSON size: 1154 bytes
+store.svelte.ts:317 [MESH-STORE:allocation/commitment] 💾 SAVING - Data: {need_slots: Array(1), capacity_slots: Array(0), global_recognition_weights: {…}, others_recognition_of_me: {…}, itcStamp: {…}, …}
+store.svelte.ts:318 [MESH-STORE:allocation/commitment] 💾 SAVING - Timestamp: 1766968420622
+store.svelte.ts:319 [MESH-STORE:allocation/commitment] 💾 SAVING - JSON size: 1154 bytes
 stores.svelte.ts:982 [📡 NETWORK-SUB] Received commitment from uS-ytluRW3AtvnnTvJ6V...
 stores.svelte.ts:998 [📡 NETWORK-SUB] Commitment contains 5 recognition entries (5 non-zero)
 stores.svelte.ts:1005 [📡 NETWORK-SUB] IPF fields: constraint_scaling_factors=true (1 entries), total_seed_by_need=true (1 entries)
@@ -239,10 +239,10 @@ v-store.svelte.ts:386 [VERSIONED-STORE] ✅ Updated [recognition, needs, constra
 stores.svelte.ts:1031 [📡 NETWORK-SUB] ✅ Updated [recognition, needs, constraint_scaling_factors, total_seed_by_need] from uS-ytluRW3AtvnnTvJ6V...
 ResourceSlots.svelte:131 [UI-NEEDS] Mapped 0 network allocations to needs. found 0 from myself.
 ResourceSlots.svelte:132 [UI-NEEDS] myAllocations (local) has: []
-store.svelte.ts:332 [HOLSTER-STORE:allocation/commitment] ✅ Saved successfully
-store.svelte.ts:317 [HOLSTER-STORE:allocation/commitment] 💾 SAVING - Data: {need_slots: Array(1), capacity_slots: Array(0), global_recognition_weights: {…}, others_recognition_of_me: {…}, itcStamp: {…}, …}
-store.svelte.ts:318 [HOLSTER-STORE:allocation/commitment] 💾 SAVING - Timestamp: 1766968420741
-store.svelte.ts:319 [HOLSTER-STORE:allocation/commitment] 💾 SAVING - JSON size: 1810 bytes
+store.svelte.ts:332 [MESH-STORE:allocation/commitment] ✅ Saved successfully
+store.svelte.ts:317 [MESH-STORE:allocation/commitment] 💾 SAVING - Data: {need_slots: Array(1), capacity_slots: Array(0), global_recognition_weights: {…}, others_recognition_of_me: {…}, itcStamp: {…}, …}
+store.svelte.ts:318 [MESH-STORE:allocation/commitment] 💾 SAVING - Timestamp: 1766968420741
+store.svelte.ts:319 [MESH-STORE:allocation/commitment] 💾 SAVING - JSON size: 1810 bytes
 stores.svelte.ts:2179 [📝 COMPOSE] Composing commitment from sources...
 stores.svelte.ts:2126 [ITC-MERGE] ✅ Merged 4 network ITC stamps into local commitment
 stores.svelte.ts:2204 [📝 COMPOSE] 🔄 Resolved contact ID contact_1762708773696_35ijdh8gj → DyXpfjpC6LqAwGPI1GZS...
@@ -411,7 +411,7 @@ allocation-ipf-distributed.ts:152 [GENERATE-PROPOSALS] Starting with 0 capacity 
 allocation-ipf-distributed.ts:196 [GENERATE-PROPOSALS] Generated 0 proposals
 allocation.svelte.ts:158 [📤 ALLOC-GEN] Generated proposals: 0
 allocation.svelte.ts:198 [📤 ALLOC-GEN] Final allocations: 0
-stores.svelte.ts:2374 [💾 AUTO-COMPOSE] ✅ Updated commitment recognition (network recognition changed) - now persisting to Holster
+stores.svelte.ts:2374 [💾 AUTO-COMPOSE] ✅ Updated commitment recognition (network recognition changed) - now persisting to Mesh
 ResourceSlots.svelte:131 [UI-NEEDS] Mapped 0 network allocations to needs. found 0 from myself.
 ResourceSlots.svelte:132 [UI-NEEDS] myAllocations (local) has: []
 stores.svelte.ts:2179 [📝 COMPOSE] Composing commitment from sources...
@@ -490,10 +490,10 @@ v-store.svelte.ts:361 [VERSIONED-STORE] ⏭️  No field changes: uS-ytluRW3Atvn
 stores.svelte.ts:1033 [📡 NETWORK-SUB] ⏭️  Skipped from uS-ytluRW3AtvnnTvJ6V... (No field changes)
 ResourceSlots.svelte:131 [UI-NEEDS] Mapped 0 network allocations to needs. found 0 from myself.
 ResourceSlots.svelte:132 [UI-NEEDS] myAllocations (local) has: []
-store.svelte.ts:332 [HOLSTER-STORE:allocation/commitment] ✅ Saved successfully
-store.svelte.ts:317 [HOLSTER-STORE:allocation/commitment] 💾 SAVING - Data: {need_slots: Array(1), capacity_slots: Array(0), global_recognition_weights: {…}, others_recognition_of_me: {…}, itcStamp: {…}, …}
-store.svelte.ts:318 [HOLSTER-STORE:allocation/commitment] 💾 SAVING - Timestamp: 1766968420847
-store.svelte.ts:319 [HOLSTER-STORE:allocation/commitment] 💾 SAVING - JSON size: 1866 bytes
+store.svelte.ts:332 [MESH-STORE:allocation/commitment] ✅ Saved successfully
+store.svelte.ts:317 [MESH-STORE:allocation/commitment] 💾 SAVING - Data: {need_slots: Array(1), capacity_slots: Array(0), global_recognition_weights: {…}, others_recognition_of_me: {…}, itcStamp: {…}, …}
+store.svelte.ts:318 [MESH-STORE:allocation/commitment] 💾 SAVING - Timestamp: 1766968420847
+store.svelte.ts:319 [MESH-STORE:allocation/commitment] 💾 SAVING - JSON size: 1866 bytes
 stores.svelte.ts:982 [📡 NETWORK-SUB] Received commitment from uS-ytluRW3AtvnnTvJ6V...
 stores.svelte.ts:998 [📡 NETWORK-SUB] Commitment contains 5 recognition entries (5 non-zero)
 stores.svelte.ts:1005 [📡 NETWORK-SUB] IPF fields: constraint_scaling_factors=true (1 entries), total_seed_by_need=true (1 entries)
@@ -553,7 +553,7 @@ v-store.svelte.ts:386 [VERSIONED-STORE] ✅ Updated [recognition]: uS-ytluRW3Atv
 stores.svelte.ts:1031 [📡 NETWORK-SUB] ✅ Updated [recognition] from uS-ytluRW3AtvnnTvJ6V...
 ResourceSlots.svelte:131 [UI-NEEDS] Mapped 0 network allocations to needs. found 0 from myself.
 ResourceSlots.svelte:132 [UI-NEEDS] myAllocations (local) has: []
-store.svelte.ts:332 [HOLSTER-STORE:allocation/commitment] ✅ Saved successfully
+store.svelte.ts:332 [MESH-STORE:allocation/commitment] ✅ Saved successfully
 stores.svelte.ts:2179 [📝 COMPOSE] Composing commitment from sources...
 stores.svelte.ts:2126 [ITC-MERGE] ✅ Merged 4 network ITC stamps into local commitment
 stores.svelte.ts:2204 [📝 COMPOSE] 🔄 Resolved contact ID contact_1762708773696_35ijdh8gj → DyXpfjpC6LqAwGPI1GZS...
@@ -646,7 +646,7 @@ v-store.svelte.ts:361 [VERSIONED-STORE] ⏭️  No field changes: AJC9LspVYqaD5_
 stores.svelte.ts:1033 [📡 NETWORK-SUB] ⏭️  Skipped from AJC9LspVYqaD5_8K6gG8... (No field changes)
 allocation.svelte.ts:269 [AUTO-PUBLISH-ALLOC] ⏭️  Skipped: already published this exact allocation set
 stores.svelte.ts:2126 [ITC-MERGE] ✅ Merged 4 network ITC stamps into local commitment
-store.svelte.ts:481 [HOLSTER-STORE:allocation/commitment] 🔄 SET called
+store.svelte.ts:481 [MESH-STORE:allocation/commitment] 🔄 SET called
 allocation-ipf-distributed.ts:262 [Y_R-CALC] Need need_17669... needCap=100.00, totalProposed=0.00, y_r=1.0000
 allocation-ipf-distributed.ts:262 [Y_R-CALC] Need need_17669... needCap=100.00, totalProposed=0.00, y_r=1.0000
 stores.svelte.ts:698 [🤝 MUTUAL-REC] Computing mutual recognition (local-first)...
@@ -861,9 +861,9 @@ allocation.svelte.ts:160 [📤 ALLOC-GEN] Sample proposal: {capacity: 'capacity_
 allocation.svelte.ts:198 [📤 ALLOC-GEN] Final allocations: 1
 stores.svelte.ts:935 [SET-CAPACITY-SLOTS] Updated: 1 slots
 allocation.svelte.ts:280 [AUTO-PUBLISH-ALLOC] ⏭️  Skipped: allocations unchanged in commitment
-store.svelte.ts:317 [HOLSTER-STORE:allocation/commitment] 💾 SAVING - Data: {need_slots: Array(1), capacity_slots: Array(1), global_recognition_weights: {…}, others_recognition_of_me: {…}, itcStamp: {…}, …}
-store.svelte.ts:318 [HOLSTER-STORE:allocation/commitment] 💾 SAVING - Timestamp: 1766968424761
-store.svelte.ts:319 [HOLSTER-STORE:allocation/commitment] 💾 SAVING - JSON size: 1858 bytes
+store.svelte.ts:317 [MESH-STORE:allocation/commitment] 💾 SAVING - Data: {need_slots: Array(1), capacity_slots: Array(1), global_recognition_weights: {…}, others_recognition_of_me: {…}, itcStamp: {…}, …}
+store.svelte.ts:318 [MESH-STORE:allocation/commitment] 💾 SAVING - Timestamp: 1766968424761
+store.svelte.ts:319 [MESH-STORE:allocation/commitment] 💾 SAVING - JSON size: 1858 bytes
 stores.svelte.ts:982 [📡 NETWORK-SUB] Received commitment from uS-ytluRW3AtvnnTvJ6V...
 stores.svelte.ts:998 [📡 NETWORK-SUB] Commitment contains 5 recognition entries (5 non-zero)
 stores.svelte.ts:1005 [📡 NETWORK-SUB] IPF fields: constraint_scaling_factors=true (1 entries), total_seed_by_need=true (1 entries)
@@ -1025,7 +1025,7 @@ allocation.svelte.ts:160 [📤 ALLOC-GEN] Sample proposal: {capacity: 'capacity_
 allocation.svelte.ts:198 [📤 ALLOC-GEN] Final allocations: 1
 v-store.svelte.ts:386 [VERSIONED-STORE] ✅ Updated [recognition, capacity, allocations]: uS-ytluRW3AtvnnTvJ6V...
 stores.svelte.ts:1031 [📡 NETWORK-SUB] ✅ Updated [recognition, capacity, allocations] from uS-ytluRW3AtvnnTvJ6V...
-store.svelte.ts:332 [HOLSTER-STORE:allocation/commitment] ✅ Saved successfully
+store.svelte.ts:332 [MESH-STORE:allocation/commitment] ✅ Saved successfully
 stores.svelte.ts:2179 [📝 COMPOSE] Composing commitment from sources...
 stores.svelte.ts:2126 [ITC-MERGE] ✅ Merged 4 network ITC stamps into local commitment
 stores.svelte.ts:2204 [📝 COMPOSE] 🔄 Resolved contact ID contact_1762708773696_35ijdh8gj → DyXpfjpC6LqAwGPI1GZS...
@@ -1246,7 +1246,7 @@ allocation-ipf-distributed.ts:196 [GENERATE-PROPOSALS] Generated 1 proposals
 allocation.svelte.ts:158 [📤 ALLOC-GEN] Generated proposals: 1
 allocation.svelte.ts:160 [📤 ALLOC-GEN] Sample proposal: {capacity: 'capacity_1', need: 'need_17669', recipient: 'uS-ytluRW3', qty: 100}
 allocation.svelte.ts:198 [📤 ALLOC-GEN] Final allocations: 1
-stores.svelte.ts:2374 [💾 AUTO-COMPOSE] ✅ Updated commitment recognition (network recognition changed) - now persisting to Holster
+stores.svelte.ts:2374 [💾 AUTO-COMPOSE] ✅ Updated commitment recognition (network recognition changed) - now persisting to Mesh
 stores.svelte.ts:2179 [📝 COMPOSE] Composing commitment from sources...
 stores.svelte.ts:2126 [ITC-MERGE] ✅ Merged 4 network ITC stamps into local commitment
 stores.svelte.ts:2204 [📝 COMPOSE] 🔄 Resolved contact ID contact_1762708773696_35ijdh8gj → DyXpfjpC6LqAwGPI1GZS...
@@ -1264,9 +1264,9 @@ stores.svelte.ts:2261     • AJC9LspVYqaD5_8K6gG8... → 15.37%
 stores.svelte.ts:2261     • contact_176679595191... → 2.97%
 stores.svelte.ts:2261     • XtUJaGmlUvj0GMCbwvo4... → 16.48%
 stores.svelte.ts:2343 [AUTO-COMPOSE] ⏭️  Skipped: commitment data unchanged (network recognition changed)
-store.svelte.ts:317 [HOLSTER-STORE:allocation/commitment] 💾 SAVING - Data: {need_slots: Array(1), capacity_slots: Array(1), global_recognition_weights: {…}, others_recognition_of_me: {…}, itcStamp: {…}, …}
-store.svelte.ts:318 [HOLSTER-STORE:allocation/commitment] 💾 SAVING - Timestamp: 1766968424978
-store.svelte.ts:319 [HOLSTER-STORE:allocation/commitment] 💾 SAVING - JSON size: 2580 bytes
+store.svelte.ts:317 [MESH-STORE:allocation/commitment] 💾 SAVING - Data: {need_slots: Array(1), capacity_slots: Array(1), global_recognition_weights: {…}, others_recognition_of_me: {…}, itcStamp: {…}, …}
+store.svelte.ts:318 [MESH-STORE:allocation/commitment] 💾 SAVING - Timestamp: 1766968424978
+store.svelte.ts:319 [MESH-STORE:allocation/commitment] 💾 SAVING - JSON size: 2580 bytes
 allocation.svelte.ts:269 [AUTO-PUBLISH-ALLOC] ⏭️  Skipped: already published this exact allocation set
 stores.svelte.ts:982 [📡 NETWORK-SUB] Received commitment from uS-ytluRW3AtvnnTvJ6V...
 stores.svelte.ts:998 [📡 NETWORK-SUB] Commitment contains 5 recognition entries (5 non-zero)
@@ -1343,7 +1343,7 @@ allocation.svelte.ts:160 [📤 ALLOC-GEN] Sample proposal: {capacity: 'capacity_
 allocation.svelte.ts:198 [📤 ALLOC-GEN] Final allocations: 1
 v-store.svelte.ts:386 [VERSIONED-STORE] ✅ Updated [recognition, total_seed_by_need]: uS-ytluRW3AtvnnTvJ6V...
 stores.svelte.ts:1031 [📡 NETWORK-SUB] ✅ Updated [recognition, total_seed_by_need] from uS-ytluRW3AtvnnTvJ6V...
-store.svelte.ts:332 [HOLSTER-STORE:allocation/commitment] ✅ Saved successfully
+store.svelte.ts:332 [MESH-STORE:allocation/commitment] ✅ Saved successfully
 stores.svelte.ts:2179 [📝 COMPOSE] Composing commitment from sources...
 stores.svelte.ts:2126 [ITC-MERGE] ✅ Merged 4 network ITC stamps into local commitment
 stores.svelte.ts:2204 [📝 COMPOSE] 🔄 Resolved contact ID contact_1762708773696_35ijdh8gj → DyXpfjpC6LqAwGPI1GZS...
@@ -1610,9 +1610,9 @@ allocation.svelte.ts:160 [📤 ALLOC-GEN] Sample proposal: {capacity: 'capacity_
 allocation.svelte.ts:198 [📤 ALLOC-GEN] Final allocations: 1
 v-store.svelte.ts:386 [VERSIONED-STORE] ✅ Updated [capacity, allocations]: AJC9LspVYqaD5_8K6gG8...
 stores.svelte.ts:1031 [📡 NETWORK-SUB] ✅ Updated [capacity, allocations] from AJC9LspVYqaD5_8K6gG8...
-store.svelte.ts:317 [HOLSTER-STORE:allocation/commitment] 💾 SAVING - Data: {need_slots: Array(1), capacity_slots: Array(1), global_recognition_weights: {…}, others_recognition_of_me: {…}, itcStamp: {…}, …}
-store.svelte.ts:318 [HOLSTER-STORE:allocation/commitment] 💾 SAVING - Timestamp: 1766968429531
-store.svelte.ts:319 [HOLSTER-STORE:allocation/commitment] 💾 SAVING - JSON size: 2770 bytes
+store.svelte.ts:317 [MESH-STORE:allocation/commitment] 💾 SAVING - Data: {need_slots: Array(1), capacity_slots: Array(1), global_recognition_weights: {…}, others_recognition_of_me: {…}, itcStamp: {…}, …}
+store.svelte.ts:318 [MESH-STORE:allocation/commitment] 💾 SAVING - Timestamp: 1766968429531
+store.svelte.ts:319 [MESH-STORE:allocation/commitment] 💾 SAVING - JSON size: 2770 bytes
 allocation.svelte.ts:269 [AUTO-PUBLISH-ALLOC] ⏭️  Skipped: already published this exact allocation set
 stores.svelte.ts:982 [📡 NETWORK-SUB] Received commitment from uS-ytluRW3AtvnnTvJ6V...
 stores.svelte.ts:998 [📡 NETWORK-SUB] Commitment contains 5 recognition entries (5 non-zero)
@@ -1689,7 +1689,7 @@ allocation.svelte.ts:160 [📤 ALLOC-GEN] Sample proposal: {capacity: 'capacity_
 allocation.svelte.ts:198 [📤 ALLOC-GEN] Final allocations: 1
 v-store.svelte.ts:386 [VERSIONED-STORE] ✅ Updated [constraint_scaling_factors, total_seed_by_need]: uS-ytluRW3AtvnnTvJ6V...
 stores.svelte.ts:1031 [📡 NETWORK-SUB] ✅ Updated [constraint_scaling_factors, total_seed_by_need] from uS-ytluRW3AtvnnTvJ6V...
-store.svelte.ts:332 [HOLSTER-STORE:allocation/commitment] ✅ Saved successfully
+store.svelte.ts:332 [MESH-STORE:allocation/commitment] ✅ Saved successfully
 allocation.svelte.ts:269 [AUTO-PUBLISH-ALLOC] ⏭️  Skipped: already published this exact allocation set
 stores.svelte.ts:982 [📡 NETWORK-SUB] Received commitment from AJC9LspVYqaD5_8K6gG8...
 stores.svelte.ts:998 [📡 NETWORK-SUB] Commitment contains 1 recognition entries (1 non-zero)

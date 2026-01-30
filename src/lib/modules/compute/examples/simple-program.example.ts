@@ -25,20 +25,20 @@ import type { ReactiveComputationGraph } from '../schema';
  */
 function computeMutualRecognition(inputs: any): any {
 	const { myCommitment, theirCommitment } = inputs;
-	
+
 	// Get recognition weights
 	const myRecognition = myCommitment?.recognition_weights?.[theirCommitment?.pubkey] || 0;
 	const theirRecognition = theirCommitment?.recognition_weights?.[myCommitment?.pubkey] || 0;
-	
+
 	// Compute mutual recognition (geometric mean)
 	const mutualRecognition = Math.sqrt(myRecognition * theirRecognition);
-	
+
 	console.log('[COMPUTE] Mutual recognition:', {
 		my: myRecognition,
 		their: theirRecognition,
 		mutual: mutualRecognition
 	});
-	
+
 	return {
 		mutualRecognition,
 		myRecognition,
@@ -51,18 +51,18 @@ function computeMutualRecognition(inputs: any): any {
  */
 function allocateByMR(inputs: any): any {
 	const { mutualRecognition, myCapacity, theirNeed } = inputs;
-	
+
 	// Simple allocation: capacity * MR weight
 	const allocation = myCapacity * mutualRecognition;
 	const actualAllocation = Math.min(allocation, theirNeed);
-	
+
 	console.log('[COMPUTE] Allocation:', {
 		capacity: myCapacity,
 		need: theirNeed,
 		mr: mutualRecognition,
 		allocated: actualAllocation
 	});
-	
+
 	return {
 		allocation: actualAllocation,
 		remaining: myCapacity - actualAllocation
@@ -81,24 +81,24 @@ const simpleAllocationProgram: ReactiveComputationGraph = {
 	id: 'simple_allocation_example',
 	version: '1.0.0',
 	description: 'Simple allocation based on mutual recognition',
-	
+
 	// Variables (where data comes from)
 	variables: {
 		myCommitment: {
 			type: 'subscription',
-			holster_path: 'allocation/commitment',
+			mesh_path: 'allocation/commitment',
 			schema_type: 'Commitment',
 			default_value: null
 		},
 		theirCommitment: {
 			type: 'subscription',
-			holster_path: 'allocation/commitment',
+			mesh_path: 'allocation/commitment',
 			schema_type: 'Commitment',
 			subscribe_to_user: 'PEER_PUBKEY_HERE', // Replace with actual peer
 			default_value: null
 		}
 	},
-	
+
 	// Computations (what to compute)
 	computations: [
 		{
@@ -136,8 +136,8 @@ const simpleAllocationProgram: ReactiveComputationGraph = {
 			compute_fn: 'allocateByMR',
 			outputs: {
 				allocation: {
-					type: 'holster',
-					holster_path: 'allocation/result',
+					type: 'mesh',
+					mesh_path: 'allocation/result',
 					persist_debounce_ms: 200
 				},
 				remaining: {
@@ -170,25 +170,25 @@ export async function deploySimpleAllocationProgram(): Promise<ComputeRuntimeMan
 	console.log('====================================');
 	console.log('Deploying Simple Allocation Program');
 	console.log('====================================');
-	
+
 	const manager = await deployReactiveProgram(simpleAllocationProgram, {
 		enableProvenance: true,
 		enableLineageTracking: true,
 		description: 'Example program demonstrating Phase 2 runtime manager'
 	});
-	
+
 	console.log('\n✅ Program deployed successfully!');
 	console.log('\nStatus:', manager.getStatus());
 	console.log('\nThe program will now:');
 	console.log('  • Watch for changes to commitments');
 	console.log('  • Automatically recompute MR and allocations');
-	console.log('  • Persist results to Holster');
+	console.log('  • Persist results to Mesh');
 	console.log('  • Track full provenance chain');
 	console.log('\nCheck user space diagnostics:');
 	console.log('  getUserSpaceDiagnostics()');
 	console.log('  debugUserSpace()');
 	console.log('====================================\n');
-	
+
 	return manager;
 }
 
@@ -201,17 +201,17 @@ export async function deploySimpleAllocationProgram(): Promise<ComputeRuntimeMan
  */
 export async function example1_DeployAndRun() {
 	const manager = await deploySimpleAllocationProgram();
-	
+
 	// Program is now running reactively!
 	// It will automatically recompute when commitments change.
-	
+
 	// Get current status
 	console.log('Status:', manager.getStatus());
-	
+
 	// Get computation results
 	const mrResult = manager.getComputationResult('compute_mr', 'mutualRecognition');
 	const allocation = manager.getComputationResult('allocate', 'allocation');
-	
+
 	console.log('MR:', mrResult);
 	console.log('Allocation:', allocation);
 }
@@ -221,18 +221,18 @@ export async function example1_DeployAndRun() {
  */
 export async function example2_DeployGetResultsStop() {
 	const manager = await deploySimpleAllocationProgram();
-	
+
 	// Wait a bit for reactive computations
 	await new Promise(resolve => setTimeout(resolve, 1000));
-	
+
 	// Get all results
 	const results = manager.getComputationResults('allocate');
 	console.log('All results:', results);
-	
+
 	// Get provenance
 	const provenance = manager.getProvenance('allocate');
 	console.log('Provenance:', provenance);
-	
+
 	// Stop (and deactivate)
 	await manager.stop(true);
 	console.log('Program stopped and deactivated');
@@ -243,19 +243,19 @@ export async function example2_DeployGetResultsStop() {
  */
 export async function example3_ReactiveUpdates() {
 	const manager = await deploySimpleAllocationProgram();
-	
+
 	// Update a variable (if it's a 'value' type)
 	// manager.setVariable('myCapacity', 200);
-	
+
 	// Or update local state
 	manager.updateLocalState({
 		myCapacity: 200,
 		theirNeed: 75
 	});
-	
+
 	// Trigger manual recomputation
 	await manager.execute();
-	
+
 	// Get updated results
 	const allocation = manager.getComputationResult('allocate', 'allocation');
 	console.log('Updated allocation:', allocation);
@@ -266,18 +266,18 @@ export async function example3_ReactiveUpdates() {
  */
 export async function example4_ProvenanceQuery() {
 	const manager = await deploySimpleAllocationProgram();
-	
+
 	// Wait for computation
 	await new Promise(resolve => setTimeout(resolve, 500));
-	
+
 	// Get latest result from canonical path
 	const latest = await manager.getLatest('allocation/result');
 	console.log('Latest allocation:', latest);
-	
+
 	// Get all versions (history)
 	const versions = await manager.getAllVersions('allocation/result');
 	console.log('All versions:', versions);
-	
+
 	// Verify result against provenance
 	const provenance = manager.getProvenance('allocate');
 	if (provenance) {

@@ -270,7 +270,7 @@ export const DEMO_ORG_IDS = {
 /**
  * Demo organizations (COP30 participants - using real Organization schema)
  * These are pre-registered organizations for demo showcase.
- * In production, organizations would come from Holster network.
+ * In production, organizations would come from Mesh network.
  */
 export const DEMO_ORGANIZATIONS: Record<string, Organization> = {
 	// ═══════════════════════════════════════════════════════════════════

@@ -66,13 +66,13 @@ export const ComputationPayloadSchema = z.object({
 	programHash: HashSchema,
 	computationId: z.string(),
 	computationHash: HashSchema, // Hash of the computation definition
-	
+
 	// Input provenance (what data was used)
 	inputs: z.record(z.string(), InputProvenanceSchema),
-	
+
 	// Output provenance (what was produced)
 	outputs: z.record(z.string(), OutputProvenanceSchema),
-	
+
 	// Deterministic verification hash
 	// Hash of (computationHash + sorted input hashes)
 	deterministicHash: HashSchema
@@ -150,29 +150,29 @@ export const SEASignatureSchema = z.object({
 export const ProvenanceEventSchema = z.object({
 	// Content-addressed identifier (SHA-256 of canonical event body)
 	id: HashSchema,
-	
+
 	// Author public key (who created this event)
 	author: AuthorIdSchema,
-	
+
 	// Application-specific payload
 	payload: z.any(), // Can be ComputationPayloadSchema or other types
-	
+
 	// ITC stamp (causality tracking)
 	itc: ITCStampSchema,
-	
+
 	// Parent event hashes (Merkle-DAG links)
 	// Empty array for seed events, multiple parents for merges
 	parents: z.array(HashSchema),
-	
+
 	// Optional: Merkle root of attachments/blobs
 	merkle_root: HashSchema.optional(),
-	
+
 	// Wall-clock timestamp (non-authoritative, for UX only)
 	timestamp: TimestampSchema,
-	
+
 	// Event metadata (type, version, tags)
 	meta: EventMetadataSchema,
-	
+
 	// SEA signature over canonical event body (everything except sig field)
 	sig: SEASignatureSchema
 });
@@ -218,15 +218,15 @@ export const EventBodySchema = z.object({
 /**
  * Event Store Entry
  * 
- * What gets persisted to storage (Holster)
+ * What gets persisted to storage (Mesh)
  */
 export const EventStoreEntrySchema = z.object({
 	event: ProvenanceEventSchema,
-	
+
 	// Storage metadata
 	stored_at: z.number().int().positive(),
 	verified: z.boolean().default(false),
-	
+
 	// Optional: cached verification result
 	verification_result: z.object({
 		valid: z.boolean(),
@@ -270,7 +270,7 @@ export const ProvenancePathSchema = z.object({
 	target_id: HashSchema,
 	root_id: HashSchema,
 	events: z.array(ProvenanceEventSchema),
-	
+
 	// Path metadata
 	length: z.number().int().positive(),
 	computed_at: z.number().int().positive()
@@ -283,17 +283,17 @@ export const ProvenancePathSchema = z.object({
  */
 export const ProvenanceProofSchema = z.object({
 	target_id: HashSchema,
-	
+
 	// Minimal set of events needed to verify provenance
 	events: z.array(ProvenanceEventSchema),
-	
+
 	// Verification steps (for transparency)
 	verification_steps: z.array(z.object({
 		event_id: HashSchema,
 		step: z.string(),
 		result: z.boolean()
 	})),
-	
+
 	// Proof metadata
 	proof_type: z.enum(['full', 'shallow', 'witness']),
 	computed_at: z.number().int().positive(),

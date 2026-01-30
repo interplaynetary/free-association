@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import type { PageData } from './$types';
 	import { publicTreesArray, publishMyTree, unpublishMyTree } from '$lib/network/public-trees.svelte';
-	import { holsterUserPub } from '$lib/network/holster.svelte';
+	import { meshUserPub } from '$lib/network/mesh.svelte';
 	import { getUserName } from '$lib/network/users.svelte';
 
 	let { data }: { data: PageData } = $props();
@@ -127,8 +127,8 @@
 
 	// Check if my tree is published
 	const isMyTreePublished = $derived(() => {
-		if (!$holsterUserPub) return false;
-		return $publicTreesArray.some((tree) => tree.pubkey === $holsterUserPub);
+		if (!$meshUserPub) return false;
+		return $publicTreesArray.some((tree) => tree.pubkey === $meshUserPub);
 	});
 
 	// Format timestamp for display
@@ -147,14 +147,14 @@
 
 	// Handle publish/unpublish
 	async function handlePublishToggle() {
-		if (!$holsterUserPub) return;
+		if (!$meshUserPub) return;
 		
 		try {
-			const alias = await getUserName($holsterUserPub);
+			const alias = await getUserName($meshUserPub);
 			if (isMyTreePublished()) {
-				await unpublishMyTree($holsterUserPub);
+				await unpublishMyTree($meshUserPub);
 			} else {
-				await publishMyTree(alias, $holsterUserPub);
+				await publishMyTree(alias, $meshUserPub);
 			}
 		} catch (error) {
 			console.error('[ORG-PAGE] Failed to toggle publish:', error);
@@ -368,7 +368,7 @@
 		<!-- Individuals View -->
 		<div class="mb-8">
 			<!-- Publish Button -->
-			{#if $holsterUserPub}
+			{#if $meshUserPub}
 				<div class="mb-8 flex justify-center">
 					<button
 						onclick={handlePublishToggle}

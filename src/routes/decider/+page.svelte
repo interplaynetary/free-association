@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { holsterUser, isHolsterAuthenticating, holsterUserAlias } from '$lib/network/holster.svelte';
+	import { meshUser, isMeshAuthenticating, meshUserAlias } from '$lib/network/mesh.svelte';
 	import { DeciderWidget } from '$lib/modules/decider/components';
 	import { TIME } from '$lib/modules/decider/constants';
 	
@@ -30,11 +30,11 @@
 </script>
 
 <div class="decider-page">
-	{#if $isHolsterAuthenticating}
+	{#if $isMeshAuthenticating}
 		<div class="loading-state">
 			<p>Authenticating...</p>
 		</div>
-	{:else if !holsterUser || !holsterUser.is}
+	{:else if !meshUser || !meshUser.is}
 		<div class="auth-required">
 			<h2>🔐 Authentication Required</h2>
 			<p>Please log in to participate in decision-making.</p>
@@ -42,15 +42,15 @@
 	{:else}
 		<div class="header">
 			<h1>🎯 Iterative Consensus Protocol</h1>
-			{#if $holsterUserAlias}
-				<p class="welcome">Welcome, {$holsterUserAlias}!</p>
+			{#if $meshUserAlias}
+				<p class="welcome">Welcome, {$meshUserAlias}!</p>
 			{/if}
 			<p class="description">
 				Distributed decision-making with time-based phases and meta-governance
 			</p>
 		</div>
 		
-		<DeciderWidget user={holsterUser} {gameId} {agenda} {timeWindow} variant="inline" />
+		<DeciderWidget user={meshUser} {gameId} {agenda} {timeWindow} variant="inline" />
 	{/if}
 </div>
 
