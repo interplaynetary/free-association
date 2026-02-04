@@ -6,12 +6,6 @@ export { default as Bar } from './components/Bar.svelte';
 export { default as DraggedNode } from './components/DraggedNode.svelte';
 export { default as ToolBar } from './components/ToolBar.svelte'
 
-export { default as Capacities } from './components/Capacities.svelte';
-export { default as Capacity } from './components/Capacity.svelte';
-
-export { default as Shares } from './components/Shares.svelte';
-export { default as Share } from './components/Share.svelte';
-
 export { default as Slot } from './components/Slot.svelte';
 
 export { default as Chat } from './components/Chat.svelte';

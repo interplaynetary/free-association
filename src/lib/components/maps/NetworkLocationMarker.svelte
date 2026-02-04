@@ -2,7 +2,7 @@
 	import { Marker } from 'svelte-maplibre-gl';
 	import { tweened } from 'svelte/motion';
 	import { cubicOut, linear } from 'svelte/easing';
-	import type { LiveLocationData } from '$lib/location/location.svelte';
+	import type { LiveLocationData } from '$lib/utils/location/location.svelte';
 
 	interface Props {
 		location: LiveLocationData;

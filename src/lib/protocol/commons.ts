@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import jsonLogic from 'json-logic-js';
-import { SkillSchema, AvailabilityWindowSchema } from './resources';
+import { SkillSchema } from './resources';
+import {AvailabilityWindowSchema } from './time';
 import { nanoid } from 'nanoid';
 
 // =============================================================================

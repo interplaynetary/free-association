@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { GroupedSlotMarkerData, ClusterMarkerData } from '$lib/components/Map.svelte';
 	import type { NeedSlot, AvailabilitySlot, SlotAllocationRecord, Commitment } from '$lib/protocol/schemas';
-	import { handleAddressClick } from '$lib/location/mapUtils';
+	import { handleAddressClick } from '$lib/utils/location/mapUtils';
 	import { globalState } from '$lib/global.svelte';
 	// V5: Import user pubkey to look up recognition shares
 	import { meshUserPub } from '$lib/network/mesh.svelte';

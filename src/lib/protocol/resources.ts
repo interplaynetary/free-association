@@ -1,6 +1,6 @@
 import * as z from 'zod';
 import type { Id as ITCId, Event as ITCEvent, Stamp as ITCStamp } from '$lib/utils/primitives/itc';
-
+import { TimeRangeSchema, DayOfWeekSchema, DayScheduleSchema, WeekScheduleSchema, MonthScheduleSchema, AvailabilityWindowSchema} from './time'
 // ═══════════════════════════════════════════════════════════════════
 // BASIC TYPES
 // ═══════════════════════════════════════════════════════════════════
@@ -76,55 +76,6 @@ export const ResourceTypeSchema = z.object({
 });
 
 export type ResourceType = z.infer<typeof ResourceTypeSchema>;
-
-// ═══════════════════════════════════════════════════════════════════
-// AVAILABILITY WINDOW SYSTEM
-// ═══════════════════════════════════════════════════════════════════
-
-export const TimeRangeSchema = z.object({
-    start_time: z.string(), // HH:MM format
-    end_time: z.string()     // HH:MM format
-});
-
-export type TimeRange = z.infer<typeof TimeRangeSchema>;
-
-export const DayOfWeekSchema = z.enum([
-    'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'
-]);
-
-export type DayOfWeek = z.infer<typeof DayOfWeekSchema>;
-
-export const DayScheduleSchema = z.object({
-    days: z.array(DayOfWeekSchema),
-    time_ranges: z.array(TimeRangeSchema)
-});
-
-export type DaySchedule = z.infer<typeof DayScheduleSchema>;
-
-export const WeekScheduleSchema = z.object({
-    weeks: z.array(z.number().int().min(1).max(5)),
-    day_schedules: z.array(DayScheduleSchema)
-});
-
-export type WeekSchedule = z.infer<typeof WeekScheduleSchema>;
-
-export const MonthScheduleSchema = z.object({
-    month: z.number().int().min(1).max(12),
-    week_schedules: z.array(WeekScheduleSchema).optional(),
-    day_schedules: z.array(DayScheduleSchema).optional(),
-    time_ranges: z.array(TimeRangeSchema).optional()
-});
-
-export type MonthSchedule = z.infer<typeof MonthScheduleSchema>;
-
-export const AvailabilityWindowSchema = z.object({
-    month_schedules: z.array(MonthScheduleSchema).optional(),
-    week_schedules: z.array(WeekScheduleSchema).optional(),
-    day_schedules: z.array(DayScheduleSchema).optional(),
-    time_ranges: z.array(TimeRangeSchema).optional()
-});
-
-export type AvailabilityWindow = z.infer<typeof AvailabilityWindowSchema>;
 
 // ═══════════════════════════════════════════════════════════════════
 // SLOTS

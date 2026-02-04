@@ -9,7 +9,7 @@
  */
 
 import * as h3 from 'h3-js';
-import type { AvailabilitySlot, NeedSlot } from './resources.js';
+import type { AvailabilitySlot, NeedSlot } from './resources';
 
 // ═══════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -215,7 +215,11 @@ export function getGridRingsForRadius(radiusKm: number, resolution: number): num
 	const edgeLengthKm = H3_EDGE_LENGTHS_KM[resolution];
 	// Each ring adds approximately one edge length to the radius
 	// Add 1 to ensure full coverage (conservative estimate)
+    if (edgeLengthKm !== undefined && edgeLengthKm > 0) {
 	return Math.ceil(radiusKm / edgeLengthKm) + 1;
+    } else {
+        throw new Error(`Invalid H3 resolution: ${resolution}`);
+    }
 }
 
 /**

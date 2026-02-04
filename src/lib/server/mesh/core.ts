@@ -1,4 +1,4 @@
-import Mesh from "@playnet/mesh/src/mesh"
+import Mesh from "@playnet/mesh"
 import type { AccountData, InviteCode } from "$lib/server/schemas/mesh"
 import { building, dev } from '$app/environment';
 

@@ -30,7 +30,7 @@
 		parseAddressComponents,
 		geocodeCapacityAddress,
 		type ReverseGeocodeResult
-	} from '$lib/location/geocoding';
+	} from '$lib/utils/location/geocoding';
 	import {
 		updateLocation,
 		setLocationTracking,
@@ -46,7 +46,7 @@
 		LOOP_DURATION,
 		TRAIL_LENGTH,
 		type TripData
-	} from '$lib/location/location.svelte';
+	} from '$lib/utils/location/location.svelte';
 	import { MapboxOverlay } from '@deck.gl/mapbox';
 	import { TripsLayer } from '@deck.gl/geo-layers';
 	import { PathLayer, IconLayer } from '@deck.gl/layers';
